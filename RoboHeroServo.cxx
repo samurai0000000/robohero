@@ -37,11 +37,12 @@ void RoboHeroServo::begin()
 
     // Initialize running servo positions from Standby pose + EEPROM offsets
     for (int index = 0; index < ALLMATRIX; index++) {
+        _baseServoPos[index] = Servo_Act_1[index];
         int trim = _eeprom.getMatrixTrim(index);
         if ((trim < -125) || (trim > 125)) {
             trim = 0;
         }
-        _runningServoPos[index] = Servo_Act_1[index] + trim;
+        _runningServoPos[index] = _baseServoPos[index] + trim;
     }
 }
 
@@ -64,11 +65,12 @@ void RoboHeroServo::writeGPIO12(int val)
 void RoboHeroServo::programZero()
 {
     for (int i = 0; i < ALLMATRIX; i++) {
+        _baseServoPos[i] = Servo_Act_0[i];
         int trim = _eeprom.getMatrixTrim(i);
         if ((trim < -125) || (trim > 125)) {
             trim = 0;
         }
-        _runningServoPos[i] = Servo_Act_0[i] + trim;
+        _runningServoPos[i] = _baseServoPos[i] + trim;
     }
 
     for (int i = 0; i < ALLSERVOS; i++) {
@@ -80,11 +82,12 @@ void RoboHeroServo::programZero()
 void RoboHeroServo::programCenter()
 {
     for (int i = 0; i < ALLMATRIX; i++) {
+        _baseServoPos[i] = Servo_Act_1[i];
         int trim = _eeprom.getMatrixTrim(i);
         if ((trim < -125) || (trim > 125)) {
             trim = 0;
         }
-        _runningServoPos[i] = Servo_Act_1[i] + trim;
+        _runningServoPos[i] = _baseServoPos[i] + trim;
     }
 
     for (int i = 0; i < ALLSERVOS; i++) {
@@ -289,6 +292,29 @@ void RoboHeroServo::setRunningServoPos(int index, int val)
 {
     if (index >= 0 && index < ALLMATRIX) {
         _runningServoPos[index] = val;
+    }
+}
+
+void RoboHeroServo::applyTrim(int key, int8_t val)
+{
+    if ((key < 0) || (key > 19)) {
+        return;
+    }
+
+    _eeprom.writeKeyValue(key, val, false);
+
+    if (key >= 0 && key <= 15) {
+        int targetPos = _baseServoPos[key] + val;
+        _runningServoPos[key] = targetPos;
+        setPWMtoServo(key, targetPos);
+    } else if (key == 16) {
+        int targetPos = _baseServoPos[16] + val;
+        _runningServoPos[16] = targetPos;
+        writeGPIO12(targetPos);
+    } else if (key == EEPROM_KEY_PWM_FREQ) {
+        setPWMFrequency(PWM_Frequency + val);
+    } else if (key == EEPROM_KEY_VOLTAGE_CAL) {
+        setVoltageValue(Input_Voltage + val);
     }
 }
 

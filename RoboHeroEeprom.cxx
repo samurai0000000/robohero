@@ -85,18 +85,18 @@ void RoboHeroEeprom::factoryReset(bool autoSave)
     }
 }
 
-int8_t RoboHeroEeprom::readKeyValue(int8_t key) const
+int8_t RoboHeroEeprom::readKeyValue(int key) const
 {
-    if ((key >= 0) && (key < (int8_t) ROBOHERO_EEPROM_SIZE)) {
+    if ((key >= 0) && (key < (int) ROBOHERO_EEPROM_SIZE)) {
         return _data[key];
     }
 
     return 0;
 }
 
-bool RoboHeroEeprom::writeKeyValue(int8_t key, int8_t value, bool autoSave)
+bool RoboHeroEeprom::writeKeyValue(int key, int8_t value, bool autoSave)
 {
-    if ((key >= 0) && (key < (int8_t) ROBOHERO_EEPROM_SIZE)) {
+    if ((key >= 0) && (key < (int) ROBOHERO_EEPROM_SIZE)) {
         _data[key] = value;
         if (autoSave) {
             return save();
@@ -119,7 +119,7 @@ int8_t RoboHeroEeprom::getServoTrim(int servoIndex) const
 bool RoboHeroEeprom::setServoTrim(int servoIndex, int8_t trim, bool autoSave)
 {
     if ((servoIndex >= 0) && (servoIndex <= 16)) {
-        return writeKeyValue((int8_t) servoIndex, trim, autoSave);
+        return writeKeyValue(servoIndex, trim, autoSave);
     }
 
     return false;
@@ -132,7 +132,7 @@ int8_t RoboHeroEeprom::getDelayTrim(void) const
 
 bool RoboHeroEeprom::setDelayTrim(int8_t trim, bool autoSave)
 {
-    return writeKeyValue((int8_t) EEPROM_KEY_DELAY_TIME, trim, autoSave);
+    return writeKeyValue((int) EEPROM_KEY_DELAY_TIME, trim, autoSave);
 }
 
 int8_t RoboHeroEeprom::getMatrixTrim(int index) const
@@ -147,7 +147,7 @@ int8_t RoboHeroEeprom::getMatrixTrim(int index) const
 bool RoboHeroEeprom::setMatrixTrim(int index, int8_t trim, bool autoSave)
 {
     if ((index >= 0) && (index < ALLMATRIX)) {
-        return writeKeyValue((int8_t) index, trim, autoSave);
+        return writeKeyValue(index, trim, autoSave);
     }
 
     return false;
@@ -160,7 +160,7 @@ int8_t RoboHeroEeprom::getPwmFreqTrim(void) const
 
 bool RoboHeroEeprom::setPwmFreqTrim(int8_t trim, bool autoSave)
 {
-    return writeKeyValue((int8_t) EEPROM_KEY_PWM_FREQ, trim, autoSave);
+    return writeKeyValue((int) EEPROM_KEY_PWM_FREQ, trim, autoSave);
 }
 
 int8_t RoboHeroEeprom::getVoltageTrim(void) const
@@ -170,7 +170,7 @@ int8_t RoboHeroEeprom::getVoltageTrim(void) const
 
 bool RoboHeroEeprom::setVoltageTrim(int8_t trim, bool autoSave)
 {
-    return writeKeyValue((int8_t) EEPROM_KEY_VOLTAGE_CAL, trim, autoSave);
+    return writeKeyValue((int) EEPROM_KEY_VOLTAGE_CAL, trim, autoSave);
 }
 
 bool RoboHeroEeprom::resetMotionTrims(bool autoSave)

@@ -75,8 +75,8 @@ public:
     void factoryReset(bool autoSave = true);
 
     // Legacy calibration and servo trim accessors (0..19)
-    int8_t readKeyValue(int8_t key) const;
-    bool writeKeyValue(int8_t key, int8_t value, bool autoSave = true);
+    int8_t readKeyValue(int key) const;
+    bool writeKeyValue(int key, int8_t value, bool autoSave = true);
 
     int8_t getServoTrim(int servoIndex) const;
     bool setServoTrim(int servoIndex, int8_t trim, bool autoSave = true);

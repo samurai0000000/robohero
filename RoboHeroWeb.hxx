@@ -26,17 +26,7 @@ public:
 private:
 
     void handleIndex();
-    void handleController();
-    void handleSave();
-    void handleGetEEPROM();
-    void handleOnLine();
-    void handleOnLineNew();
-    void handleZero();
-    void handleEditor();
-    void handleSetting();
-    void handleInfo();
-    void handleReset();
-    void handleRestart();
+    void handleCalibrate();
 
     ESP8266WebServer _server;
     RoboHeroServo &_servo;

@@ -6,6 +6,865 @@
 
 #include "RoboHeroWeb.hxx"
 #include "RoboHeroApp.hxx"
+#include "RoboHeroEeprom.hxx"
+
+static const char PAGE_INDEX[] PROGMEM = R"rawliteral(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboHero Controller</title>
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-card: rgba(30, 41, 59, 0.75);
+  --bg-card-hover: rgba(51, 65, 85, 0.85);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-cyan: #06b6d4;
+  --accent-blue: #3b82f6;
+  --accent-pink: #ec4899;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --border: rgba(255, 255, 255, 0.1);
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.navbar {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-link {
+  color: var(--text-main);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
+  border: 1px solid var(--accent-cyan);
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.nav-link:hover {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  color: #fff;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+}
+.container {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.card-title {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 14px 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  user-select: none;
+}
+.btn:hover { background: var(--bg-card-hover); border-color: rgba(255, 255, 255, 0.2); }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; }
+.btn-primary:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.btn-standby { background: linear-gradient(135deg, #db2777, #be185d); border: none; font-weight: 700; }
+.btn-standby:hover { background: linear-gradient(135deg, #ec4899, #db2777); }
+.btn-action { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2)); border-color: var(--accent-amber); color: #fde68a; }
+.btn-action:hover { background: linear-gradient(135deg, var(--accent-amber), #d97706); color: #000; }
+.btn-auto { background: linear-gradient(135deg, #059669, #047857); border: none; font-weight: 700; grid-column: span 2; }
+.btn-auto:hover { background: linear-gradient(135deg, #10b981, #059669); }
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  background: rgba(16, 185, 129, 0.9);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="navbar">
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    RoboHero
+  </div>
+  <a href="/calibrate" class="nav-link" id="nav-calibrate">PWM Calibration</a>
+</div>
+<div class="container">
+  <div class="card">
+    <div class="card-title">Locomotion</div>
+    <div class="dpad-grid">
+      <button class="btn btn-primary" id="btn-turn-left" onclick="sendCmd('pm', 3)">Turn Left</button>
+      <button class="btn btn-primary" id="btn-forward" onclick="sendCmd('pm', 1)">Forward</button>
+      <button class="btn btn-primary" id="btn-turn-right" onclick="sendCmd('pm', 4)">Turn Right</button>
+      <button class="btn btn-primary" id="btn-move-left" onclick="sendCmd('pm', 5)">Move Left</button>
+      <button class="btn btn-standby" id="btn-standby" onclick="sendCmd('pm', 99)">STANDBY</button>
+      <button class="btn btn-primary" id="btn-move-right" onclick="sendCmd('pm', 6)">Move Right</button>
+      <div></div>
+      <button class="btn btn-primary" id="btn-backward" onclick="sendCmd('pm', 2)">Backward</button>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Recovery</div>
+    <div class="actions-grid">
+      <button class="btn btn-primary" id="btn-get-up" onclick="sendCmd('pm', 11)">Get Up</button>
+      <button class="btn btn-primary" id="btn-get-up-face" onclick="sendCmd('pm', 12)">Face-Down Get Up</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Actions & Gestures</div>
+    <div class="actions-grid">
+      <button class="btn btn-action" id="btn-bow" onclick="sendCmd('pms', 1)">Bow</button>
+      <button class="btn btn-action" id="btn-apache" onclick="sendCmd('pms', 4)">Apache</button>
+      <button class="btn btn-action" id="btn-waving" onclick="sendCmd('pms', 2)">Waving</button>
+      <button class="btn btn-action" id="btn-balance" onclick="sendCmd('pms', 5)">Balance</button>
+      <button class="btn btn-action" id="btn-ironman" onclick="sendCmd('pms', 3)">Iron Man</button>
+      <button class="btn btn-action" id="btn-warmup" onclick="sendCmd('pms', 6)">Warm-Up</button>
+      <button class="btn btn-action" id="btn-clap" onclick="sendCmd('pms', 7)">Clap Hands</button>
+      <button class="btn btn-action" id="btn-goilc" onclick="sendCmd('pms', 8)">GOILC</button>
+      <button class="btn btn-action" id="btn-dance" onclick="sendCmd('pms', 9)">Dance</button>
+      <button class="btn btn-auto" id="btn-auto" onclick="sendCmd('pms', 99)">Auto Demo Loop</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast">Command sent</div>
+<script>
+function sendCmd(key, val) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/?' + key + '=' + val + '&_t=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      showToast(xhr.status === 200 ? 'Command executed' : 'Command sent');
+    }
+  };
+  xhr.send();
+}
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 1500);
+}
+</script>
+</body>
+</html>
+)rawliteral";
+
+static const char PAGE_CALIBRATE[] PROGMEM = R"rawliteral(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>RoboHero PWM Calibration</title>
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-card: rgba(30, 41, 59, 0.75);
+  --bg-card-hover: rgba(51, 65, 85, 0.85);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-cyan: #06b6d4;
+  --accent-blue: #3b82f6;
+  --accent-emerald: #10b981;
+  --accent-pink: #ec4899;
+  --accent-amber: #f59e0b;
+  --border: rgba(255, 255, 255, 0.1);
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.navbar {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  position: sticky;
+  top: 16px;
+  z-index: 100;
+}
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.nav-actions { display: flex; gap: 10px; align-items: center; }
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.nav-link:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.05); }
+.btn-save {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-save:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.7);
+  transform: translateY(-1px);
+}
+.btn-save:active { transform: translateY(1px); }
+.container {
+  width: 100%;
+  max-width: 900px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .container { grid-template-columns: 1fr; }
+}
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+}
+.pose-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.btn-pose {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-pose:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3); }
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+.slider-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+.servo-name { font-weight: 600; color: #e2e8f0; }
+.servo-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  min-width: 44px;
+  text-align: right;
+}
+.slider-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-step {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.btn-step:hover { background: rgba(255, 255, 255, 0.2); }
+.btn-zero {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0 6px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-zero:hover { color: #fff; background: rgba(236, 72, 153, 0.3); border-color: var(--accent-pink); }
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 6px;
+  background: #334155;
+  border-radius: 3px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-cyan);
+  transition: all 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #fff;
+}
+.footer-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 10px;
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  background: rgba(16, 185, 129, 0.95);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="navbar">
+  <div class="brand">PWM Trim Calibration</div>
+  <div class="nav-actions">
+    <a href="/" class="nav-link">Controller</a>
+    <button id="btn-top-save" class="btn-save" onclick="saveToEeprom()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Save to EEPROM
+    </button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="card pose-bar">
+    <span style="font-weight:600; color:var(--text-muted); font-size:0.9rem;">Quick Pose Check:</span>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-pose" id="btn-pose-center" onclick="previewPose('center')">Standby Pose</button>
+      <button class="btn-pose" id="btn-pose-zero" onclick="previewPose('zero')">Zero Alignment Pose</button>
+      <button class="btn-pose" id="btn-reset-all" style="color:#f43f5e;" onclick="resetAllZero()">Reset All Trims to 0</button>
+      <button class="btn-pose" id="btn-reload" onclick="loadTrims()">Reload EEPROM</button>
+    </div>
+  </div>
+
+  <!-- Right Arm -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Right Arm</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-row" id="row_5">
+        <div class="slider-meta"><span class="servo-name">Servo 5 - Shoulder Pitch</span><span class="servo-val" id="val_5">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(5, -1)">-</button>
+          <input type="range" id="trim_5" min="-125" max="125" value="0" oninput="updateVal(5, this.value)">
+          <button class="btn-step" onclick="stepVal(5, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(5)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_6">
+        <div class="slider-meta"><span class="servo-name">Servo 6 - Shoulder Roll</span><span class="servo-val" id="val_6">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(6, -1)">-</button>
+          <input type="range" id="trim_6" min="-125" max="125" value="0" oninput="updateVal(6, this.value)">
+          <button class="btn-step" onclick="stepVal(6, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(6)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_7">
+        <div class="slider-meta"><span class="servo-name">Servo 7 - Elbow</span><span class="servo-val" id="val_7">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(7, -1)">-</button>
+          <input type="range" id="trim_7" min="-125" max="125" value="0" oninput="updateVal(7, this.value)">
+          <button class="btn-step" onclick="stepVal(7, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(7)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left Arm -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Left Arm</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-row" id="row_10">
+        <div class="slider-meta"><span class="servo-name">Servo 10 - Shoulder Pitch</span><span class="servo-val" id="val_10">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(10, -1)">-</button>
+          <input type="range" id="trim_10" min="-125" max="125" value="0" oninput="updateVal(10, this.value)">
+          <button class="btn-step" onclick="stepVal(10, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(10)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_9">
+        <div class="slider-meta"><span class="servo-name">Servo 9 - Shoulder Roll</span><span class="servo-val" id="val_9">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(9, -1)">-</button>
+          <input type="range" id="trim_9" min="-125" max="125" value="0" oninput="updateVal(9, this.value)">
+          <button class="btn-step" onclick="stepVal(9, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(9)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_8">
+        <div class="slider-meta"><span class="servo-name">Servo 8 - Elbow</span><span class="servo-val" id="val_8">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(8, -1)">-</button>
+          <input type="range" id="trim_8" min="-125" max="125" value="0" oninput="updateVal(8, this.value)">
+          <button class="btn-step" onclick="stepVal(8, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(8)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Leg -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Right Leg</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-row" id="row_4">
+        <div class="slider-meta"><span class="servo-name">Servo 4 - Hip Roll</span><span class="servo-val" id="val_4">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(4, -1)">-</button>
+          <input type="range" id="trim_4" min="-125" max="125" value="0" oninput="updateVal(4, this.value)">
+          <button class="btn-step" onclick="stepVal(4, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(4)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_3">
+        <div class="slider-meta"><span class="servo-name">Servo 3 - Hip Pitch</span><span class="servo-val" id="val_3">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(3, -1)">-</button>
+          <input type="range" id="trim_3" min="-125" max="125" value="0" oninput="updateVal(3, this.value)">
+          <button class="btn-step" onclick="stepVal(3, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(3)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_2">
+        <div class="slider-meta"><span class="servo-name">Servo 2 - Knee</span><span class="servo-val" id="val_2">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(2, -1)">-</button>
+          <input type="range" id="trim_2" min="-125" max="125" value="0" oninput="updateVal(2, this.value)">
+          <button class="btn-step" onclick="stepVal(2, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(2)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_1">
+        <div class="slider-meta"><span class="servo-name">Servo 1 - Ankle Pitch</span><span class="servo-val" id="val_1">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(1, -1)">-</button>
+          <input type="range" id="trim_1" min="-125" max="125" value="0" oninput="updateVal(1, this.value)">
+          <button class="btn-step" onclick="stepVal(1, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(1)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_0">
+        <div class="slider-meta"><span class="servo-name">Servo 0 - Ankle Roll</span><span class="servo-val" id="val_0">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(0, -1)">-</button>
+          <input type="range" id="trim_0" min="-125" max="125" value="0" oninput="updateVal(0, this.value)">
+          <button class="btn-step" onclick="stepVal(0, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(0)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left Leg -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Left Leg</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-row" id="row_11">
+        <div class="slider-meta"><span class="servo-name">Servo 11 - Hip Roll</span><span class="servo-val" id="val_11">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(11, -1)">-</button>
+          <input type="range" id="trim_11" min="-125" max="125" value="0" oninput="updateVal(11, this.value)">
+          <button class="btn-step" onclick="stepVal(11, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(11)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_12">
+        <div class="slider-meta"><span class="servo-name">Servo 12 - Hip Pitch</span><span class="servo-val" id="val_12">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(12, -1)">-</button>
+          <input type="range" id="trim_12" min="-125" max="125" value="0" oninput="updateVal(12, this.value)">
+          <button class="btn-step" onclick="stepVal(12, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(12)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_13">
+        <div class="slider-meta"><span class="servo-name">Servo 13 - Knee</span><span class="servo-val" id="val_13">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(13, -1)">-</button>
+          <input type="range" id="trim_13" min="-125" max="125" value="0" oninput="updateVal(13, this.value)">
+          <button class="btn-step" onclick="stepVal(13, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(13)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_14">
+        <div class="slider-meta"><span class="servo-name">Servo 14 - Ankle Pitch</span><span class="servo-val" id="val_14">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(14, -1)">-</button>
+          <input type="range" id="trim_14" min="-125" max="125" value="0" oninput="updateVal(14, this.value)">
+          <button class="btn-step" onclick="stepVal(14, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(14)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_15">
+        <div class="slider-meta"><span class="servo-name">Servo 15 - Ankle Roll</span><span class="servo-val" id="val_15">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(15, -1)">-</button>
+          <input type="range" id="trim_15" min="-125" max="125" value="0" oninput="updateVal(15, this.value)">
+          <button class="btn-step" onclick="stepVal(15, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(15)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Head & System Tuning -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <div class="card-header">
+      <span class="card-title">Head & System Parameters</span>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+      <div class="slider-row" id="row_16">
+        <div class="slider-meta"><span class="servo-name">GPIO 12 Head Servo (16)</span><span class="servo-val" id="val_16">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(16, -1)">-</button>
+          <input type="range" id="trim_16" min="-125" max="125" value="0" oninput="updateVal(16, this.value)">
+          <button class="btn-step" onclick="stepVal(16, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(16)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_18">
+        <div class="slider-meta"><span class="servo-name">PWM Frequency Trim (18)</span><span class="servo-val" id="val_18">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(18, -1)">-</button>
+          <input type="range" id="trim_18" min="-125" max="125" value="0" oninput="updateVal(18, this.value)">
+          <button class="btn-step" onclick="stepVal(18, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(18)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_17">
+        <div class="slider-meta"><span class="servo-name">Delay Time Trim (17)</span><span class="servo-val" id="val_17">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(17, -1)">-</button>
+          <input type="range" id="trim_17" min="-125" max="125" value="0" oninput="updateVal(17, this.value)">
+          <button class="btn-step" onclick="stepVal(17, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(17)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_19">
+        <div class="slider-meta"><span class="servo-name">Voltage Cal Offset (19)</span><span class="servo-val" id="val_19">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(19, -1)">-</button>
+          <input type="range" id="trim_19" min="-125" max="125" value="0" oninput="updateVal(19, this.value)">
+          <button class="btn-step" onclick="stepVal(19, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(19)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <span style="color:var(--text-muted); font-size:0.85rem;">Adjustments apply immediately in real-time. Click Save to write to EEPROM.</span>
+    <button id="btn-bottom-save" class="btn-save" onclick="saveToEeprom()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Save to EEPROM
+    </button>
+  </div>
+</div>
+<div id="toast" class="toast">Saved to EEPROM</div>
+
+<script>
+var liveTimer = null;
+var lastSentVal = {};
+
+function updateVal(id, val) {
+  var el = document.getElementById('val_' + id);
+  if (el) el.innerText = (val > 0 ? '+' : '') + val;
+
+  if (lastSentVal[id] !== val) {
+    if (liveTimer) clearTimeout(liveTimer);
+    liveTimer = setTimeout(function() {
+      lastSentVal[id] = val;
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/calibrate?apply=1&key=' + id + '&val=' + val + '&_t=' + Date.now(), true);
+      xhr.send();
+    }, 25);
+  }
+}
+
+function stepVal(id, delta) {
+  var input = document.getElementById('trim_' + id);
+  if (input) {
+    var v = parseInt(input.value) + delta;
+    if (v < -125) v = -125;
+    if (v > 125) v = 125;
+    input.value = v;
+    updateVal(id, v);
+  }
+}
+
+function setZero(id) {
+  var input = document.getElementById('trim_' + id);
+  if (input) {
+    input.value = 0;
+    updateVal(id, 0);
+  }
+}
+
+function resetAllZero() {
+  if (confirm('Reset all trims to 0?')) {
+    for (var i = 0; i <= 19; i++) {
+      setZero(i);
+    }
+    showToast('All sliders reset to 0.');
+  }
+}
+
+function applyTrims(trims) {
+  if (trims && trims.length) {
+    trims.forEach(function(val, id) {
+      var input = document.getElementById('trim_' + id);
+      if (input) {
+        input.value = val;
+        lastSentVal[id] = val;
+        var el = document.getElementById('val_' + id);
+        if (el) el.innerText = (val > 0 ? '+' : '') + val;
+      }
+    });
+  }
+}
+
+function loadTrims() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/calibrate?json=1&_t=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data && data.trims) {
+          applyTrims(data.trims);
+        }
+      } catch (e) {}
+    }
+  };
+  xhr.send();
+}
+
+function saveToEeprom() {
+  var qs = 'save=1';
+  for (var i = 0; i <= 19; i++) {
+    var input = document.getElementById('trim_' + i);
+    qs += '&t' + i + '=' + (input ? encodeURIComponent(input.value) : '0');
+  }
+
+  var btnTop = document.getElementById('btn-top-save');
+  var btnBottom = document.getElementById('btn-bottom-save');
+  if (btnTop) btnTop.innerText = 'Saving...';
+  if (btnBottom) btnBottom.innerText = 'Saving...';
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/calibrate?' + qs + '&_t=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        showToast('Saved to EEPROM!');
+      } else {
+        showToast('Save failed HTTP ' + xhr.status);
+      }
+      if (btnTop) btnTop.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Save to EEPROM';
+      if (btnBottom) btnBottom.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Save to EEPROM';
+    }
+  };
+  xhr.send();
+}
+
+function previewPose(pose) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/calibrate?pose=' + pose + '&_t=' + Date.now(), true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      showToast('Pose ' + pose + ' executed');
+    }
+  };
+  xhr.send();
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+window.addEventListener('DOMContentLoaded', loadTrims);
+</script>
+</body>
+</html>
+)rawliteral";
 
 RoboHeroWeb::RoboHeroWeb(RoboHeroServo &servo, RoboHeroEeprom &eeprom, RoboHeroApp &app)
     : _server(80)
@@ -17,23 +876,9 @@ RoboHeroWeb::RoboHeroWeb(RoboHeroServo &servo, RoboHeroEeprom &eeprom, RoboHeroA
 
 void RoboHeroWeb::begin()
 {
-    HTTPMethod getMethod = HTTP_GET;
-
-    _server.on("/controller", getMethod, [this]() { handleController(); });
-    _server.on("/save", getMethod, [this]() { handleSave(); });
-
-    _server.on("/", getMethod, [this]() { handleIndex(); });
-    _server.on("/editor", getMethod, [this]() { handleEditor(); });
-    _server.on("/zero", getMethod, [this]() { handleZero(); });
-    _server.on("/setting", getMethod, [this]() { handleSetting(); });
-    _server.on("/eeprom", getMethod, [this]() { handleGetEEPROM(); });
-
-    _server.on("/online", getMethod, [this]() { handleOnLine(); });
-    _server.on("/online_new", getMethod, [this]() { handleOnLineNew(); });
-
-    _server.on("/info", getMethod, [this]() { handleInfo(); });
-    _server.on("/reset", getMethod, [this]() { handleReset(); });
-    _server.on("/restart", getMethod, [this]() { handleRestart(); });
+    // Register routes for ALL HTTP methods
+    _server.on("/", [this]() { handleIndex(); });
+    _server.on("/calibrate", [this]() { handleCalibrate(); });
 
     _server.begin();
 }
@@ -43,324 +888,100 @@ void RoboHeroWeb::handleClient()
     _server.handleClient();
 }
 
-void RoboHeroWeb::handleSave()
-{
-    String key = _server.arg("key");
-    String value = _server.arg("value");
-
-    int8_t keyInt = key.toInt();
-    int8_t valueInt = value.toInt();
-
-    if (keyInt == 100) {
-        _eeprom.resetMotionTrims();
-    } else {
-        if (valueInt >= -125 && valueInt <= 125) {
-            _eeprom.writeKeyValue(keyInt, valueInt);
-
-            if (keyInt == 18) {
-                _servo.setPWMFrequency(PWM_Frequency + valueInt);
-            }
-
-            if (keyInt == 19) {
-                _servo.setVoltageValue(Input_Voltage + valueInt);
-                _app.resetLowVoltage();
-            }
-        }
-    }
-
-    String content = "(key, value)=(" + key + "," + value +
-        "), but response = ";
-    content += String(_eeprom.readKeyValue(keyInt));
-
-    _server.send(200, "text/html", content);
-}
-
-void RoboHeroWeb::handleController()
-{
-    String pm = _server.arg("pm");
-    String pms = _server.arg("pms");
-    String gpid = _server.arg("gpid");
-    String gpio = _server.arg("gpio");
-    String servo = _server.arg("servo");
-
-    if (pm != "") {
-        _app.setServoProgram(pm.toInt());
-    }
-
-    if (pms != "") {
-        _app.setServoProgramStack(pms.toInt());
-    }
-
-    if (servo != "" && _app.isLowVoltage() == 0) {
-        int Servo_ID = servo.toInt();
-        String ival = _server.arg("value");
-        int Servo_PWM = ival.toInt() + _eeprom.getServoTrim(Servo_ID);
-        int pulselength = map(Servo_PWM, PWMRES_Min, PWMRES_Max, SERVOMIN, SERVOMAX);
-
-        if (Servo_ID != 16) {
-            _servo.getPWMServoDriver().setPWM(Servo_ID, 0, pulselength);
-        } else if (Servo_ID == 16) {
-            int gpio12Pwm = ival.toInt() + _eeprom.getServoTrim(16);
-            _servo.writeGPIO12(gpio12Pwm);
-        }
-    }
-
-    if (gpid != "" && gpio == "") {
-        gpio = gpid;
-    }
-
-    if (gpio != "" && _app.isLowVoltage() == 0) {
-        int gpioId = gpio.toInt();
-        if (gpioId == 12) {
-            String ival = _server.arg("value");
-            int gpio12Pwm = ival.toInt() + _eeprom.getServoTrim(16);
-            _servo.writeGPIO12(gpio12Pwm);
-        }
-    }
-
-    _server.send(200, "text/html", "(pm, pms)=(" + pm + "," + pms + ")");
-}
-
-void RoboHeroWeb::handleGetEEPROM()
-{
-    String content = "";
-    for (int i = 0; i <= 19; i++) {
-        if (i > 0) {
-            content += ",";
-        }
-        content += String(_eeprom.readKeyValue(i));
-    }
-    _server.send(200, "text/html", content);
-}
-
-void RoboHeroWeb::handleOnLineNew()
-{
-    int handleOnlineTemp[18];
-    String m0 = _server.arg("m0");
-    String m1 = _server.arg("m1");
-    String m2 = _server.arg("m2");
-    String m3 = _server.arg("m3");
-    String m4 = _server.arg("m4");
-    String m5 = _server.arg("m5");
-    String m6 = _server.arg("m6");
-    String m7 = _server.arg("m7");
-    String m8 = _server.arg("m8");
-    String m9 = _server.arg("m9");
-    String m10 = _server.arg("m10");
-    String m11 = _server.arg("m11");
-    String m12 = _server.arg("m12");
-    String m13 = _server.arg("m13");
-    String m14 = _server.arg("m14");
-    String m15 = _server.arg("m15");
-    String m16 = _server.arg("m16");
-    String t1 = _server.arg("t1");
-
-    handleOnlineTemp[0] = m0.toInt();
-    handleOnlineTemp[1] = m1.toInt();
-    handleOnlineTemp[2] = m2.toInt();
-    handleOnlineTemp[3] = m3.toInt();
-    handleOnlineTemp[4] = m4.toInt();
-    handleOnlineTemp[5] = m5.toInt();
-    handleOnlineTemp[6] = m6.toInt();
-    handleOnlineTemp[7] = m7.toInt();
-    handleOnlineTemp[8] = m8.toInt();
-    handleOnlineTemp[9] = m9.toInt();
-    handleOnlineTemp[10] = m10.toInt();
-    handleOnlineTemp[11] = m11.toInt();
-    handleOnlineTemp[12] = m12.toInt();
-    handleOnlineTemp[13] = m13.toInt();
-    handleOnlineTemp[14] = m14.toInt();
-    handleOnlineTemp[15] = m15.toInt();
-    handleOnlineTemp[16] = m16.toInt();
-    handleOnlineTemp[17] = t1.toInt();
-
-    Serial.print("online [");
-    for (int i = 0; i < 18; i++) {
-        Serial.print(handleOnlineTemp[i]);
-        Serial.print(",");
-    }
-    Serial.println("]");
-
-    _servo.push(handleOnlineTemp);
-    _server.send(200, "", "");
-}
-
-void RoboHeroWeb::handleOnLine()
-{
-    String m0 = _server.arg("m0");
-    String m1 = _server.arg("m1");
-    String m2 = _server.arg("m2");
-    String m3 = _server.arg("m3");
-    String m4 = _server.arg("m4");
-    String m5 = _server.arg("m5");
-    String m6 = _server.arg("m6");
-    String m7 = _server.arg("m7");
-    String m8 = _server.arg("m8");
-    String m9 = _server.arg("m9");
-    String m10 = _server.arg("m10");
-    String m11 = _server.arg("m11");
-    String m12 = _server.arg("m12");
-    String m13 = _server.arg("m13");
-    String m14 = _server.arg("m14");
-    String m15 = _server.arg("m15");
-    String m16 = _server.arg("m16");
-    String t1 = _server.arg("t1");
-
-    int Servo_Prg_tmp[][18] = {
-        { m0.toInt(), m1.toInt(), m2.toInt(), m3.toInt(), m4.toInt(), m5.toInt(),
-          m6.toInt(), m7.toInt(), m8.toInt(), m9.toInt(), m10.toInt(), m11.toInt(),
-          m12.toInt(), m13.toInt(), m14.toInt(), m15.toInt(), m16.toInt(), t1.toInt(), }
-    };
-
-    _server.send(200);
-
-    if (_app.isLowVoltage() == 0) {
-        _servo.programRun(Servo_Prg_tmp, 1);
-    }
-}
-
-void RoboHeroWeb::handleZero()
-{
-    String content = "";
-    content += "<html><head><title>RoboHero Zero Check</title>";
-    content += "<style type=\"text/css\">";
-    content += "body { color: white; background-color: #000000; }";
-    content += ".pm_btn { width: 160px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px 10px 20px; text-decoration: none; }";
-    content += ".pm_text { width: 160px; border-radius: 5px; font-family: Arial; font-size: 24px; padding: 10px 20px 10px 20px; text-decoration: none; }";
-    content += ".pm_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += ".pms_btn { width: 240px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px 10px 20px; text-decoration: none; }";
-    content += ".pms_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += "</style></head><body>";
-    content += "<table><tr><td></td><td><button class=\"pm_btn\" style=\"background: #6e6e6e;\" type=\"button\" onclick=\"controlGpid(12, 90)\">GPIO 12</button></td></tr></table><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(8,135)\">Servo 8</button></td><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(7,135)\">Servo 7</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(9,135)\">Servo 9</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(6,135)\">Servo 6</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(10,135)\">Servo 10</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(5, 135)\">Servo 5</button></td></tr></table><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(11,135)\">Servo 11</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(4,135)\">Servo 4</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(12,135)\">Servo 12</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(3,135)\">Servo 3</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(13,135)\">Servo 13</button></td><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(2,135)\">Servo 2</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(14,135)\">Servo 14</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(1,135)\">Servo 1</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(15,135)\">Servo 15</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(0,135)\">Servo 0</button></td></tr></table><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" style=\"background: #ed3db5;\" type=\"button\" onclick=\"controlPm(100)\">ALL</button></td></tr></table><br>";
-    content += "</body><script>";
-    content += "function controlServo(id, value) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?servo=\"+id+\"&value=\"+value, true); xhttp.send(); }";
-    content += "function controlGpid(id, value) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?gpid=\"+id+\"&value=\"+value, true); xhttp.send(); }";
-    content += "function controlPm(value) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?pm=\"+value, true); xhttp.send(); }";
-    content += "</script></html>";
-
-    _server.send(200, "text/html", content);
-}
-
-void RoboHeroWeb::handleEditor()
-{
-    String content = "";
-    content += "<html><head><title>RoboHero Motion Editor</title>";
-    content += "<style type=\"text/css\">";
-    content += "body { color: white; background-color: #000000; }";
-    content += ".pm_btn { width: 160px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pm_text { width: 160px; border-radius: 5px; font-family: Arial; font-size: 24px; padding: 10px 20px; text-decoration: none; }";
-    content += ".pm_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += ".pms_btn { width: 240px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pms_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += "</style></head><body>";
-    content += "<table><tr><td></td><td><button class=\"pm_btn\" style=\"background: #6e6e6e;\" type=\"button\" onclick=\"controlGpid(12, 90)\">GPIO 12</button></td></tr></table><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(8,135)\">Servo 8</button></td><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(7,135)\">Servo 7</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(9,135)\">Servo 9</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(6,135)\">Servo 6</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(10,135)\">Servo 10</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(5, 135)\">Servo 5</button></td></tr></table><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(11,135)\">Servo 11</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(4,135)\">Servo 4</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(12,135)\">Servo 12</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(3,135)\">Servo 3</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(13,135)\">Servo 13</button></td><td><button class=\"pm_btn\" style=\"background: #f5da81;\" type=\"button\" onclick=\"controlServo(2,135)\">Servo 2</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(14,135)\">Servo 14</button></td><td><button class=\"pm_btn\" style=\"background: #bdbdbd;\" type=\"button\" onclick=\"controlServo(1,135)\">Servo 1</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(15,135)\">Servo 15</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlServo(0,135)\">Servo 0</button></td></tr></table><br>";
-    content += "</body><script>";
-    content += "function controlServo(id, value) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?servo=\"+id+\"&value=\"+value, true); xhttp.send(); }";
-    content += "function controlGpid(id, value) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?gpid=\"+id+\"&value=\"+value, true); xhttp.send(); }";
-    content += "</script></html>";
-
-    _server.send(200, "text/html", content);
-}
-
-void RoboHeroWeb::handleSetting()
-{
-    String content = "";
-    content += "<html><head><title>RoboHero Setting</title>";
-    content += "<style type=\"text/css\">";
-    content += "body { color: white; background-color: #000000; }";
-    content += ".pm_btn { width: 120px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pm_text { width: 80px; border-radius: 5px; font-family: Arial; font-size: 24px; padding: 10px 20px; text-decoration: none; }";
-    content += ".pm_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += ".pms_btn { width: 160px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pms_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += "</style></head><body>";
-    content += "<table><tr><td></td><td>GPIO 12<br/><input class=\"pm_text\" type=\"text\" id=\"servo_16\" value=\"" + String(_servo.readKeyValue(16)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(16,'servo_16')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 8<br/><input class=\"pm_text\" type=\"text\" id=\"servo_8\" value=\"" + String(_servo.readKeyValue(8)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(8,'servo_8')\">SET</button></td><td>Servo 7<br/><input class=\"pm_text\" type=\"text\" id=\"servo_7\" value=\"" + String(_servo.readKeyValue(7)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(7,'servo_7')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 9<br/><input class=\"pm_text\" type=\"text\" id=\"servo_9\" value=\"" + String(_servo.readKeyValue(9)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(9,'servo_9')\">SET</button></td><td>Servo 6<br/><input class=\"pm_text\" type=\"text\" id=\"servo_6\" value=\"" + String(_servo.readKeyValue(6)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(6,'servo_6')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 10<br/><input class=\"pm_text\" type=\"text\" id=\"servo_10\" value=\"" + String(_servo.readKeyValue(10)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(10,'servo_10')\">SET</button></td><td>Servo 5<br/><input class=\"pm_text\" type=\"text\" id=\"servo_5\" value=\"" + String(_servo.readKeyValue(5)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(5,'servo_5')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 11<br/><input class=\"pm_text\" type=\"text\" id=\"servo_11\" value=\"" + String(_servo.readKeyValue(11)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(11,'servo_11')\">SET</button></td><td>Servo 4<br/><input class=\"pm_text\" type=\"text\" id=\"servo_4\" value=\"" + String(_servo.readKeyValue(4)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(4,'servo_4')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 12<br/><input class=\"pm_text\" type=\"text\" id=\"servo_12\" value=\"" + String(_servo.readKeyValue(12)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(12,'servo_12')\">SET</button></td><td>Servo 3<br/><input class=\"pm_text\" type=\"text\" id=\"servo_3\" value=\"" + String(_servo.readKeyValue(3)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(3,'servo_3')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 13<br/><input class=\"pm_text\" type=\"text\" id=\"servo_13\" value=\"" + String(_servo.readKeyValue(13)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(13,'servo_13')\">SET</button></td><td>Servo 2<br/><input class=\"pm_text\" type=\"text\" id=\"servo_2\" value=\"" + String(_servo.readKeyValue(2)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(2,'servo_2')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 14<br/><input class=\"pm_text\" type=\"text\" id=\"servo_14\" value=\"" + String(_servo.readKeyValue(14)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(14,'servo_14')\">SET</button></td><td>Servo 1<br/><input class=\"pm_text\" type=\"text\" id=\"servo_1\" value=\"" + String(_servo.readKeyValue(1)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(1,'servo_1')\">SET</button></td></tr>";
-    content += "<tr><td>Servo 15<br/><input class=\"pm_text\" type=\"text\" id=\"servo_15\" value=\"" + String(_servo.readKeyValue(15)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(15,'servo_15')\">SET</button></td><td>Servo 0<br/><input class=\"pm_text\" type=\"text\" id=\"servo_0\" value=\"" + String(_servo.readKeyValue(0)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(0,'servo_0')\">SET</button></td></tr></table><br>";
-    content += "<table><tr><td>PWM Frequency Calibration<br/><input class=\"pm_text\" type=\"text\" id=\"servo_18\" value=\"" + String(_servo.readKeyValue(18)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(18,'servo_18')\">SET</button></td><td>Voltage Calibration<br/><input class=\"pm_text\" type=\"text\" id=\"servo_19\" value=\"" + String(_servo.readKeyValue(19)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(19,'servo_19')\">SET</button></td></tr>";
-    content += "<tr><td>Delay Time<br/><input class=\"pm_text\" type=\"text\" id=\"servo_17\" value=\"" + String(_servo.readKeyValue(17)) + "\"><button class=\"pm_btn\" type=\"button\" onclick=\"saveServo(17,'servo_17')\">SET</button></td></tr></table><br><br>";
-    content += "<table><tr><td><button class=\"pm_btn\" style=\"background: #ed3db5;\" type=\"button\" onclick=\"saveServo(100, 0)\">RESET</button></td></tr></table><br>";
-    content += "</body><script>";
-    content += "function saveServo(id, textId) { var xhttp = new XMLHttpRequest(); var value = \"0\"; if(id==100){ document.getElementById(\"servo_17\").value = \"0\"; document.getElementById(\"servo_16\").value = \"0\"; document.getElementById(\"servo_15\").value = \"0\"; document.getElementById(\"servo_14\").value = \"0\"; document.getElementById(\"servo_13\").value = \"0\"; document.getElementById(\"servo_12\").value = \"0\"; document.getElementById(\"servo_11\").value = \"0\"; document.getElementById(\"servo_10\").value = \"0\"; document.getElementById(\"servo_9\").value = \"0\"; document.getElementById(\"servo_8\").value = \"0\"; document.getElementById(\"servo_7\").value = \"0\"; document.getElementById(\"servo_6\").value = \"0\"; document.getElementById(\"servo_5\").value = \"0\"; document.getElementById(\"servo_4\").value = \"0\"; document.getElementById(\"servo_3\").value = \"0\"; document.getElementById(\"servo_2\").value = \"0\"; document.getElementById(\"servo_1\").value = \"0\"; document.getElementById(\"servo_0\").value = \"0\"; } else { value = document.getElementById(textId).value; } xhttp.open(\"GET\",\"save?key=\"+id+\"&value=\"+value, true); xhttp.send(); }";
-    content += "</script></html>";
-
-    _server.send(200, "text/html", content);
-}
-
 void RoboHeroWeb::handleIndex()
 {
-    String content = "";
-    content += "<html><head><title>RoboHero Controller</title>";
-    content += "<style type=\"text/css\">";
-    content += "body { color: white; background-color: #000000; }";
-    content += ".pm_btn { width: 160px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pm_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += ".pms_btn { width: 240px; border-radius: 5px; font-family: Arial; color: #ffffff; font-size: 24px; background: #3498db; padding: 10px 20px; text-decoration: none; }";
-    content += ".pms_btn:hover { background: #3cb0fd; text-decoration: none; }";
-    content += "</style></head><body>";
-    content += "<table><tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(3)\">TurnLeft</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(1)\">Forward</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(4)\">TurnRight</button></td></tr>";
-    content += "<tr><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(5)\">MoveLeft</button></td><td><button class=\"pm_btn\" style=\"background: #ed3db5;\" type=\"button\" onclick=\"controlPm(99)\">STANDBY</button></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(6)\">MoveRight</button></td></tr>";
-    content += "<tr><td></td><td><button class=\"pm_btn\" type=\"button\" onclick=\"controlPm(2)\">Backward</button></td><td></td></tr></table>";
-    content += "<table><tr><td><button class=\"pms_btn\" type=\"button\" onclick=\"controlPm(11)\">Get Up</button></td><td><button class=\"pms_btn\" type=\"button\" onclick=\"controlPm(12)\">FaceDownGetUp</button></td></tr></table>";
-    content += "<table><tr><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(1)\">Bow</button></td><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(4)\">Apache</button></td></tr>";
-    content += "<tr><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(2)\">Waving</button></td><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(5)\">Balance</button></td></tr>";
-    content += "<tr><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(3)\">Iron Man</button></td><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(6)\">Warm-Up</button></td></tr>";
-    content += "<tr><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(7)\">Clap Hands</button></td><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(8)\">GOILC</button></td></tr>";
-    content += "<tr><td><button class=\"pms_btn\" style=\"background: #ffbf00;\" type=\"button\" onclick=\"controlPms(9)\">Dance</button></td><td></td></tr>";
-    content += "<tr><td colspan=\"2\"><center><button class=\"pms_btn\" style=\"background: #04b404;\" type=\"button\" onclick=\"controlPms(99)\">Auto</button></center></td></tr></table>";
-    content += "<table><tr><td>\"" + String(FW_VERSION_STRING) + "\"</td></tr></table>";
-    content += "</body><script>";
-    content += "function controlPm(id) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?pm=\"+id, true); xhttp.send(); }";
-    content += "function controlPms(id) { var xhttp = new XMLHttpRequest(); xhttp.open(\"GET\", \"controller?pms=\"+id, true); xhttp.send(); }";
-    content += "</script></html>";
+    // Handle AJAX motion/locomotion actions on "/"
+    if (_server.hasArg("pm")) {
+        int pm = _server.arg("pm").toInt();
+        _app.setServoProgram(pm);
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", "{\"status\":\"ok\",\"pm\":" + String(pm) + "}");
+        return;
+    }
 
-    _server.send(200, "text/html", content);
+    if (_server.hasArg("pms")) {
+        int pms = _server.arg("pms").toInt();
+        _app.setServoProgramStack(pms);
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", "{\"status\":\"ok\",\"pms\":" + String(pms) + "}");
+        return;
+    }
+
+    _server.send_P(200, "text/html", PAGE_INDEX);
 }
 
-void RoboHeroWeb::handleInfo()
+void RoboHeroWeb::handleCalibrate()
 {
-    String response = "{";
-    response += "\"ver\": 2.29, ";
-    response += "\"type\": \"robohero\", ";
-    response += "\"low\": " + String(_app.isLowVoltage()) + ", ";
-    response += "\"volt\": " + String(_app.getVoltage()) + ", ";
-    response += "\"msg\": \"Robohero firmware\" ";
-    response += "}";
-    _server.send(200, "text/html", response);
-}
+    // 1. Live trim adjustment without writing to EEPROM
+    if (_server.hasArg("apply") && _server.hasArg("key") && _server.hasArg("val")) {
+        int key = _server.arg("key").toInt();
+        int val = _server.arg("val").toInt();
+        if (val < -125) val = -125;
+        if (val > 125) val = 125;
 
-void RoboHeroWeb::handleReset()
-{
-    _app.resetLowVoltage();
-    _server.send(200, "text/html", "{\"ret\": \"ok\" }");
-}
+        _servo.applyTrim(key, (int8_t) val);
+        if (key == EEPROM_KEY_VOLTAGE_CAL) {
+            _app.resetLowVoltage();
+        }
 
-void RoboHeroWeb::handleRestart()
-{
-    ESP.restart();
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", "{\"status\":\"ok\",\"applied\":true,\"key\":" + String(key) + ",\"val\":" + String(val) + "}");
+        return;
+    }
+
+    // 2. Save all trims to EEPROM
+    if (_server.hasArg("save")) {
+        for (int i = 0; i <= 19; i++) {
+            String argName = "t" + String(i);
+            if (_server.hasArg(argName)) {
+                int val = _server.arg(argName).toInt();
+                if (val < -125) val = -125;
+                if (val > 125) val = 125;
+
+                _servo.applyTrim(i, (int8_t) val);
+            }
+        }
+        if (_server.hasArg("t19")) {
+            _app.resetLowVoltage();
+        }
+
+        bool saved = _eeprom.save();
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", saved ? "{\"status\":\"ok\",\"msg\":\"Saved to EEPROM!\"}" : "{\"status\":\"error\",\"msg\":\"Failed to save EEPROM\"}");
+        return;
+    }
+
+    // 3. Return current JSON trims
+    if (_server.hasArg("json")) {
+        String json = "{\"trims\":[";
+        for (int i = 0; i <= 19; i++) {
+            if (i > 0) {
+                json += ",";
+            }
+            json += String((int) _eeprom.readKeyValue(i));
+        }
+        json += "]}";
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", json);
+        return;
+    }
+
+    // 4. Quick pose preview command
+    if (_server.hasArg("pose")) {
+        String pose = _server.arg("pose");
+        if (pose == "zero") {
+            _servo.programZero();
+        } else if (pose == "center") {
+            _servo.programCenter();
+        }
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json", "{\"status\":\"ok\",\"pose\":\"" + pose + "\"}");
+        return;
+    }
+
+    // 5. Serve HTML calibration page directly from PROGMEM (zero RAM allocation)
+    _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    _server.send_P(200, "text/html", PAGE_CALIBRATE);
 }
 
 /*

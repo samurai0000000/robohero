@@ -48,6 +48,8 @@ public:
     int getRunningServoPos(int index) const;
     void setRunningServoPos(int index, int val);
 
+    void applyTrim(int key, int8_t val);
+
     Servo &getGPIO12Servo() { return _gpio12Servo; }
     Adafruit_PWMServoDriver &getPWMServoDriver() { return _pwm; }
     RoboHeroEeprom &getEeprom() { return _eeprom; }
@@ -58,6 +60,7 @@ private:
     Adafruit_PWMServoDriver _pwm;
     Servo _gpio12Servo;
 
+    int _baseServoPos[ALLMATRIX];
     int _runningServoPos[ALLMATRIX];
     int _setPWMFreq;
     int _setVoltage;
