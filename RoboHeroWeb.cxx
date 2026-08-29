@@ -7,9 +7,10 @@
 #include "RoboHeroWeb.hxx"
 #include "RoboHeroApp.hxx"
 
-RoboHeroWeb::RoboHeroWeb(RoboHeroServo &servo, RoboHeroApp &app)
+RoboHeroWeb::RoboHeroWeb(RoboHeroServo &servo, RoboHeroEeprom &eeprom, RoboHeroApp &app)
     : _server(80)
     , _servo(servo)
+    , _eeprom(eeprom)
     , _app(app)
 {
 }
@@ -51,12 +52,10 @@ void RoboHeroWeb::handleSave()
     int8_t valueInt = value.toInt();
 
     if (keyInt == 100) {
-        for (int8_t i = 0; i <= 17; i++) {
-            _servo.writeKeyValue(i, 0);
-        }
+        _eeprom.resetMotionTrims();
     } else {
         if (valueInt >= -125 && valueInt <= 125) {
-            _servo.writeKeyValue(keyInt, valueInt);
+            _eeprom.writeKeyValue(keyInt, valueInt);
 
             if (keyInt == 18) {
                 _servo.setPWMFrequency(PWM_Frequency + valueInt);
@@ -71,7 +70,7 @@ void RoboHeroWeb::handleSave()
 
     String content = "(key, value)=(" + key + "," + value +
         "), but response = ";
-    content += String(_servo.readKeyValue(keyInt));
+    content += String(_eeprom.readKeyValue(keyInt));
 
     _server.send(200, "text/html", content);
 }
@@ -95,13 +94,13 @@ void RoboHeroWeb::handleController()
     if (servo != "" && _app.isLowVoltage() == 0) {
         int Servo_ID = servo.toInt();
         String ival = _server.arg("value");
-        int Servo_PWM = ival.toInt() + (int8_t) EEPROM.read(Servo_ID);
+        int Servo_PWM = ival.toInt() + _eeprom.getServoTrim(Servo_ID);
         int pulselength = map(Servo_PWM, PWMRES_Min, PWMRES_Max, SERVOMIN, SERVOMAX);
 
         if (Servo_ID != 16) {
             _servo.getPWMServoDriver().setPWM(Servo_ID, 0, pulselength);
         } else if (Servo_ID == 16) {
-            int gpio12Pwm = ival.toInt() + (int8_t) EEPROM.read(16);
+            int gpio12Pwm = ival.toInt() + _eeprom.getServoTrim(16);
             _servo.writeGPIO12(gpio12Pwm);
         }
     }
@@ -114,7 +113,7 @@ void RoboHeroWeb::handleController()
         int gpioId = gpio.toInt();
         if (gpioId == 12) {
             String ival = _server.arg("value");
-            int gpio12Pwm = ival.toInt() + (int8_t) EEPROM.read(16);
+            int gpio12Pwm = ival.toInt() + _eeprom.getServoTrim(16);
             _servo.writeGPIO12(gpio12Pwm);
         }
     }
@@ -129,7 +128,7 @@ void RoboHeroWeb::handleGetEEPROM()
         if (i > 0) {
             content += ",";
         }
-        content += String(_servo.readKeyValue(i));
+        content += String(_eeprom.readKeyValue(i));
     }
     _server.send(200, "text/html", content);
 }

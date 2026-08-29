@@ -7,7 +7,12 @@
 #ifndef ROBOHERO_CONFIG_HXX
 #define ROBOHERO_CONFIG_HXX
 
+#include <stdint.h>
+#include <stddef.h>
 #include <Arduino.h>
+
+#undef min
+#undef max
 
 #define FW_VERSION_STRING "RoboHero Firmware v4.0 (Charles Chiou) " \
     __DATE__ " " __TIME__

@@ -28,7 +28,37 @@ set(CMAKE_RANLIB "${XTENSA_GCC_ROOT}/bin/xtensa-lx106-elf-ranlib")
 set(CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_LIST_DIR}/cmake/override.cmake")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
-project(robohero C CXX ASM)
+project(robohero VERSION 1.0.0 LANGUAGES C CXX ASM)
+
+set(WHOAMI_OUTPUT)
+execute_process(
+    COMMAND whoami
+    OUTPUT_VARIABLE WHOAMI_OUTPUT
+    RESULT_VARIABLE WHOAMI_RESULT
+    ERROR_VARIABLE WHOAMI_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+set(HOSTNAME_OUTPUT)
+execute_process(
+    COMMAND hostname
+    OUTPUT_VARIABLE HOSTNAME_OUTPUT
+    RESULT_VARIABLE HOSTNAME_RESULT
+    ERROR_VARIABLE HOSTNAME_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+set(DATE_OUTPUT)
+execute_process(
+    COMMAND date "+%Y-%m-%d %H:%M:%S"
+    OUTPUT_VARIABLE DATE_OUTPUT
+    RESULT_VARIABLE DATE_RESULT
+    ERROR_VARIABLE DATE_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/version.h
+    @ONLY
+)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -74,6 +104,7 @@ set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g -x assembler-with-cpp -mlongcalls")
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${ESP8266_ROOT}/tools/sdk/include
     ${ESP8266_ROOT}/tools/sdk/lwip/include
     ${ESP8266_ROOT}/cores/esp8266
@@ -120,8 +151,10 @@ set(ESP8266_LIB_SRCS
 set(ROBOHERO_CXX_SRCS
     Main.cxx
     RoboHeroApp.cxx
+    RoboHeroEeprom.cxx
     RoboHeroMotions.cxx
     RoboHeroServo.cxx
+    RoboHeroShell.cxx
     RoboHeroWeb.cxx
 )
 

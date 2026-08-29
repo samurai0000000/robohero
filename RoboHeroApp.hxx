@@ -7,6 +7,8 @@
 #ifndef ROBOHERO_APP_HXX
 #define ROBOHERO_APP_HXX
 
+#include "RoboHeroShell.hxx"
+#include "RoboHeroEeprom.hxx"
 #include <ESP8266WiFi.h>
 #include "RoboHeroConfig.hxx"
 #include "RoboHeroMotions.hxx"
@@ -39,18 +41,23 @@ public:
     int getVoltageCab() const { return _voltageCab; }
     void setVoltageCab(int cab) { _voltageCab = cab; }
 
+    RoboHeroEeprom &getEeprom() { return _eeprom; }
     RoboHeroServo &getServo() { return _servo; }
     RoboHeroWeb &getWeb() { return _web; }
+    RoboHeroShell &getShell() { return _shell; }
 
 private:
 
-    void setupWiFi();
+    bool setupWiFi();
+    bool checkUartEscape();
     void checkVoltage();
     void executeProgram();
     void executeProgramStack();
 
+    RoboHeroEeprom _eeprom;
     RoboHeroServo _servo;
     RoboHeroWeb _web;
+    RoboHeroShell _shell;
 
     int _servoProgram;
     int _servoProgramStack;

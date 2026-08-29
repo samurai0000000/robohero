@@ -10,16 +10,16 @@
 #include <Wire.h>
 #include <Servo.h>
 #include <Adafruit_PWMServoDriver.h>
-#include <EEPROM.h>
 #include <Ticker.h>
 #include "RoboHeroConfig.hxx"
+#include "RoboHeroEeprom.hxx"
 #include "RoboHeroMotions.hxx"
 
 class RoboHeroServo {
 
 public:
 
-    RoboHeroServo();
+    RoboHeroServo(RoboHeroEeprom &eeprom);
 
     void begin();
 
@@ -50,9 +50,11 @@ public:
 
     Servo &getGPIO12Servo() { return _gpio12Servo; }
     Adafruit_PWMServoDriver &getPWMServoDriver() { return _pwm; }
+    RoboHeroEeprom &getEeprom() { return _eeprom; }
 
 private:
 
+    RoboHeroEeprom &_eeprom;
     Adafruit_PWMServoDriver _pwm;
     Servo _gpio12Servo;
 

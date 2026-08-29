@@ -6,9 +6,15 @@
 
 #include "RoboHeroApp.hxx"
 
+extern "C" {
+#include "user_interface.h"
+}
+
 RoboHeroApp::RoboHeroApp()
-    : _servo()
-    , _web(_servo, *this)
+    : _eeprom()
+    , _servo(_eeprom)
+    , _web(_servo, _eeprom, *this)
+    , _shell(this)
     , _servoProgram(0)
     , _servoProgramStack(0)
     , _gpioId(0)
@@ -24,10 +30,15 @@ RoboHeroApp::RoboHeroApp()
 void RoboHeroApp::setup()
 {
     Serial.begin(115200);
-    Serial.println("RoboHero Start");
+    Serial.setDebugOutput(false);
+    system_set_os_print(0);
+    Serial.flush();
+    while (Serial.available()) {
+        Serial.read();
+    }
 
-    // EEPROM must be initialized first
-    EEPROM.begin(64);
+    // Initialize EEPROM first and load parameters
+    _eeprom.begin();
     delay(20);
 
     // GPIO PIN
@@ -48,55 +59,151 @@ void RoboHeroApp::setup()
     // Initialize Servos & I2C
     _servo.begin();
 
+    if (checkUartEscape()) {
+        Serial.println("\nDetected escape key, the  normal booting process is bypassed...");
+        _shell.showWelcome();
+        return;
+    }
+
     // Setup Wi-Fi
-    setupWiFi();
+    if (!setupWiFi()) {
+        _shell.showWelcome();
+        return;
+    }
 
     // Clear low voltage indicator
     _inputVoltageLow = 0;
 
     // Start Web Server
     _web.begin();
+
+    // Show shell welcome banner & prompt
+    _shell.showWelcome();
 }
 
-void RoboHeroApp::setupWiFi()
+bool RoboHeroApp::checkUartEscape()
 {
+    bool escaped = false;
+
+    while (Serial.available() > 0) {
+        int c = Serial.read();
+        if ((c == '\r') || (c == '\n') || (c == 0x1b) || (c == 0x03)) {
+            escaped = true;
+        }
+    }
+
+    return escaped;
+}
+
+bool RoboHeroApp::setupWiFi()
+{
+    if (checkUartEscape()) {
+        Serial.println("\nDetected escape key, the  normal booting process is bypassed...");
+        return false;
+    }
+
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     WiFi.softAPmacAddress(mac);
-    String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) +
-        String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
-    macID.toUpperCase();
-    String AP_NameString = "TTR-" + macID;
+    char macIDBuf[8];
+    snprintf(macIDBuf, sizeof(macIDBuf), "%02x%02x",
+             mac[WL_MAC_ADDR_LENGTH - 2],
+             mac[WL_MAC_ADDR_LENGTH - 1]);
 
-    char AP_NameChar[AP_NameString.length() + 1];
-    memset(AP_NameChar, 0, AP_NameString.length() + 1);
-
-    for (int i = 0; i < AP_NameString.length(); i++) {
-        AP_NameChar[i] = AP_NameString.charAt(i);
-    }
-
-    if (AP_MODE) {
-        Serial.println("Using AP Mode");
-        WiFi.softAP(AP_NameChar, AP_PASSWORD);
+    const char *apSsid = _eeprom.getApSSID();
+    String apSsidStr;
+    if ((apSsid == NULL) || (strlen(apSsid) == 0)) {
+        apSsidStr = "TTR-" + String(macIDBuf);
     } else {
-        Serial.println("Using Client Mode");
-        WiFi.begin(CLIENT_SSID, CLIENT_PASSWORD);
-
-        while (WiFi.status() != WL_CONNECTED) {
-            delay(1000);
-            Serial.print("Connecting ");
-            Serial.print(CLIENT_SSID);
-            Serial.println("...");
-        }
-        Serial.println("WiFi connected");
-        delay(500);
+        apSsidStr = String(apSsid);
     }
 
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    const char *apPass = _eeprom.getApPassword();
+    const char *staSsid = _eeprom.getStaSSID();
+    const char *staPass = _eeprom.getStaPassword();
+    uint8_t wifiMode = _eeprom.getWifiMode();
+    uint8_t apChannel = _eeprom.getApChannel();
+
+    // Static IP configuration if DHCP is disabled
+    if (!_eeprom.isDhcpEnabled()) {
+        IPAddress localIP(_eeprom.getStaticIP());
+        IPAddress gateway(_eeprom.getStaticGateway());
+        IPAddress subnet(_eeprom.getStaticNetmask());
+        IPAddress dns(_eeprom.getStaticDNS());
+        if (localIP != IPAddress(0, 0, 0, 0)) {
+            WiFi.config(localIP, gateway, subnet, dns);
+        }
+    }
+
+    if (wifiMode == ROBOHERO_WIFI_OFF) {
+        Serial.println("Wi-Fi is disabled in EEPROM");
+        WiFi.mode(WIFI_OFF);
+        return true;
+    }
+
+    if (wifiMode == ROBOHERO_WIFI_AP) {
+        Serial.println("Using AP Mode (from EEPROM)");
+        WiFi.mode(WIFI_AP);
+        if (strlen(apPass) > 0) {
+            WiFi.softAP(apSsidStr.c_str(), apPass, apChannel);
+        } else {
+            WiFi.softAP(apSsidStr.c_str());
+        }
+        Serial.print("AP SSID:       ");
+        Serial.println(apSsidStr);
+        Serial.print("AP IP address: ");
+        Serial.println(WiFi.softAPIP());
+    } else {
+        Serial.println("Using Station Mode (from EEPROM)");
+        WiFi.mode(WIFI_STA);
+        Serial.print("Connecting to '");
+        Serial.print(staSsid);
+        Serial.println("'...");
+
+        WiFi.begin(staSsid, staPass);
+
+        int timeout = 10;
+        while ((WiFi.status() != WL_CONNECTED) && (timeout > 0)) {
+            if (checkUartEscape()) {
+                Serial.println("\nDetected escape key, the  normal booting process is bypassed...");
+                WiFi.disconnect();
+                return false;
+            }
+            delay(500);
+            Serial.print(".");
+            timeout--;
+        }
+
+        if (checkUartEscape()) {
+            Serial.println("\nDetected escape key, the  normal booting process is bypassed...");
+            WiFi.disconnect();
+            return false;
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("\nWiFi connected");
+            Serial.print("IP address: ");
+            Serial.println(WiFi.localIP());
+        } else {
+            Serial.println("\nWiFi station connection timed out; enabling AP fallback mode");
+            WiFi.mode(WIFI_AP_STA);
+            if (strlen(apPass) > 0) {
+                WiFi.softAP(apSsidStr.c_str(), apPass, apChannel);
+            } else {
+                WiFi.softAP(apSsidStr.c_str());
+            }
+            Serial.print("AP SSID:       ");
+            Serial.println(apSsidStr);
+            Serial.print("AP IP address: ");
+            Serial.println(WiFi.softAPIP());
+        }
+    }
+
+    return true;
 }
 
 void RoboHeroApp::loop()
 {
+    _shell.process();
     _web.handleClient();
     executeProgram();
     executeProgramStack();
@@ -240,12 +347,12 @@ void RoboHeroApp::checkVoltage()
             if (_voltage > 601) {
                 _servo.writeGPIO12(120);
                 _voltageCab--;
-                _servo.writeKeyValue(19, _voltageCab);
+                _eeprom.setVoltageTrim(_voltageCab);
                 _servo.setVoltageValue(Input_Voltage + _voltageCab);
             } else if (_voltage < 599) {
                 _servo.writeGPIO12(60);
                 _voltageCab++;
-                _servo.writeKeyValue(19, _voltageCab);
+                _eeprom.setVoltageTrim(_voltageCab);
                 _servo.setVoltageValue(Input_Voltage + _voltageCab);
             } else {
                 _servo.writeGPIO12(90);

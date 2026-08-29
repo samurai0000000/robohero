@@ -6,8 +6,9 @@
 
 #include "RoboHeroServo.hxx"
 
-RoboHeroServo::RoboHeroServo()
-    : _pwm(0x40)
+RoboHeroServo::RoboHeroServo(RoboHeroEeprom &eeprom)
+    : _eeprom(eeprom)
+    , _pwm(0x40)
     , _setPWMFreq(PWM_Frequency)
     , _setVoltage(Input_Voltage)
     , _head(0)
@@ -36,7 +37,11 @@ void RoboHeroServo::begin()
 
     // Initialize running servo positions from Standby pose + EEPROM offsets
     for (int index = 0; index < ALLMATRIX; index++) {
-        _runningServoPos[index] = Servo_Act_1[index] + (int8_t) EEPROM.read(index);
+        int trim = _eeprom.getMatrixTrim(index);
+        if ((trim < -125) || (trim > 125)) {
+            trim = 0;
+        }
+        _runningServoPos[index] = Servo_Act_1[index] + trim;
     }
 }
 
@@ -59,7 +64,11 @@ void RoboHeroServo::writeGPIO12(int val)
 void RoboHeroServo::programZero()
 {
     for (int i = 0; i < ALLMATRIX; i++) {
-        _runningServoPos[i] = Servo_Act_0[i] + (int8_t) EEPROM.read(i);
+        int trim = _eeprom.getMatrixTrim(i);
+        if ((trim < -125) || (trim > 125)) {
+            trim = 0;
+        }
+        _runningServoPos[i] = Servo_Act_0[i] + trim;
     }
 
     for (int i = 0; i < ALLSERVOS; i++) {
@@ -71,7 +80,11 @@ void RoboHeroServo::programZero()
 void RoboHeroServo::programCenter()
 {
     for (int i = 0; i < ALLMATRIX; i++) {
-        _runningServoPos[i] = Servo_Act_1[i] + (int8_t) EEPROM.read(i);
+        int trim = _eeprom.getMatrixTrim(i);
+        if ((trim < -125) || (trim > 125)) {
+            trim = 0;
+        }
+        _runningServoPos[i] = Servo_Act_1[i] + trim;
     }
 
     for (int i = 0; i < ALLSERVOS; i++) {
@@ -85,15 +98,29 @@ void RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
     int INT_TEMP_A, INT_TEMP_B, INT_TEMP_C;
 
     for (int MainLoopIndex = 0; MainLoopIndex < iSteps; MainLoopIndex++) {
-        int InterTotalTime = iMatrix[MainLoopIndex][ALLMATRIX - 1] +
-            (int8_t) EEPROM.read(ALLMATRIX - 1);
+        int delayTrim = _eeprom.getDelayTrim();
+        if ((delayTrim < -125) || (delayTrim > 125)) {
+            delayTrim = 0;
+        }
+        int InterTotalTime = iMatrix[MainLoopIndex][ALLMATRIX - 1] + delayTrim;
+        if (InterTotalTime < BASEDELAYTIME) {
+            InterTotalTime = BASEDELAYTIME;
+        }
+
         int InterDelayCounter = InterTotalTime / BASEDELAYTIME;
+        if (InterDelayCounter < 1) {
+            InterDelayCounter = 1;
+        }
+
         for (int InterStepLoop = 0; InterStepLoop < InterDelayCounter;
              InterStepLoop++) {
             for (int ServoIndex = 0; ServoIndex < ALLSERVOS; ServoIndex++) {
                 INT_TEMP_A = _runningServoPos[ServoIndex];
-                INT_TEMP_B = iMatrix[MainLoopIndex][ServoIndex] +
-                    (int8_t) EEPROM.read(ServoIndex);
+                int sTrim = _eeprom.getServoTrim(ServoIndex);
+                if ((sTrim < -125) || (sTrim > 125)) {
+                    sTrim = 0;
+                }
+                INT_TEMP_B = iMatrix[MainLoopIndex][ServoIndex] + sTrim;
                 if (INT_TEMP_A == INT_TEMP_B) {
                     INT_TEMP_C = INT_TEMP_B;
                 } else if (INT_TEMP_A > INT_TEMP_B) {
@@ -121,21 +148,33 @@ void RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
         }
 
         for (int Index = 0; Index < ALLMATRIX; Index++) {
-            _runningServoPos[Index] = iMatrix[MainLoopIndex][Index] +
-                (int8_t) EEPROM.read(Index);
+            int mTrim = _eeprom.getMatrixTrim(Index);
+            if ((mTrim < -125) || (mTrim > 125)) {
+                mTrim = 0;
+            }
+            _runningServoPos[Index] = iMatrix[MainLoopIndex][Index] + mTrim;
         }
     }
 }
 
 void RoboHeroServo::getPWMFrequency()
 {
-    _setPWMFreq = PWM_Frequency + (int8_t) EEPROM.read(ALLSERVOS + 1);
+    int trim = _eeprom.getPwmFreqTrim();
+    if ((trim < -24) || (trim > 100)) {
+        trim = 0;
+    }
+    _setPWMFreq = PWM_Frequency + trim;
+    if ((_setPWMFreq < 30) || (_setPWMFreq > 200)) {
+        _setPWMFreq = PWM_Frequency;
+    }
 }
 
 void RoboHeroServo::setPWMFrequency(int freq)
 {
-    _setPWMFreq = freq;
-    _pwm.setPWMFreq(_setPWMFreq);
+    if ((freq >= 30) && (freq <= 200)) {
+        _setPWMFreq = freq;
+        _pwm.setPWMFreq(_setPWMFreq);
+    }
 }
 
 int RoboHeroServo::getPWMFrequencySetting() const
@@ -145,7 +184,14 @@ int RoboHeroServo::getPWMFrequencySetting() const
 
 void RoboHeroServo::getVoltageValue()
 {
-    _setVoltage = Input_Voltage + (int8_t) EEPROM.read(ALLSERVOS + 2);
+    int trim = _eeprom.getVoltageTrim();
+    if ((trim < -200) || (trim > 200)) {
+        trim = 0;
+    }
+    _setVoltage = Input_Voltage + trim;
+    if (_setVoltage <= 0) {
+        _setVoltage = Input_Voltage;
+    }
 }
 
 void RoboHeroServo::setVoltageValue(int volt)
@@ -160,13 +206,12 @@ int RoboHeroServo::getVoltageValueSetting() const
 
 void RoboHeroServo::writeKeyValue(int8_t key, int8_t value)
 {
-    EEPROM.write(key, value);
-    EEPROM.commit();
+    _eeprom.writeKeyValue(key, value);
 }
 
 int8_t RoboHeroServo::readKeyValue(int8_t key)
 {
-    return (int8_t) EEPROM.read(key);
+    return _eeprom.readKeyValue(key);
 }
 
 void RoboHeroServo::push(int frame[])

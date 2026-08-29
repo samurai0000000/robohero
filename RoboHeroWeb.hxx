@@ -7,17 +7,18 @@
 #ifndef ROBOHERO_WEB_HXX
 #define ROBOHERO_WEB_HXX
 
-#include <ESP8266WebServer.h>
 #include "RoboHeroConfig.hxx"
+#include <ESP8266WebServer.h>
 #include "RoboHeroServo.hxx"
 
 class RoboHeroApp;
+class RoboHeroEeprom;
 
 class RoboHeroWeb {
 
 public:
 
-    RoboHeroWeb(RoboHeroServo &servo, RoboHeroApp &app);
+    RoboHeroWeb(RoboHeroServo &servo, RoboHeroEeprom &eeprom, RoboHeroApp &app);
 
     void begin();
     void handleClient();
@@ -39,6 +40,7 @@ private:
 
     ESP8266WebServer _server;
     RoboHeroServo &_servo;
+    RoboHeroEeprom &_eeprom;
     RoboHeroApp &_app;
 
 };
