@@ -1,1 +1,6 @@
 build/
+local.config.mk
+.agents
+.cursor
+.*.swp
+*.swp
