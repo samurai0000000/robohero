@@ -61,8 +61,9 @@ static const int SERVOMAX = 512;
 static const int BASEDELAYTIME = 10;   // 10ms
 
 // Voltage Detection
-static const int Input_Voltage = 785;     // Approximately 6.00V
-static const int Input_MinVoltage = 590;  // Low voltage protection ~5.90V
+static const int Input_Voltage = 785;        // Approximately 6.00V
+static const int Input_MinVoltage = 590;     // Low voltage protection ~5.90V
+static const int Input_RecoverVoltage = 620; // Clear latch ~6.20V (hysteresis)
 
 // Frame Buffer
 #define FRAME_BUFFER_MAX 50

@@ -953,6 +953,10 @@ int RoboHeroShell::pwm(int argc, char **argv)
             this->printf("Programs: 1:Forward 2:Backward 3:TurnLeft 4:TurnRight 5:MoveLeft 6:MoveRight 11:FaceUp 12:FaceDown 99:Center 100:Zero\n");
             return -1;
         }
+        if (_app->isLowVoltage()) {
+            this->printf("Low voltage: motion program not queued\n");
+            return -1;
+        }
         int prog = atoi(argv[2]);
         _app->setServoProgram(prog);
         this->printf("Triggered servo program %d\n", prog);

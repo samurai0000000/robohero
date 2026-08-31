@@ -222,6 +222,13 @@ function sendCmd(key, val) {
         } catch (e) {
           showToast('Command sent');
         }
+      } else if (xhr.status === 503) {
+        try {
+          var err = JSON.parse(xhr.responseText);
+          showToast(err.status === 'voltage_low' ? 'Voltage low' : 'Command sent');
+        } catch (e) {
+          showToast('Command sent');
+        }
       } else {
         showToast('Command sent');
       }
@@ -919,6 +926,11 @@ void RoboHeroWeb::handleIndex()
     }
 
     if (_server.hasArg("pm")) {
+        if (_app.isLowVoltage()) {
+            _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            _server.send(503, "application/json", "{\"status\":\"voltage_low\"}");
+            return;
+        }
         int pm = _server.arg("pm").toInt();
         if (_app.isMotionBusy()) {
             _app.requestCancel();
@@ -930,6 +942,11 @@ void RoboHeroWeb::handleIndex()
     }
 
     if (_server.hasArg("pms")) {
+        if (_app.isLowVoltage()) {
+            _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            _server.send(503, "application/json", "{\"status\":\"voltage_low\"}");
+            return;
+        }
         int pms = _server.arg("pms").toInt();
         if (_app.isMotionBusy()) {
             _app.requestCancel();

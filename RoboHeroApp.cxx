@@ -400,6 +400,8 @@ void RoboHeroApp::checkVoltage()
         } else {
             if (_voltage <= Input_MinVoltage) {
                 _inputVoltageLow = 1;
+            } else if (_voltage >= Input_RecoverVoltage) {
+                _inputVoltageLow = 0;
             }
         }
 
