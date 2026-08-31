@@ -1,4 +1,6 @@
 build/
+sdkconfig
+sdkconfig.old
 local.config.mk
 .agents
 .cursor
