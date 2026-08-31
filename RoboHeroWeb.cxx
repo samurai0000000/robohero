@@ -508,42 +508,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
       <span class="card-title">Right Arm</span>
     </div>
     <div class="slider-group">
-      <div class="slider-row" id="row_5">
-        <div class="slider-meta"><span class="servo-name">Servo 5 - Shoulder Pitch</span><span class="servo-val" id="val_5">0</span></div>
-        <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(5, -1)">-</button>
-          <input type="range" id="trim_5" min="-125" max="125" value="0" oninput="updateVal(5, this.value)">
-          <button class="btn-step" onclick="stepVal(5, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(5)">0</button>
-        </div>
-      </div>
-      <div class="slider-row" id="row_6">
-        <div class="slider-meta"><span class="servo-name">Servo 6 - Shoulder Roll</span><span class="servo-val" id="val_6">0</span></div>
-        <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(6, -1)">-</button>
-          <input type="range" id="trim_6" min="-125" max="125" value="0" oninput="updateVal(6, this.value)">
-          <button class="btn-step" onclick="stepVal(6, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(6)">0</button>
-        </div>
-      </div>
-      <div class="slider-row" id="row_7">
-        <div class="slider-meta"><span class="servo-name">Servo 7 - Elbow</span><span class="servo-val" id="val_7">0</span></div>
-        <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(7, -1)">-</button>
-          <input type="range" id="trim_7" min="-125" max="125" value="0" oninput="updateVal(7, this.value)">
-          <button class="btn-step" onclick="stepVal(7, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(7)">0</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Left Arm -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Left Arm</span>
-    </div>
-    <div class="slider-group">
       <div class="slider-row" id="row_10">
         <div class="slider-meta"><span class="servo-name">Servo 10 - Shoulder Pitch</span><span class="servo-val" id="val_10">0</span></div>
         <div class="slider-controls">
@@ -574,64 +538,46 @@ input[type="range"]::-webkit-slider-thumb:hover {
     </div>
   </div>
 
-  <!-- Right Leg -->
+  <!-- Left Arm -->
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Right Leg</span>
+      <span class="card-title">Left Arm</span>
     </div>
     <div class="slider-group">
-      <div class="slider-row" id="row_4">
-        <div class="slider-meta"><span class="servo-name">Servo 4 - Hip Roll</span><span class="servo-val" id="val_4">0</span></div>
+      <div class="slider-row" id="row_5">
+        <div class="slider-meta"><span class="servo-name">Servo 5 - Shoulder Pitch</span><span class="servo-val" id="val_5">0</span></div>
         <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(4, -1)">-</button>
-          <input type="range" id="trim_4" min="-125" max="125" value="0" oninput="updateVal(4, this.value)">
-          <button class="btn-step" onclick="stepVal(4, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(4)">0</button>
+          <button class="btn-step" onclick="stepVal(5, -1)">-</button>
+          <input type="range" id="trim_5" min="-125" max="125" value="0" oninput="updateVal(5, this.value)">
+          <button class="btn-step" onclick="stepVal(5, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(5)">0</button>
         </div>
       </div>
-      <div class="slider-row" id="row_3">
-        <div class="slider-meta"><span class="servo-name">Servo 3 - Hip Pitch</span><span class="servo-val" id="val_3">0</span></div>
+      <div class="slider-row" id="row_6">
+        <div class="slider-meta"><span class="servo-name">Servo 6 - Shoulder Roll</span><span class="servo-val" id="val_6">0</span></div>
         <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(3, -1)">-</button>
-          <input type="range" id="trim_3" min="-125" max="125" value="0" oninput="updateVal(3, this.value)">
-          <button class="btn-step" onclick="stepVal(3, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(3)">0</button>
+          <button class="btn-step" onclick="stepVal(6, -1)">-</button>
+          <input type="range" id="trim_6" min="-125" max="125" value="0" oninput="updateVal(6, this.value)">
+          <button class="btn-step" onclick="stepVal(6, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(6)">0</button>
         </div>
       </div>
-      <div class="slider-row" id="row_2">
-        <div class="slider-meta"><span class="servo-name">Servo 2 - Knee</span><span class="servo-val" id="val_2">0</span></div>
+      <div class="slider-row" id="row_7">
+        <div class="slider-meta"><span class="servo-name">Servo 7 - Elbow</span><span class="servo-val" id="val_7">0</span></div>
         <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(2, -1)">-</button>
-          <input type="range" id="trim_2" min="-125" max="125" value="0" oninput="updateVal(2, this.value)">
-          <button class="btn-step" onclick="stepVal(2, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(2)">0</button>
-        </div>
-      </div>
-      <div class="slider-row" id="row_1">
-        <div class="slider-meta"><span class="servo-name">Servo 1 - Ankle Pitch</span><span class="servo-val" id="val_1">0</span></div>
-        <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(1, -1)">-</button>
-          <input type="range" id="trim_1" min="-125" max="125" value="0" oninput="updateVal(1, this.value)">
-          <button class="btn-step" onclick="stepVal(1, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(1)">0</button>
-        </div>
-      </div>
-      <div class="slider-row" id="row_0">
-        <div class="slider-meta"><span class="servo-name">Servo 0 - Ankle Roll</span><span class="servo-val" id="val_0">0</span></div>
-        <div class="slider-controls">
-          <button class="btn-step" onclick="stepVal(0, -1)">-</button>
-          <input type="range" id="trim_0" min="-125" max="125" value="0" oninput="updateVal(0, this.value)">
-          <button class="btn-step" onclick="stepVal(0, 1)">+</button>
-          <button class="btn-zero" onclick="setZero(0)">0</button>
+          <button class="btn-step" onclick="stepVal(7, -1)">-</button>
+          <input type="range" id="trim_7" min="-125" max="125" value="0" oninput="updateVal(7, this.value)">
+          <button class="btn-step" onclick="stepVal(7, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(7)">0</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Left Leg -->
+  <!-- Right Leg -->
   <div class="card">
     <div class="card-header">
-      <span class="card-title">Left Leg</span>
+      <span class="card-title">Right Leg</span>
     </div>
     <div class="slider-group">
       <div class="slider-row" id="row_11">
@@ -677,6 +623,60 @@ input[type="range"]::-webkit-slider-thumb:hover {
           <input type="range" id="trim_15" min="-125" max="125" value="0" oninput="updateVal(15, this.value)">
           <button class="btn-step" onclick="stepVal(15, 1)">+</button>
           <button class="btn-zero" onclick="setZero(15)">0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left Leg -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Left Leg</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-row" id="row_4">
+        <div class="slider-meta"><span class="servo-name">Servo 4 - Hip Roll</span><span class="servo-val" id="val_4">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(4, -1)">-</button>
+          <input type="range" id="trim_4" min="-125" max="125" value="0" oninput="updateVal(4, this.value)">
+          <button class="btn-step" onclick="stepVal(4, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(4)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_3">
+        <div class="slider-meta"><span class="servo-name">Servo 3 - Hip Pitch</span><span class="servo-val" id="val_3">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(3, -1)">-</button>
+          <input type="range" id="trim_3" min="-125" max="125" value="0" oninput="updateVal(3, this.value)">
+          <button class="btn-step" onclick="stepVal(3, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(3)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_2">
+        <div class="slider-meta"><span class="servo-name">Servo 2 - Knee</span><span class="servo-val" id="val_2">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(2, -1)">-</button>
+          <input type="range" id="trim_2" min="-125" max="125" value="0" oninput="updateVal(2, this.value)">
+          <button class="btn-step" onclick="stepVal(2, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(2)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_1">
+        <div class="slider-meta"><span class="servo-name">Servo 1 - Ankle Pitch</span><span class="servo-val" id="val_1">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(1, -1)">-</button>
+          <input type="range" id="trim_1" min="-125" max="125" value="0" oninput="updateVal(1, this.value)">
+          <button class="btn-step" onclick="stepVal(1, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(1)">0</button>
+        </div>
+      </div>
+      <div class="slider-row" id="row_0">
+        <div class="slider-meta"><span class="servo-name">Servo 0 - Ankle Roll</span><span class="servo-val" id="val_0">0</span></div>
+        <div class="slider-controls">
+          <button class="btn-step" onclick="stepVal(0, -1)">-</button>
+          <input type="range" id="trim_0" min="-125" max="125" value="0" oninput="updateVal(0, this.value)">
+          <button class="btn-step" onclick="stepVal(0, 1)">+</button>
+          <button class="btn-zero" onclick="setZero(0)">0</button>
         </div>
       </div>
     </div>
