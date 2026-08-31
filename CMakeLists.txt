@@ -28,7 +28,7 @@ set(CMAKE_RANLIB "${XTENSA_GCC_ROOT}/bin/xtensa-lx106-elf-ranlib")
 set(CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_LIST_DIR}/cmake/override.cmake")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
-project(robohero VERSION 1.0.0 LANGUAGES C CXX ASM)
+project(robohero VERSION 1.1.0 LANGUAGES C CXX ASM)
 
 set(WHOAMI_OUTPUT)
 execute_process(
