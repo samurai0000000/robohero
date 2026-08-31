@@ -26,9 +26,13 @@ public:
     void setPWMtoServo(int servo, int val);
     void writeGPIO12(int val);
 
+    typedef bool (*MotionYieldFn)(void *ctx);
+
+    void setMotionYield(MotionYieldFn fn, void *ctx);
+
     void programZero();
     void programCenter();
-    void programRun(const int iMatrix[][ALLMATRIX], int iSteps);
+    bool programRun(const int iMatrix[][ALLMATRIX], int iSteps);
 
     void getPWMFrequency();
     void setPWMFrequency(int freq);
@@ -70,6 +74,9 @@ private:
     int _frameBuffer[FRAME_BUFFER_MAX + 1][ALLMATRIX];
     int _framePop[FRAME_BUFFER_MAX + 1][ALLMATRIX];
     Ticker _servoTicker;
+
+    MotionYieldFn _yieldFn;
+    void *_yieldCtx;
 
 };
 

@@ -24,6 +24,8 @@ RoboHeroApp::RoboHeroApp()
     , _voltageCab(0)
     , _inputVoltageLow(0)
     , _voltage(Input_Voltage)
+    , _motionBusy(false)
+    , _cancelRequested(false)
 {
 }
 
@@ -58,6 +60,11 @@ void RoboHeroApp::setup()
 
     // Initialize Servos & I2C
     _servo.begin();
+    _servo.setMotionYield([](void *ctx) -> bool {
+        RoboHeroApp *app = static_cast<RoboHeroApp *>(ctx);
+        app->pollDuringMotion();
+        return app->isCancelRequested();
+    }, this);
 
     if (checkUartEscape()) {
         Serial.println("\nDetected escape key, the  normal booting process is bypassed...");
@@ -210,15 +217,49 @@ void RoboHeroApp::loop()
     checkVoltage();
 }
 
+void RoboHeroApp::pollDuringMotion()
+{
+    _web.handleClient();
+}
+
+bool RoboHeroApp::interruptibleDelay(int ms)
+{
+    int remaining = ms;
+
+    while (remaining > 0) {
+        int slice = (remaining < BASEDELAYTIME) ? remaining : BASEDELAYTIME;
+        delay(slice);
+        remaining -= slice;
+        pollDuringMotion();
+        if (_cancelRequested) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool RoboHeroApp::runThenCenter(const int iMatrix[][ALLMATRIX], int iSteps)
+{
+    _servo.programRun(iMatrix, iSteps);
+    _servo.programCenter();
+    return !_cancelRequested;
+}
+
 void RoboHeroApp::executeProgram()
 {
     if (_servoProgram >= 1 && _inputVoltageLow == 0) {
+        int prog = _servoProgram;
+        _servoProgram = 0;
+        _cancelRequested = false;
+        _motionBusy = true;
+
         digitalWrite(LedPin, HIGH);
 
         Serial.print("Servo_PROGRAM = ");
-        Serial.println(_servoProgram);
+        Serial.println(prog);
 
-        switch (_servoProgram) {
+        switch (prog) {
         case 1:  // Forward
             _servo.programRun(Servo_Prg_10, Servo_Prg_10_Step);
             _servo.programCenter();
@@ -253,27 +294,32 @@ void RoboHeroApp::executeProgram()
             break;
         case 99:  // Standby
             _servo.programCenter();
-            delay(300);
+            interruptibleDelay(300);
             break;
         case 100: // Zero
             _servo.programZero();
-            delay(300);
+            interruptibleDelay(300);
             break;
         }
 
-        _servoProgram = 0;
+        _motionBusy = false;
     }
 }
 
 void RoboHeroApp::executeProgramStack()
 {
     if (_servoProgramStack >= 1 && _inputVoltageLow == 0) {
+        int prog = _servoProgramStack;
+        _servoProgramStack = 0;
+        _cancelRequested = false;
+        _motionBusy = true;
+
         digitalWrite(LedPin, HIGH);
 
         Serial.print("Servo_PROGRAM_Stack = ");
-        Serial.println(_servoProgramStack);
+        Serial.println(prog);
 
-        switch (_servoProgramStack) {
+        switch (prog) {
         case 1:  // Bow
             _servo.programRun(Servo_Prg_1, Servo_Prg_1_Step);
             _servo.programCenter();
@@ -311,30 +357,24 @@ void RoboHeroApp::executeProgramStack()
             _servo.programCenter();
             break;
         case 99:  // Auto Demo
-            _servo.programRun(Servo_Prg_1, Servo_Prg_1_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_2, Servo_Prg_2_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_6, Servo_Prg_6_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_3, Servo_Prg_3_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_4, Servo_Prg_4_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_5, Servo_Prg_5_Step);
-            _servo.programCenter();
-            delay(1000);
-            _servo.programRun(Servo_Prg_1, Servo_Prg_1_Step);
-            _servo.programCenter();
+            if (runThenCenter(Servo_Prg_1, Servo_Prg_1_Step) &&
+                interruptibleDelay(1000) &&
+                runThenCenter(Servo_Prg_2, Servo_Prg_2_Step) &&
+                interruptibleDelay(1000) &&
+                runThenCenter(Servo_Prg_6, Servo_Prg_6_Step) &&
+                interruptibleDelay(1000) &&
+                runThenCenter(Servo_Prg_3, Servo_Prg_3_Step) &&
+                interruptibleDelay(1000) &&
+                runThenCenter(Servo_Prg_4, Servo_Prg_4_Step) &&
+                interruptibleDelay(1000) &&
+                runThenCenter(Servo_Prg_5, Servo_Prg_5_Step) &&
+                interruptibleDelay(1000)) {
+                runThenCenter(Servo_Prg_1, Servo_Prg_1_Step);
+            }
             break;
         }
 
-        _servoProgramStack = 0;
+        _motionBusy = false;
     }
 }
 

@@ -824,6 +824,7 @@ int RoboHeroShell::pwm(int argc, char **argv)
         this->printf("  pwm zero                       Move servos to zero alignment pose\n");
         this->printf("  pwm center                     Move servos to standby center pose\n");
         this->printf("  pwm run <prog_id>              Run motion program (1..6, 11..12, 99, 100)\n");
+        this->printf("  pwm stop                       Cancel the running motion program\n");
         return 0;
     }
 
@@ -955,6 +956,16 @@ int RoboHeroShell::pwm(int argc, char **argv)
         int prog = atoi(argv[2]);
         _app->setServoProgram(prog);
         this->printf("Triggered servo program %d\n", prog);
+        return 0;
+    }
+
+    if (strcmp(argv[1], "stop") == 0) {
+        if (_app->isMotionBusy()) {
+            _app->requestCancel();
+            this->printf("Cancel requested\n");
+        } else {
+            this->printf("No motion program running\n");
+        }
         return 0;
     }
 

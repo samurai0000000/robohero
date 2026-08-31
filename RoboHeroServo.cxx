@@ -13,10 +13,18 @@ RoboHeroServo::RoboHeroServo(RoboHeroEeprom &eeprom)
     , _setVoltage(Input_Voltage)
     , _head(0)
     , _tail(0)
+    , _yieldFn(NULL)
+    , _yieldCtx(NULL)
 {
     memset(_runningServoPos, 0, sizeof(_runningServoPos));
     memset(_frameBuffer, 0, sizeof(_frameBuffer));
     memset(_framePop, 0, sizeof(_framePop));
+}
+
+void RoboHeroServo::setMotionYield(MotionYieldFn fn, void *ctx)
+{
+    _yieldFn = fn;
+    _yieldCtx = ctx;
 }
 
 void RoboHeroServo::begin()
@@ -96,7 +104,7 @@ void RoboHeroServo::programCenter()
     }
 }
 
-void RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
+bool RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
 {
     int INT_TEMP_A, INT_TEMP_B, INT_TEMP_C;
 
@@ -148,6 +156,9 @@ void RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
             }
 
             delay(BASEDELAYTIME);
+            if (_yieldFn && _yieldFn(_yieldCtx)) {
+                return false;
+            }
         }
 
         for (int Index = 0; Index < ALLMATRIX; Index++) {
@@ -158,6 +169,8 @@ void RoboHeroServo::programRun(const int iMatrix[][ALLMATRIX], int iSteps)
             _runningServoPos[Index] = iMatrix[MainLoopIndex][Index] + mTrim;
         }
     }
+
+    return true;
 }
 
 void RoboHeroServo::getPWMFrequency()

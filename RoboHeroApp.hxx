@@ -46,6 +46,11 @@ public:
     RoboHeroWeb &getWeb() { return _web; }
     RoboHeroShell &getShell() { return _shell; }
 
+    void requestCancel() { _cancelRequested = true; }
+    bool isCancelRequested() const { return _cancelRequested; }
+    bool isMotionBusy() const { return _motionBusy; }
+    void pollDuringMotion();
+
 private:
 
     bool setupWiFi();
@@ -53,6 +58,8 @@ private:
     void checkVoltage();
     void executeProgram();
     void executeProgramStack();
+    bool interruptibleDelay(int ms);
+    bool runThenCenter(const int iMatrix[][ALLMATRIX], int iSteps);
 
     RoboHeroEeprom _eeprom;
     RoboHeroServo _servo;
@@ -69,6 +76,9 @@ private:
     int _voltageCab;
     int _inputVoltageLow;
     int _voltage;
+
+    bool _motionBusy;
+    bool _cancelRequested;
 
 };
 

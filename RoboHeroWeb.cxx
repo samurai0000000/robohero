@@ -132,6 +132,8 @@ body {
 .btn-action:hover { background: linear-gradient(135deg, var(--accent-amber), #d97706); color: #000; }
 .btn-auto { background: linear-gradient(135deg, #059669, #047857); border: none; font-weight: 700; grid-column: span 2; }
 .btn-auto:hover { background: linear-gradient(135deg, #10b981, #059669); }
+.btn-stop { background: linear-gradient(135deg, #dc2626, #b91c1c); border: none; font-weight: 700; grid-column: span 2; }
+.btn-stop:hover { background: linear-gradient(135deg, #ef4444, #dc2626); }
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -198,6 +200,7 @@ body {
       <button class="btn btn-action" id="btn-goilc" onclick="sendCmd('pms', 8)">GOILC</button>
       <button class="btn btn-action" id="btn-dance" onclick="sendCmd('pms', 9)">Dance</button>
       <button class="btn btn-auto" id="btn-auto" onclick="sendCmd('pms', 99)">Auto Demo Loop</button>
+      <button class="btn btn-stop" id="btn-stop" onclick="sendCmd('stop', 1)">STOP</button>
     </div>
   </div>
 </div>
@@ -208,7 +211,20 @@ function sendCmd(key, val) {
   xhr.open('GET', '/?' + key + '=' + val + '&_t=' + Date.now(), true);
   xhr.onreadystatechange = function() {
     if (xhr.readyState === 4) {
-      showToast(xhr.status === 200 ? 'Command executed' : 'Command sent');
+      if (xhr.status === 200) {
+        try {
+          var j = JSON.parse(xhr.responseText);
+          if (j.stopped === true) {
+            showToast('Stopped');
+          } else {
+            showToast('Command sent');
+          }
+        } catch (e) {
+          showToast('Command sent');
+        }
+      } else {
+        showToast('Command sent');
+      }
     }
   };
   xhr.send();
@@ -890,9 +906,23 @@ void RoboHeroWeb::handleClient()
 
 void RoboHeroWeb::handleIndex()
 {
-    // Handle AJAX motion/locomotion actions on "/"
+    if (_server.hasArg("stop")) {
+        bool busy = _app.isMotionBusy();
+        if (busy) {
+            _app.requestCancel();
+        }
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(200, "application/json",
+                     busy ? "{\"status\":\"ok\",\"stopped\":true}"
+                          : "{\"status\":\"ok\",\"stopped\":false}");
+        return;
+    }
+
     if (_server.hasArg("pm")) {
         int pm = _server.arg("pm").toInt();
+        if (_app.isMotionBusy()) {
+            _app.requestCancel();
+        }
         _app.setServoProgram(pm);
         _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         _server.send(200, "application/json", "{\"status\":\"ok\",\"pm\":" + String(pm) + "}");
@@ -901,9 +931,18 @@ void RoboHeroWeb::handleIndex()
 
     if (_server.hasArg("pms")) {
         int pms = _server.arg("pms").toInt();
+        if (_app.isMotionBusy()) {
+            _app.requestCancel();
+        }
         _app.setServoProgramStack(pms);
         _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         _server.send(200, "application/json", "{\"status\":\"ok\",\"pms\":" + String(pms) + "}");
+        return;
+    }
+
+    if (_app.isMotionBusy()) {
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(503, "application/json", "{\"status\":\"busy\"}");
         return;
     }
 
@@ -912,6 +951,12 @@ void RoboHeroWeb::handleIndex()
 
 void RoboHeroWeb::handleCalibrate()
 {
+    if (_app.isMotionBusy()) {
+        _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        _server.send(503, "application/json", "{\"status\":\"busy\"}");
+        return;
+    }
+
     // 1. Live trim adjustment without writing to EEPROM
     if (_server.hasArg("apply") && _server.hasArg("key") && _server.hasArg("val")) {
         int key = _server.arg("key").toInt();
