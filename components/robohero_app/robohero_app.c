@@ -15,6 +15,8 @@
 #include "driver/adc.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+#include "esp8266/eagle_soc.h"
+#include "rom/uart.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -559,7 +561,24 @@ void robohero_terminal_reset(void)
 {
     static const char seq[] = TERM_RESET_SEQ;
 
-    uart_write_bytes(UART_NUM_0, seq, sizeof(seq) - 1);
+    uart_tx_wait_idle(0);
+    for (size_t i = 0; i < sizeof(seq) - 1; i++) {
+        uart_tx_one_char((uint8_t) seq[i]);
+    }
+}
+
+/*
+ * PHY/RTC clock init has already run when app_main starts. Switching
+ * baud before that (constructor or CONFIG_CONSOLE_UART_BAUDRATE=115200)
+ * leaves UART0 at the wrong rate after rtc_init_clk().
+ */
+void robohero_console_begin(void)
+{
+    uart_tx_wait_idle(0);
+    uart_div_modify(0, UART_CLK_FREQ / 115200);
+    robohero_terminal_reset();
+    uart_tx_wait_idle(0);
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 void robohero_app_start(void)
@@ -573,7 +592,6 @@ void robohero_app_start(void)
     };
     uart_param_config(UART_NUM_0, &uart_cfg);
     uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
-    robohero_terminal_reset();
 
     store_init();
 

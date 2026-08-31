@@ -70,7 +70,6 @@ static void print_version_block(void)
 
 static void show_welcome(void)
 {
-    uart_write_bytes(UART_NUM_0, TERM_RESET_SEQ, sizeof(TERM_RESET_SEQ) - 1);
     shell_printf("\n");
     print_version_block();
     shell_printf("> ");

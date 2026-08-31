@@ -4,13 +4,9 @@
  * Copyright (C) 2026, Charles Chiou
  */
 
-#include <stdio.h>
-
 #include "esp_log.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
-
-#include "robohero_config.h"
 
 #include "robohero_app.h"
 #include "robohero_shell.h"
@@ -20,8 +16,7 @@ static const char *TAG = "main";
 
 void app_main(void)
 {
-    printf("%s", TERM_RESET_SEQ);
-    fflush(stdout);
+    robohero_console_begin();
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {

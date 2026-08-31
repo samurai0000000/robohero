@@ -13,9 +13,9 @@
 /*
  * Undo ISO-2022 / attribute mess left by ESP8266 ROM boot prints
  * (often at 74880 baud) before the app speaks 115200.
- * ESC c = RIS, SI + G0/G1 ASCII, SGR reset, erase line.
+ * ESC c = RIS, SI + G0/G1 ASCII, SGR reset.
  */
-#define TERM_RESET_SEQ "\r\n\x1bc\x0f\x1b(B\x1b)B\x1b[0m\x1b[2K\r"
+#define TERM_RESET_SEQ "\r\n\x1b" "c\x0f\x1b(B\x1b)B\x1b[0m"
 
 #ifndef AP_PASSWORD
 #define AP_PASSWORD "12345678"
