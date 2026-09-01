@@ -1,0 +1,7 @@
+{
+  "brokerUrl": "ws://localhost:9001",
+  "robotId": "robohero",
+  "username": "",
+  "password": "",
+  "autoConnect": false
+}
