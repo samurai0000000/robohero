@@ -24,6 +24,7 @@ void robohero_app_on_wifi_up(robohero_wifi_up_fn fn);
 void robohero_console_begin(void);
 void robohero_terminal_reset(void);
 void robohero_app_start(void);
+bool robohero_app_apply_netif(void);
 bool robohero_app_wifi_ready(void);
 
 bool robohero_app_is_busy(void);

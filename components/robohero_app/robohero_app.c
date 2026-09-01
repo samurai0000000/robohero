@@ -343,6 +343,61 @@ bool robohero_app_wifi_ready(void)
     return s_wifi_ready;
 }
 
+bool robohero_app_apply_netif(void)
+{
+    esp_err_t err;
+
+    if (store_is_dhcp_enabled()) {
+        err = tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_STA);
+        if (err != ESP_OK &&
+            err != ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STARTED) {
+            ESP_LOGE(TAG, "dhcpc_start: %s", esp_err_to_name(err));
+            return false;
+        }
+        ESP_LOGI(TAG, "STA DHCP enabled");
+        return true;
+    }
+
+    tcpip_adapter_ip_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.ip.addr = store_get_static_ip();
+    info.netmask.addr = store_get_static_netmask();
+    info.gw.addr = store_get_static_gateway();
+    if (info.ip.addr == 0) {
+        ESP_LOGW(TAG, "static IP is 0.0.0.0; not applied");
+        return false;
+    }
+
+    err = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+    if (err != ESP_OK &&
+        err != ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) {
+        ESP_LOGE(TAG, "dhcpc_stop: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    err = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &info);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "set_ip_info: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    uint32_t dns_addr = store_get_static_dns();
+    if (dns_addr != 0) {
+        tcpip_adapter_dns_info_t dns;
+        memset(&dns, 0, sizeof(dns));
+        ip4_addr_set_u32(ip_2_ip4(&dns.ip), dns_addr);
+        err = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA,
+                                         TCPIP_ADAPTER_DNS_MAIN, &dns);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "set_dns_info: %s", esp_err_to_name(err));
+            return false;
+        }
+    }
+
+    ESP_LOGI(TAG, "STA static IP " IPSTR, IP2STR(&info.ip));
+    return true;
+}
+
 bool robohero_app_submit_pm(int id)
 {
     if (s_voltage_low) {
@@ -482,17 +537,7 @@ static bool setup_wifi(void)
     const char *sta_pass = store_get_sta_password();
     uint8_t channel = store_get_ap_channel();
 
-    if (!store_is_dhcp_enabled()) {
-        tcpip_adapter_ip_info_t info;
-        memset(&info, 0, sizeof(info));
-        info.ip.addr = store_get_static_ip();
-        info.netmask.addr = store_get_static_netmask();
-        info.gw.addr = store_get_static_gateway();
-        if (info.ip.addr != 0) {
-            tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
-            tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &info);
-        }
-    }
+    (void) robohero_app_apply_netif();
 
     if (mode == ROBOHERO_WIFI_OFF) {
         ESP_LOGI(TAG, "Wi-Fi is disabled in NVS");

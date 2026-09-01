@@ -17,6 +17,7 @@
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "lwip/ip4_addr.h"
+#include "lwip/ip_addr.h"
 #include "tcpip_adapter.h"
 
 #include "robohero_app.h"
@@ -80,6 +81,52 @@ static void format_ip(uint32_t addr, char *out, size_t outlen)
     ip4_addr_t a;
     a.addr = addr;
     snprintf(out, outlen, IPSTR, IP2STR(&a));
+}
+
+static bool parse_ip4(const char *s, uint32_t *out)
+{
+    ip4_addr_t a;
+
+    if (!s || !ip4addr_aton(s, &a)) {
+        return false;
+    }
+    *out = a.addr;
+    return true;
+}
+
+static void print_nvm_ip(void)
+{
+    char a[16], b[16], c[16], d[16];
+
+    format_ip(store_get_static_ip(), a, sizeof(a));
+    format_ip(store_get_static_netmask(), b, sizeof(b));
+    format_ip(store_get_static_gateway(), c, sizeof(c));
+    format_ip(store_get_static_dns(), d, sizeof(d));
+    shell_printf("  DHCP:          %s\n",
+                 store_is_dhcp_enabled() ? "on" : "off");
+    shell_printf("  Static IP:     %s\n", a);
+    shell_printf("  Static Netmask:%s\n", b);
+    shell_printf("  Static Gateway:%s\n", c);
+    shell_printf("  Static DNS:    %s\n", d);
+}
+
+static int net_try_apply(void)
+{
+    if (robohero_app_apply_netif()) {
+        shell_printf("ok\n");
+        return 0;
+    }
+    shell_printf("failed\n");
+    return -1;
+}
+
+static int net_saved_apply_if_static(void)
+{
+    if (store_is_dhcp_enabled()) {
+        shell_printf("ok [saved]\n");
+        return 0;
+    }
+    return net_try_apply();
 }
 
 static int cmd_help(int argc, char **argv)
@@ -413,72 +460,154 @@ static int cmd_net(int argc, char **argv)
     if (argc >= 2 &&
         (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         shell_printf("Usage: %s [-h|--help] [command] [args...]\n", argv[0]);
-        shell_printf("  Manage IP networking and network status.\n");
+        shell_printf("  Manage IP networking and DNS (STA). Settings save to EEPROM.\n");
         shell_printf("Commands:\n");
-        shell_printf("  net                            Show active IP configuration and MAC\n");
-        shell_printf("  net dhcp <on|off>              Enable or disable DHCP in EEPROM\n");
-        shell_printf("  net static <ip> <mask > <gw> [dns] Set static IP configuration in EEPROM\n");
+        shell_printf("  net                                    Show live IP and DNS\n");
+        shell_printf("  net nvm                                Show stored IP config\n");
+        shell_printf("  net apply                              Apply stored config to STA\n");
+        shell_printf("  net dhcp <on|off>                      Enable or disable DHCP\n");
+        shell_printf("  net ip dhcp                            Enable DHCP (alias)\n");
+        shell_printf("  net ip <ip> netmask <mask> gw <gw>     Set static IP, mask, gateway\n");
+        shell_printf("  net ip <ip>                            Set stored static IP\n");
+        shell_printf("  net netmask <mask>                     Set stored netmask\n");
+        shell_printf("  net gateway <gw>                       Set stored gateway\n");
+        shell_printf("  net dns <ip>                           Set stored DNS\n");
+        shell_printf("  net static <ip> <mask> <gw> [dns]      Set static config (alias)\n");
         return 0;
     }
 
     if (argc == 1) {
         wifi_mode_t mode;
+        tcpip_adapter_dns_info_t dns;
+
         esp_wifi_get_mode(&mode);
-        shell_printf("Active Network Configuration:\n");
+        shell_printf("%s\n", store_is_dhcp_enabled() ? "(dhcp)" : "(static ip)");
         if (mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) {
             tcpip_adapter_ip_info_t ip;
             tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip);
-            shell_printf("  STA IP:        " IPSTR "\n", IP2STR(&ip.ip));
-            shell_printf("  STA Netmask:   " IPSTR "\n", IP2STR(&ip.netmask));
-            shell_printf("  STA Gateway:   " IPSTR "\n", IP2STR(&ip.gw));
+            shell_printf("ip:      " IPSTR "\n", IP2STR(&ip.ip));
+            shell_printf("netmask: " IPSTR "\n", IP2STR(&ip.netmask));
+            shell_printf("gateway: " IPSTR "\n", IP2STR(&ip.gw));
+            if (tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA,
+                                           TCPIP_ADAPTER_DNS_MAIN,
+                                           &dns) == ESP_OK) {
+                shell_printf("dns:     " IPSTR "\n",
+                             IP2STR(ip_2_ip4(&dns.ip)));
+            }
         }
         if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) {
             tcpip_adapter_ip_info_t ip;
             tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip);
-            shell_printf("  AP IP:         " IPSTR "\n", IP2STR(&ip.ip));
-        }
-        shell_printf("\nNVS IP Configuration:\n");
-        shell_printf("  DHCP Enabled:  %s\n", store_is_dhcp_enabled() ? "Yes" : "No");
-        if (!store_is_dhcp_enabled()) {
-            char a[16], b[16], c[16], d[16];
-            format_ip(store_get_static_ip(), a, sizeof(a));
-            format_ip(store_get_static_netmask(), b, sizeof(b));
-            format_ip(store_get_static_gateway(), c, sizeof(c));
-            format_ip(store_get_static_dns(), d, sizeof(d));
-            shell_printf("  Static IP:     %s\n", a);
-            shell_printf("  Static Netmask:%s\n", b);
-            shell_printf("  Static Gateway:%s\n", c);
-            shell_printf("  Static DNS:    %s\n", d);
+            shell_printf("ap ip:   " IPSTR "\n", IP2STR(&ip.ip));
         }
         return 0;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "nvm") == 0) {
+        print_nvm_ip();
+        return 0;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "apply") == 0) {
+        return net_try_apply();
     }
 
     if (argc >= 3 && strcmp(argv[1], "dhcp") == 0) {
-        bool enable = (strcmp(argv[2], "on") == 0) || (strcmp(argv[2], "1") == 0);
+        bool enable = (strcmp(argv[2], "on") == 0) ||
+                      (strcmp(argv[2], "1") == 0);
+        if (!enable && strcmp(argv[2], "off") != 0 &&
+            strcmp(argv[2], "0") != 0) {
+            shell_printf("syntax error! Type 'net -h' for usage.\n");
+            return -1;
+        }
         store_set_dhcp_enabled(enable, true);
-        shell_printf("DHCP %s [saved]\n", enable ? "Enabled" : "Disabled");
-        return 0;
+        return net_try_apply();
+    }
+
+    if (argc == 3 && strcmp(argv[1], "ip") == 0 &&
+        strcmp(argv[2], "dhcp") == 0) {
+        store_set_dhcp_enabled(true, true);
+        return net_try_apply();
+    }
+
+    if (argc == 7 && strcmp(argv[1], "ip") == 0 &&
+        strcmp(argv[3], "netmask") == 0 &&
+        (strcmp(argv[5], "gw") == 0 || strcmp(argv[5], "gateway") == 0)) {
+        uint32_t ip, mask, gw;
+        if (!parse_ip4(argv[2], &ip) || !parse_ip4(argv[4], &mask) ||
+            !parse_ip4(argv[6], &gw)) {
+            shell_printf("Invalid IP address format!\n");
+            return -1;
+        }
+        store_set_static_ip(ip, false);
+        store_set_static_netmask(mask, false);
+        store_set_static_gateway(gw, false);
+        store_set_dhcp_enabled(false, true);
+        return net_try_apply();
+    }
+
+    if (argc == 3 && strcmp(argv[1], "ip") == 0) {
+        uint32_t ip;
+        if (!parse_ip4(argv[2], &ip)) {
+            shell_printf("Invalid IP address format!\n");
+            return -1;
+        }
+        store_set_static_ip(ip, true);
+        return net_saved_apply_if_static();
+    }
+
+    if (argc == 3 && strcmp(argv[1], "netmask") == 0) {
+        uint32_t mask;
+        if (!parse_ip4(argv[2], &mask)) {
+            shell_printf("Invalid IP address format!\n");
+            return -1;
+        }
+        store_set_static_netmask(mask, true);
+        return net_saved_apply_if_static();
+    }
+
+    if (argc == 3 &&
+        (strcmp(argv[1], "gateway") == 0 || strcmp(argv[1], "gw") == 0)) {
+        uint32_t gw;
+        if (!parse_ip4(argv[2], &gw)) {
+            shell_printf("Invalid IP address format!\n");
+            return -1;
+        }
+        store_set_static_gateway(gw, true);
+        return net_saved_apply_if_static();
+    }
+
+    if (argc == 3 && strcmp(argv[1], "dns") == 0) {
+        uint32_t dns;
+        if (!parse_ip4(argv[2], &dns)) {
+            shell_printf("Invalid IP address format!\n");
+            return -1;
+        }
+        store_set_static_dns(dns, true);
+        return net_saved_apply_if_static();
     }
 
     if (argc >= 5 && strcmp(argv[1], "static") == 0) {
-        ip4_addr_t ip, mask, gw, dns;
-        if (!ip4addr_aton(argv[2], &ip) || !ip4addr_aton(argv[3], &mask) ||
-            !ip4addr_aton(argv[4], &gw)) {
+        uint32_t ip, mask, gw, dns;
+        if (!parse_ip4(argv[2], &ip) || !parse_ip4(argv[3], &mask) ||
+            !parse_ip4(argv[4], &gw)) {
             shell_printf("Invalid IP address format!\n");
             return -1;
         }
         if (argc >= 6) {
-            ip4addr_aton(argv[5], &dns);
+            if (!parse_ip4(argv[5], &dns)) {
+                shell_printf("Invalid IP address format!\n");
+                return -1;
+            }
         } else {
             dns = gw;
         }
-        store_set_static_ip(ip.addr, false);
-        store_set_static_netmask(mask.addr, false);
-        store_set_static_gateway(gw.addr, false);
-        store_set_static_dns(dns.addr, false);
+        store_set_static_ip(ip, false);
+        store_set_static_netmask(mask, false);
+        store_set_static_gateway(gw, false);
+        store_set_static_dns(dns, false);
         store_set_dhcp_enabled(false, true);
-        shell_printf("Static IP configured [saved]\n");
-        return 0;
+        return net_try_apply();
     }
 
     shell_printf("syntax error! Type 'net -h' for usage.\n");
