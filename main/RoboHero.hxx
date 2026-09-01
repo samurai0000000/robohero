@@ -19,6 +19,7 @@ enum RhCmdType {
     RH_CMD_STOP,
     RH_CMD_CENTER,
     RH_CMD_ZERO,
+    RH_CMD_RELAX,
 };
 
 typedef void (*RoboHeroWifiUpFn)(void);
@@ -47,6 +48,7 @@ class RoboHero
     bool requestStop();
     void submitCenter();
     void submitZero();
+    void submitRelax();
 
     static void consoleBegin();
     static void terminalReset();

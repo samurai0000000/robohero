@@ -130,6 +130,12 @@ body {
   font-weight: 700;
 }
 .btn-standby:hover { background: linear-gradient(135deg, #ec4899, #db2777); }
+.btn-relax {
+  background: linear-gradient(135deg, #475569, #334155);
+  border: none;
+  font-weight: 700;
+}
+.btn-relax:hover { background: linear-gradient(135deg, #64748b, #475569); }
 .btn-action {
   background:
     linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2));
@@ -202,7 +208,8 @@ body {
               onclick="sendCmd('pm', 99)">STANDBY</button>
       <button class="btn btn-primary" id="btn-move-right"
               onclick="sendCmd('pm', 6)">Move Right</button>
-      <div></div>
+      <button class="btn btn-relax" id="btn-relax"
+              onclick="sendCmd('relax', 1)">Relax</button>
       <button class="btn btn-primary" id="btn-backward"
               onclick="sendCmd('pm', 2)">Backward</button>
       <div></div>

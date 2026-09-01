@@ -95,7 +95,9 @@ bool RoboHero::interruptibleDelay(int ms)
 bool RoboHero::runThenCenter(const int matrix[][ALLMATRIX], int steps)
 {
     Servo::instance().programRun(matrix, steps);
-    Servo::instance().programCenter();
+    if (!_cancel) {
+        Servo::instance().programCenter();
+    }
     return !_cancel;
 }
 
@@ -107,36 +109,28 @@ void RoboHero::executePm(int prog)
 
     switch (prog) {
     case 1:
-        sv.programRun(Servo_Prg_10, Servo_Prg_10_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_10, Servo_Prg_10_Step);
         break;
     case 2:
-        sv.programRun(Servo_Prg_11, Servo_Prg_11_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_11, Servo_Prg_11_Step);
         break;
     case 3:
-        sv.programRun(Servo_Prg_12, Servo_Prg_12_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_12, Servo_Prg_12_Step);
         break;
     case 4:
-        sv.programRun(Servo_Prg_13, Servo_Prg_13_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_13, Servo_Prg_13_Step);
         break;
     case 5:
-        sv.programRun(Servo_Prg_14, Servo_Prg_14_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_14, Servo_Prg_14_Step);
         break;
     case 6:
-        sv.programRun(Servo_Prg_15, Servo_Prg_15_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_15, Servo_Prg_15_Step);
         break;
     case 11:
-        sv.programRun(Servo_Prg_20, Servo_Prg_20_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_20, Servo_Prg_20_Step);
         break;
     case 12:
-        sv.programRun(Servo_Prg_21, Servo_Prg_21_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_21, Servo_Prg_21_Step);
         break;
     case 99:
         sv.programCenter();
@@ -153,46 +147,36 @@ void RoboHero::executePm(int prog)
 
 void RoboHero::executePms(int prog)
 {
-    Servo &sv = Servo::instance();
     ESP_LOGI(TAG, "Servo_PROGRAM_Stack = %d", prog);
     gpio_set_level((gpio_num_t) LED_PIN, 1);
 
     switch (prog) {
     case 1:
-        sv.programRun(Servo_Prg_1, Servo_Prg_1_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_1, Servo_Prg_1_Step);
         break;
     case 2:
-        sv.programRun(Servo_Prg_2, Servo_Prg_2_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_2, Servo_Prg_2_Step);
         break;
     case 3:
-        sv.programRun(Servo_Prg_3, Servo_Prg_3_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_3, Servo_Prg_3_Step);
         break;
     case 4:
-        sv.programRun(Servo_Prg_4, Servo_Prg_4_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_4, Servo_Prg_4_Step);
         break;
     case 5:
-        sv.programRun(Servo_Prg_5, Servo_Prg_5_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_5, Servo_Prg_5_Step);
         break;
     case 6:
-        sv.programRun(Servo_Prg_6, Servo_Prg_6_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_6, Servo_Prg_6_Step);
         break;
     case 7:
-        sv.programRun(Servo_Prg_7, Servo_Prg_7_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_7, Servo_Prg_7_Step);
         break;
     case 8:
-        sv.programRun(Servo_Prg_8, Servo_Prg_8_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_8, Servo_Prg_8_Step);
         break;
     case 9:
-        sv.programRun(Servo_Prg_9, Servo_Prg_9_Step);
-        sv.programCenter();
+        runThenCenter(Servo_Prg_9, Servo_Prg_9_Step);
         break;
     case 99:
         if (runThenCenter(Servo_Prg_1, Servo_Prg_1_Step) &&
@@ -298,6 +282,9 @@ void RoboHero::motionTask(void *arg)
                 break;
             case RH_CMD_ZERO:
                 Servo::instance().programZero();
+                break;
+            case RH_CMD_RELAX:
+                Servo::instance().programRelax();
                 break;
             default:
                 break;
@@ -452,6 +439,11 @@ void RoboHero::submitCenter()
 void RoboHero::submitZero()
 {
     enqueueCmd(RH_CMD_ZERO, 0);
+}
+
+void RoboHero::submitRelax()
+{
+    enqueueCmd(RH_CMD_RELAX, 0);
 }
 
 bool RoboHero::uartEscapePending()

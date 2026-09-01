@@ -79,6 +79,12 @@ static esp_err_t handleIndex(httpd_req_t *req)
         return ESP_OK;
     }
 
+    if (queryGet(query, "relax", val, sizeof(val))) {
+        rh.submitRelax();
+        sendJson(req, "200 OK", "{\"status\":\"ok\",\"relaxed\":true}");
+        return ESP_OK;
+    }
+
     if (queryGet(query, "pm", val, sizeof(val))) {
         if (rh.isLowVoltage()) {
             sendJson(

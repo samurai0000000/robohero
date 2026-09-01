@@ -148,6 +148,15 @@ void Servo::programCenter()
     applyPose(Servo_Act_1);
 }
 
+void Servo::programRelax()
+{
+    Pca9685::instance().setAllOff();
+    pwm_stop(0);
+    for (int i = 0; i < ALLSERVOS; i++) {
+        _lastPwm[i] = -1;
+    }
+}
+
 bool Servo::programRun(const int matrix[][ALLMATRIX], int steps)
 {
     Store &st = Store::instance();

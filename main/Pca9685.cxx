@@ -20,9 +20,11 @@
 #define MODE1         0x00
 #define PRESCALE      0xFE
 #define LED0_ON_L     0x06
+#define ALL_LED_ON_L  0xFA
 #define MODE1_SLEEP   0x10
 #define MODE1_AI      0x20
 #define MODE1_RESTART 0x80
+#define LED_FULL_OFF  0x10
 
 static const char *TAG = "pca9685";
 
@@ -175,6 +177,22 @@ esp_err_t Pca9685::setPwm(int channel, uint16_t on, uint16_t off)
         (uint8_t) (on >> 8),
         (uint8_t) (off & 0xff),
         (uint8_t) (off >> 8),
+    };
+
+    lockI2c();
+    esp_err_t err = i2cWriteBytes(buf, sizeof(buf));
+    unlockI2c();
+    return err;
+}
+
+esp_err_t Pca9685::setAllOff()
+{
+    uint8_t buf[5] = {
+        ALL_LED_ON_L,
+        0,
+        0,
+        0,
+        LED_FULL_OFF,
     };
 
     lockI2c();

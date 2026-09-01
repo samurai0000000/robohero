@@ -695,6 +695,8 @@ static int cmdPwm(int argc, char **argv)
                     "Move servos to zero alignment pose\n");
         shellPrintf("  pwm center                     "
                     "Move servos to standby center pose\n");
+        shellPrintf("  pwm relax                      "
+                    "Stop PWM so all servos go limp\n");
         shellPrintf("  pwm run <prog_id>              "
                     "Run motion program (1..6, 11..12, 99, 100)\n");
         shellPrintf("  pwm stop                       "
@@ -799,6 +801,16 @@ static int cmdPwm(int argc, char **argv)
         }
         sv.programCenter();
         shellPrintf("Center pose completed.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "relax") == 0) {
+        if (rh.isBusy()) {
+            shellPrintf("Busy; use pwm stop first.\n");
+            return -1;
+        }
+        sv.programRelax();
+        shellPrintf("Relax completed.\n");
         return 0;
     }
 

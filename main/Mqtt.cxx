@@ -249,6 +249,10 @@ void Mqtt::onControl(const char *data, int len)
         rh.submitZero();
         return;
     }
+    if (strcmp(buf, "relax") == 0) {
+        rh.submitRelax();
+        return;
+    }
 
     int id = 0;
     if (sscanf(buf, "pm=%d", &id) == 1 || sscanf(buf, "pm %d", &id) == 1) {

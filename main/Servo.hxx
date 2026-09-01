@@ -27,6 +27,7 @@ class Servo
 
     void programZero();
     void programCenter();
+    void programRelax();
     bool programRun(const int matrix[][ALLMATRIX], int steps);
 
     void reloadPwmFreq();

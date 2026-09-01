@@ -19,6 +19,7 @@ class Pca9685
     esp_err_t init();
     esp_err_t setPwmFreq(int freqHz);
     esp_err_t setPwm(int channel, uint16_t on, uint16_t off);
+    esp_err_t setAllOff();
 
   private:
     Pca9685();
