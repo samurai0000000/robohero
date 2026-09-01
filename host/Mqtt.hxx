@@ -52,8 +52,6 @@ class Mqtt
     bool isConnected() const;
     bool isRunning() const;
 
-    // Send control commands / telemetry to robot
-    bool sendCommand(const string &cmd);
     bool sendStop();
     bool sendCenter();
     bool sendZero();
@@ -90,7 +88,10 @@ class Mqtt
     static void onLogCallback(struct mosquitto *mosq, void *obj, int level,
                               const char *str);
 
-    void parseStatusPayload(const string &topic, const string &payload);
+    void parseStatusPayload(const string &topic,
+                            const uint8_t *data,
+                            int len);
+    bool sendBytes(const uint8_t *data, int len);
     void rebuildTopics();
 
     static Mqtt _self;

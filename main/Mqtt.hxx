@@ -31,7 +31,7 @@ class Mqtt
     virtual ~Mqtt();
 
   protected:
-    virtual void onControl(const char *data, int len);
+    virtual void onControl(const void *data, int len);
     bool setPwmPos(int chan, int pos);
     int getLowCutoff() const;
     int getHighCutoff() const;
@@ -44,7 +44,7 @@ class Mqtt
 
     static esp_err_t eventHandler(esp_mqtt_event_handle_t event);
     static void pubTask(void *arg);
-    bool publishStatus(const char *payload);
+    bool publishStatus(const void *payload, int len);
     bool enqueuePending(int16_t *slot, int16_t v);
     void clearPending();
     void rebuildTopics();

@@ -6,10 +6,9 @@
 
 #include <cstdio>
 #include <cstring>
-#include <cctype>
-#include <sstream>
 
 #include "Mqtt.hxx"
+#include "robohero/msg.h"
 
 using namespace std;
 
@@ -188,8 +187,9 @@ void Mqtt::onMessageCallback(struct mosquitto *, void *obj,
     }
 
     string topic(msg->topic ? msg->topic : "");
-    string payload(static_cast<const char *>(msg->payload), msg->payloadlen);
-    self->parseStatusPayload(topic, payload);
+    self->parseStatusPayload(topic,
+                             static_cast<const uint8_t *>(msg->payload),
+                             msg->payloadlen);
 }
 
 void Mqtt::onLogCallback(struct mosquitto *, void *obj, int level,
@@ -202,12 +202,42 @@ void Mqtt::onLogCallback(struct mosquitto *, void *obj, int level,
     }
 }
 
-void Mqtt::parseStatusPayload(const string &topic, const string &payload)
+static string hexDump(const uint8_t *p, int n)
 {
-    TelemetryData t;
-    t.rawPayload = payload;
+    string s;
 
-    // Topic format: robot/robohero/<robotId>/status
+    if (p == NULL || n <= 0) {
+        return s;
+    }
+    s.reserve((size_t) n * 3);
+    for (int i = 0; i < n; i++) {
+        char b[4];
+        snprintf(b, sizeof(b), "%02x", p[i]);
+        if (i > 0) {
+            s += ' ';
+        }
+        s += b;
+    }
+    return s;
+}
+
+void Mqtt::parseStatusPayload(const string &topic,
+                              const uint8_t *data,
+                              int len)
+{
+    rh_msg_view view;
+    TelemetryData t;
+    int off;
+
+    if (rh_msg_parse(data, len, &view) != 0) {
+        return;
+    }
+    if (view.msg_type != RH_MSG_STATUS) {
+        return;
+    }
+
+    t.rawPayload = hexDump(data, len);
+
     size_t prefixLen = sizeof("robot/robohero/") - 1;
     if (topic.length() > prefixLen) {
         string rem = topic.substr(prefixLen);
@@ -219,35 +249,32 @@ void Mqtt::parseStatusPayload(const string &topic, const string &payload)
         }
     }
 
-    // Payload tokens separated by commas: e.g. t=1234,v=740,c0=135,c1=200
-    stringstream ss(payload);
-    string token;
-    while (getline(ss, token, ',')) {
-        while (!token.empty() && isspace(token.front())) token.erase(token.begin());
-        while (!token.empty() && isspace(token.back())) token.pop_back();
-
-        if (token.rfind("t=", 0) == 0) {
-            try {
-                t.timestampMs = stoul(token.substr(2));
-            } catch (...) {}
-        } else if (token.rfind("v=", 0) == 0) {
-            try {
-                t.voltage = stoi(token.substr(2));
-                t.hasVoltage = true;
-            } catch (...) {}
-        } else if (!token.empty() && token[0] == 'c') {
-            size_t eq = token.find('=');
-            if (eq != string::npos && eq > 1) {
-                try {
-                    int chan = stoi(token.substr(1, eq - 1));
-                    int pos = stoi(token.substr(eq + 1));
-                    if (chan >= 0 && chan < ALLSERVOS) {
-                        t.servoPositions[chan] = pos;
-                        t.servoValid[chan] = true;
-                    }
-                } catch (...) {}
+    off = 0;
+    while (off < (int) view.payload_len) {
+        uint8_t type;
+        uint8_t n;
+        const uint8_t *val;
+        int next = rh_tlv_next(
+            view.payload, view.payload_len, off, &type, &val, &n);
+        if (next < 0) {
+            return;
+        }
+        if (type == RH_TLV_TIME && n == sizeof(uint32_t)) {
+            memcpy(&t.timestampMs, val, sizeof(t.timestampMs));
+        } else if (type == RH_TLV_VOLTAGE && n == sizeof(int16_t)) {
+            int16_t v;
+            memcpy(&v, val, sizeof(v));
+            t.voltage = v;
+            t.hasVoltage = true;
+        } else if (type == RH_TLV_SERVO && n == sizeof(rh_tlv_servo)) {
+            rh_tlv_servo s;
+            memcpy(&s, val, sizeof(s));
+            if (s.chan < ALLSERVOS) {
+                t.servoPositions[s.chan] = s.pos;
+                t.servoValid[s.chan] = true;
             }
         }
+        off = next;
     }
 
     {
@@ -276,51 +303,127 @@ void Mqtt::parseStatusPayload(const string &topic, const string &payload)
     }
 }
 
-bool Mqtt::sendCommand(const string &cmd)
+bool Mqtt::sendBytes(const uint8_t *data, int len)
 {
-    if (!_mosq || !_connected.load()) {
+    if (!_mosq || !_connected.load() || data == NULL || len <= 0) {
         return false;
     }
 
-    int rc = mosquitto_publish(_mosq, nullptr, _controlTopic.c_str(),
-                               static_cast<int>(cmd.length()), cmd.c_str(),
-                               0, false);
+    int rc = mosquitto_publish(_mosq,
+                               nullptr,
+                               _controlTopic.c_str(),
+                               len,
+                               data,
+                               0,
+                               false);
     return (rc == MOSQ_ERR_SUCCESS);
 }
 
 bool Mqtt::sendStop()
 {
-    return sendCommand("stop");
+    uint8_t buf[sizeof(rh_msg_hdr)];
+    int n = rh_msg_empty(buf, sizeof(buf), RH_MSG_STOP);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendCenter()
 {
-    return sendCommand("center");
+    uint8_t buf[sizeof(rh_msg_hdr)];
+    int n = rh_msg_empty(buf, sizeof(buf), RH_MSG_CENTER);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendZero()
 {
-    return sendCommand("zero");
+    uint8_t buf[sizeof(rh_msg_hdr)];
+    int n = rh_msg_empty(buf, sizeof(buf), RH_MSG_ZERO);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendRelax()
 {
-    return sendCommand("relax");
+    uint8_t buf[sizeof(rh_msg_hdr)];
+    int n = rh_msg_empty(buf, sizeof(buf), RH_MSG_RELAX);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendPm(int id)
 {
-    return sendCommand("pm=" + to_string(id));
+    uint8_t buf[16];
+    int16_t id16 = (int16_t) id;
+    int n = rh_msg_begin(buf, sizeof(buf), RH_MSG_PM);
+    if (n < 0) {
+        return false;
+    }
+    n = rh_tlv_put(buf, sizeof(buf), n, RH_TLV_PROG, &id16, sizeof(id16));
+    if (n < 0) {
+        return false;
+    }
+    n = rh_msg_finish(buf, n);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendPms(int id)
 {
-    return sendCommand("pms=" + to_string(id));
+    uint8_t buf[16];
+    int16_t id16 = (int16_t) id;
+    int n = rh_msg_begin(buf, sizeof(buf), RH_MSG_PMS);
+    if (n < 0) {
+        return false;
+    }
+    n = rh_tlv_put(buf, sizeof(buf), n, RH_TLV_PROG, &id16, sizeof(id16));
+    if (n < 0) {
+        return false;
+    }
+    n = rh_msg_finish(buf, n);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 bool Mqtt::sendPwm(int chan, int pos)
 {
-    return sendCommand("chan=" + to_string(chan) + " pos=" + to_string(pos));
+    uint8_t buf[16];
+    rh_tlv_servo s;
+    int n;
+
+    if (chan < 0 || chan >= ALLSERVOS) {
+        return false;
+    }
+    s.chan = (uint8_t) chan;
+    {
+        int16_t pos16 = (int16_t) pos;
+        memcpy(&s.pos, &pos16, sizeof(s.pos));
+    }
+    n = rh_msg_begin(buf, sizeof(buf), RH_MSG_SET_PWM);
+    if (n < 0) {
+        return false;
+    }
+    n = rh_tlv_put(buf, sizeof(buf), n, RH_TLV_SERVO, &s, sizeof(s));
+    if (n < 0) {
+        return false;
+    }
+    n = rh_msg_finish(buf, n);
+    if (n < 0) {
+        return false;
+    }
+    return sendBytes(buf, n);
 }
 
 TelemetryData Mqtt::getLatestTelemetry() const

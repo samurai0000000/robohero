@@ -8,6 +8,7 @@ idf_component_register(SRCS "app_main.cxx"
                             "Pca9685.cxx"
                             "Motions.cxx"
                        INCLUDE_DIRS "."
+                                    "../include"
                                     "${CMAKE_BINARY_DIR}"
                                     "${CMAKE_BINARY_DIR}/include"
                        REQUIRES nvs_flash mqtt esp_http_server

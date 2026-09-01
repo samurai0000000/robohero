@@ -18,6 +18,7 @@
 #include "RoboHero.hxx"
 #include "Servo.hxx"
 #include "Store.hxx"
+#include "robohero/msg.h"
 
 static const char *TAG = "mqtt";
 
@@ -95,13 +96,17 @@ void Mqtt::rebuildTopics()
              _clientId);
 }
 
-bool Mqtt::publishStatus(const char *payload)
+bool Mqtt::publishStatus(const void *payload, int len)
 {
-    if (!_connected || !_client || payload == NULL) {
+    if (!_connected || !_client || payload == NULL || len <= 0) {
         return false;
     }
-    int msgId =
-        esp_mqtt_client_publish(_client, _statusTopic, payload, 0, 0, 0);
+    int msgId = esp_mqtt_client_publish(_client,
+                                        _statusTopic,
+                                        (const char *) payload,
+                                        len,
+                                        0,
+                                        0);
     if (msgId < 0) {
         return false;
     }
@@ -151,7 +156,7 @@ void Mqtt::pubTask(void *arg)
 {
     (void) arg;
     Mqtt &m = instance();
-    char buf[MQTT_STATUS_BUF];
+    uint8_t buf[MQTT_STATUS_BUF];
     int16_t pwm[ALLSERVOS];
     int16_t volt = -1;
     bool havePwm[ALLSERVOS];
@@ -183,31 +188,49 @@ void Mqtt::pubTask(void *arg)
             continue;
         }
 
-        unsigned ts = (unsigned) (esp_timer_get_time() / 1000);
-        int n = snprintf(buf, sizeof(buf), "t=%u", ts);
-        if (n < 0 || n >= (int) sizeof(buf)) {
+        int n = rh_msg_begin(buf, sizeof(buf), RH_MSG_STATUS);
+        if (n < 0) {
+            continue;
+        }
+
+        uint32_t ts = (uint32_t) (esp_timer_get_time() / 1000);
+        n = rh_tlv_put(buf, sizeof(buf), n, RH_TLV_TIME, &ts, sizeof(ts));
+        if (n < 0) {
             continue;
         }
         if (haveVolt) {
-            int w = snprintf(buf + n, sizeof(buf) - (size_t) n,
-                             ",v=%d", (int) volt);
-            if (w < 0 || n + w >= (int) sizeof(buf)) {
+            n = rh_tlv_put(buf,
+                           sizeof(buf),
+                           n,
+                           RH_TLV_VOLTAGE,
+                           &volt,
+                           sizeof(volt));
+            if (n < 0) {
                 continue;
             }
-            n += w;
         }
         for (int i = 0; i < ALLSERVOS; i++) {
+            uint8_t raw[3];
+
             if (!havePwm[i]) {
                 continue;
             }
-            int w = snprintf(buf + n, sizeof(buf) - (size_t) n,
-                             ",c%d=%d", i, (int) pwm[i]);
-            if (w < 0 || n + w >= (int) sizeof(buf)) {
+            raw[0] = (uint8_t) i;
+            memcpy(raw + 1, &pwm[i], sizeof(pwm[i]));
+            n = rh_tlv_put(
+                buf, sizeof(buf), n, RH_TLV_SERVO, raw, sizeof(raw));
+            if (n < 0) {
                 break;
             }
-            n += w;
         }
-        m.publishStatus(buf);
+        if (n < 0) {
+            continue;
+        }
+        n = rh_msg_finish(buf, n);
+        if (n < 0) {
+            continue;
+        }
+        m.publishStatus(buf, n);
     }
     m._pubTask = NULL;
     vTaskDelete(NULL);
@@ -220,54 +243,65 @@ bool Mqtt::setPwmPos(int chan, int pos)
     return true;
 }
 
-void Mqtt::onControl(const char *data, int len)
+void Mqtt::onControl(const void *data, int len)
 {
-    char buf[128];
-    if (data == NULL || len <= 0) {
+    rh_msg_view view;
+    RoboHero &rh = RoboHero::instance();
+    int off;
+
+    if (rh_msg_parse(data, len, &view) != 0) {
         return;
     }
-    if (len >= (int) sizeof(buf)) {
-        len = (int) sizeof(buf) - 1;
-    }
-    memcpy(buf, data, (size_t) len);
-    buf[len] = '\0';
-    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r' ||
-                       buf[len - 1] == ' ')) {
-        buf[--len] = '\0';
-    }
 
-    RoboHero &rh = RoboHero::instance();
-    if (strcmp(buf, "stop") == 0) {
+    switch (view.msg_type) {
+    case RH_MSG_STOP:
         rh.requestStop();
         return;
-    }
-    if (strcmp(buf, "center") == 0) {
+    case RH_MSG_CENTER:
         rh.submitCenter();
         return;
-    }
-    if (strcmp(buf, "zero") == 0) {
+    case RH_MSG_ZERO:
         rh.submitZero();
         return;
-    }
-    if (strcmp(buf, "relax") == 0) {
+    case RH_MSG_RELAX:
         rh.submitRelax();
         return;
+    default:
+        break;
     }
 
-    int id = 0;
-    if (sscanf(buf, "pm=%d", &id) == 1 || sscanf(buf, "pm %d", &id) == 1) {
-        rh.submitPm(id);
-        return;
-    }
-    if (sscanf(buf, "pms=%d", &id) == 1 || sscanf(buf, "pms %d", &id) == 1) {
-        rh.submitPms(id);
-        return;
-    }
-
-    int chan = 0;
-    int pos = 0;
-    if (sscanf(buf, "chan=%d pos=%d", &chan, &pos) == 2) {
-        setPwmPos(chan, pos);
+    off = 0;
+    while (off < (int) view.payload_len) {
+        uint8_t type;
+        uint8_t n;
+        const uint8_t *val;
+        int next = rh_tlv_next(
+            view.payload, view.payload_len, off, &type, &val, &n);
+        if (next < 0) {
+            return;
+        }
+        if (view.msg_type == RH_MSG_PM && type == RH_TLV_PROG &&
+            n == sizeof(int16_t)) {
+            int16_t id;
+            memcpy(&id, val, sizeof(id));
+            rh.submitPm((int) id);
+            return;
+        }
+        if (view.msg_type == RH_MSG_PMS && type == RH_TLV_PROG &&
+            n == sizeof(int16_t)) {
+            int16_t id;
+            memcpy(&id, val, sizeof(id));
+            rh.submitPms((int) id);
+            return;
+        }
+        if (view.msg_type == RH_MSG_SET_PWM && type == RH_TLV_SERVO &&
+            n == sizeof(rh_tlv_servo)) {
+            rh_tlv_servo s;
+            memcpy(&s, val, sizeof(s));
+            setPwmPos((int) s.chan, (int) s.pos);
+            return;
+        }
+        off = next;
     }
 }
 
