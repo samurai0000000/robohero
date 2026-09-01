@@ -1,11 +1,11 @@
 /*
- * robohero_config.h
+ * Config.hxx
  *
  * Copyright (C) 2026, Charles Chiou
  */
 
-#ifndef ROBOHERO_CONFIG_H
-#define ROBOHERO_CONFIG_H
+#ifndef ROBOHERO_CONFIG_HXX
+#define ROBOHERO_CONFIG_HXX
 
 #include <stddef.h>
 #include <stdint.h>
@@ -64,7 +64,7 @@
 #define STORE_KEY_PWM_FREQ     18
 #define STORE_KEY_VOLTAGE_CAL  19
 
-enum robohero_wifi_mode {
+enum RoboHeroWifiMode {
     ROBOHERO_WIFI_STA = 0,
     ROBOHERO_WIFI_AP = 1,
     ROBOHERO_WIFI_AP_STA = 2,

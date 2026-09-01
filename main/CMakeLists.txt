@@ -1,4 +1,14 @@
-idf_component_register(SRCS "app_main.c"
+idf_component_register(SRCS "app_main.cxx"
+                            "RoboHero.cxx"
+                            "Mqtt.cxx"
+                            "Store.cxx"
+                            "Servo.cxx"
+                            "Shell.cxx"
+                            "Web.cxx"
+                            "Pca9685.cxx"
+                            "Motions.cxx"
                        INCLUDE_DIRS "."
-                       REQUIRES robohero_app robohero_web robohero_shell
-                                robohero_config nvs_flash)
+                                    "${CMAKE_BINARY_DIR}"
+                                    "${CMAKE_BINARY_DIR}/include"
+                       REQUIRES nvs_flash mqtt esp_http_server
+                       EMBED_FILES "index.html" "calibrate.html")

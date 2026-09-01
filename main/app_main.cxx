@@ -1,5 +1,5 @@
 /*
- * app_main.c
+ * app_main.cxx
  *
  * Copyright (C) 2026, Charles Chiou
  */
@@ -8,15 +8,22 @@
 #include "esp_system.h"
 #include "nvs_flash.h"
 
-#include "robohero_app.h"
-#include "robohero_shell.h"
-#include "robohero_web.h"
+#include "Mqtt.hxx"
+#include "RoboHero.hxx"
+#include "Shell.hxx"
+#include "Store.hxx"
+#include "Web.hxx"
 
 static const char *TAG = "main";
 
-void app_main(void)
+static void wifiUpStartWeb(void)
 {
-    robohero_console_begin();
+    Web::instance().start();
+}
+
+extern "C" void app_main(void)
+{
+    RoboHero::consoleBegin();
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
@@ -25,11 +32,15 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(err);
 
-    robohero_app_on_wifi_up(web_start);
-    robohero_app_start();
+    RoboHero::instance().onWifiUp(wifiUpStartWeb);
+    RoboHero::instance().start();
 
-    if (robohero_app_wifi_ready()) {
-        web_start();
+    if (RoboHero::instance().wifiReady()) {
+        Web::instance().start();
+    }
+
+    if (Store::instance().mqttEnabled() && RoboHero::instance().wifiReady()) {
+        Mqtt::instance().start();
     }
 
     uint32_t heap = esp_get_free_heap_size();
@@ -38,7 +49,7 @@ void app_main(void)
         ESP_LOGE(TAG, "heap below 12 KB after bring-up");
     }
 
-    shell_start();
+    Shell::instance().start();
 }
 
 /*

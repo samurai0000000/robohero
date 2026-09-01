@@ -1,18 +1,21 @@
 /*
- * pca9685.c
+ * Pca9685.cxx
  *
  * Copyright (C) 2026, Charles Chiou
  */
+
+#include <string.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
+#include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
 
-#include "pca9685.h"
-#include "robohero_config.h"
+#include "Config.hxx"
+#include "Pca9685.hxx"
 
 #define MODE1         0x00
 #define PRESCALE      0xFE
@@ -22,9 +25,17 @@
 #define MODE1_RESTART 0x80
 
 static const char *TAG = "pca9685";
-static SemaphoreHandle_t s_i2c_mutex;
 
-static esp_err_t i2c_write_bytes(const uint8_t *data, size_t len)
+Pca9685 Pca9685::_self;
+
+Pca9685 &Pca9685::instance()
+{
+    return _self;
+}
+
+Pca9685::Pca9685() : _i2cMutex(NULL) {}
+
+esp_err_t Pca9685::i2cWriteBytes(const uint8_t *data, size_t len)
 {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if (cmd == NULL) {
@@ -39,13 +50,13 @@ static esp_err_t i2c_write_bytes(const uint8_t *data, size_t len)
     return err;
 }
 
-static esp_err_t i2c_write_reg(uint8_t reg, uint8_t val)
+esp_err_t Pca9685::i2cWriteReg(uint8_t reg, uint8_t val)
 {
     uint8_t buf[2] = { reg, val };
-    return i2c_write_bytes(buf, sizeof(buf));
+    return i2cWriteBytes(buf, sizeof(buf));
 }
 
-static esp_err_t i2c_read_reg(uint8_t reg, uint8_t *val)
+esp_err_t Pca9685::i2cReadReg(uint8_t reg, uint8_t *val)
 {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if (cmd == NULL) {
@@ -63,34 +74,34 @@ static esp_err_t i2c_read_reg(uint8_t reg, uint8_t *val)
     return err;
 }
 
-static void lock_i2c(void)
+void Pca9685::lockI2c()
 {
-    if (s_i2c_mutex) {
-        xSemaphoreTake(s_i2c_mutex, portMAX_DELAY);
+    if (_i2cMutex) {
+        xSemaphoreTake((SemaphoreHandle_t) _i2cMutex, portMAX_DELAY);
     }
 }
 
-static void unlock_i2c(void)
+void Pca9685::unlockI2c()
 {
-    if (s_i2c_mutex) {
-        xSemaphoreGive(s_i2c_mutex);
+    if (_i2cMutex) {
+        xSemaphoreGive((SemaphoreHandle_t) _i2cMutex);
     }
 }
 
-esp_err_t pca9685_init(void)
+esp_err_t Pca9685::init()
 {
-    if (s_i2c_mutex == NULL) {
-        s_i2c_mutex = xSemaphoreCreateMutex();
+    if (_i2cMutex == NULL) {
+        _i2cMutex = xSemaphoreCreateMutex();
     }
 
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_SDA_PIN,
-        .sda_pullup_en = 1,
-        .scl_io_num = I2C_SCL_PIN,
-        .scl_pullup_en = 1,
-        .clk_stretch_tick = 300,
-    };
+    i2c_config_t conf;
+    memset(&conf, 0, sizeof(conf));
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = (gpio_num_t) I2C_SDA_PIN;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_io_num = (gpio_num_t) I2C_SCL_PIN;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.clk_stretch_tick = 300;
 
     esp_err_t err = i2c_driver_install(I2C_NUM_0, conf.mode);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
@@ -103,9 +114,9 @@ esp_err_t pca9685_init(void)
         return err;
     }
 
-    lock_i2c();
-    err = i2c_write_reg(MODE1, MODE1_RESTART);
-    unlock_i2c();
+    lockI2c();
+    err = i2cWriteReg(MODE1, MODE1_RESTART);
+    unlockI2c();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "PCA9685 reset failed: %s", esp_err_to_name(err));
         return err;
@@ -114,45 +125,45 @@ esp_err_t pca9685_init(void)
     return ESP_OK;
 }
 
-esp_err_t pca9685_set_pwm_freq(int freq_hz)
+esp_err_t Pca9685::setPwmFreq(int freqHz)
 {
-    if (freq_hz < 30) {
-        freq_hz = 30;
+    if (freqHz < 30) {
+        freqHz = 30;
     }
-    if (freq_hz > 200) {
-        freq_hz = 200;
+    if (freqHz > 200) {
+        freqHz = 200;
     }
 
-    float prescaleval = 25000000.0f / (4096.0f * (float) freq_hz) - 1.0f;
+    float prescaleval = 25000000.0f / (4096.0f * (float) freqHz) - 1.0f;
     uint8_t prescale = (uint8_t) (prescaleval + 0.5f);
 
-    lock_i2c();
+    lockI2c();
     uint8_t oldmode = 0;
-    esp_err_t err = i2c_read_reg(MODE1, &oldmode);
+    esp_err_t err = i2cReadReg(MODE1, &oldmode);
     if (err == ESP_OK) {
         uint8_t sleep = (oldmode & 0x7f) | MODE1_SLEEP;
-        err = i2c_write_reg(MODE1, sleep);
+        err = i2cWriteReg(MODE1, sleep);
         if (err == ESP_OK) {
-            err = i2c_write_reg(PRESCALE, prescale);
+            err = i2cWriteReg(PRESCALE, prescale);
         }
         if (err == ESP_OK) {
-            err = i2c_write_reg(MODE1, oldmode);
+            err = i2cWriteReg(MODE1, oldmode);
         }
     }
-    unlock_i2c();
+    unlockI2c();
     if (err != ESP_OK) {
         return err;
     }
 
     vTaskDelay(pdMS_TO_TICKS(5));
 
-    lock_i2c();
-    err = i2c_write_reg(MODE1, oldmode | MODE1_RESTART | MODE1_AI);
-    unlock_i2c();
+    lockI2c();
+    err = i2cWriteReg(MODE1, oldmode | MODE1_RESTART | MODE1_AI);
+    unlockI2c();
     return err;
 }
 
-esp_err_t pca9685_set_pwm(int channel, uint16_t on, uint16_t off)
+esp_err_t Pca9685::setPwm(int channel, uint16_t on, uint16_t off)
 {
     if (channel < 0 || channel > 15) {
         return ESP_ERR_INVALID_ARG;
@@ -166,9 +177,9 @@ esp_err_t pca9685_set_pwm(int channel, uint16_t on, uint16_t off)
         (uint8_t) (off >> 8),
     };
 
-    lock_i2c();
-    esp_err_t err = i2c_write_bytes(buf, sizeof(buf));
-    unlock_i2c();
+    lockI2c();
+    esp_err_t err = i2cWriteBytes(buf, sizeof(buf));
+    unlockI2c();
     return err;
 }
 

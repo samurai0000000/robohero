@@ -20,6 +20,12 @@ endif
 
 PROJECT_NAME := robohero
 
+# libstdc++ thread-safe function-local statics call pthread_cond_wait
+# and throw on failure. ESP8266 pthread cannot support that; the first
+# Meyers singleton then aborts in libgcc unwind.
+EXTRA_CXXFLAGS += -fno-threadsafe-statics
+
+
 # Standalone wipe so distclean works even if the SDK tree is incomplete.
 # Does not touch sdkconfig.defaults.
 ifeq ($(filter distclean,$(MAKECMDGOALS)),distclean)

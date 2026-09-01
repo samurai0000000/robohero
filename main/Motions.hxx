@@ -1,13 +1,13 @@
 /*
- * robohero_motions.h
+ * Motions.hxx
  *
  * Copyright (C) 2026, Charles Chiou
  */
 
-#ifndef ROBOHERO_MOTIONS_H
-#define ROBOHERO_MOTIONS_H
+#ifndef ROBOHERO_MOTIONS_HXX
+#define ROBOHERO_MOTIONS_HXX
 
-#include "robohero_config.h"
+#include "Config.hxx"
 
 extern const int Servo_Act_0[];
 extern const int Servo_Act_1[];
