@@ -21,7 +21,10 @@ dev: install
 	@$(NPM) run dev
 
 preview: build
-	@$(NPM) run preview
+	npm run preview
+
+serve: build
+	npm run serve
 
 clean:
 	@rm -rf dist node_modules

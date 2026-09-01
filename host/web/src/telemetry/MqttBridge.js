@@ -96,10 +96,11 @@ export class MqttBridge {
       this.client.on('connect', () => {
         this.isConnected = true;
         if (this.onStatusChange) this.onStatusChange('connected');
-        const statusTopic = `${this.config.robotId}/status`;
-        this.client.subscribe(statusTopic, (err) => {
-          if (err) console.error(`Failed to subscribe to ${statusTopic}`, err);
-          else console.log(`Subscribed to ${statusTopic}`);
+        const specificTopic = `robot/robohero/${this.config.robotId}/status`;
+        const wildcardTopic = `robot/robohero/+/status`;
+        this.client.subscribe([specificTopic, wildcardTopic], (err) => {
+          if (err) console.error(`Failed to subscribe to status topics`, err);
+          else console.log(`Subscribed to ${specificTopic} & ${wildcardTopic}`);
         });
       });
 
@@ -111,7 +112,10 @@ export class MqttBridge {
       this.client.on('error', (err) => {
         console.error('MQTT Error:', err);
         this.isConnected = false;
-        if (this.onStatusChange) this.onStatusChange('error', err);
+        if (this.onStatusChange) this.onStatusChange('error', err.message || 'Connection error');
+        if (err.message && (err.message.includes('Not authorized') || err.message.includes('Bad username_or_password'))) {
+          this.client.end(true); // Don't loop retry bad credentials
+        }
       });
 
       this.client.on('message', (topic, payload) => {
@@ -133,7 +137,7 @@ export class MqttBridge {
   }
 
   handleMessage(topic, payload) {
-    if (payload.byteLength < 6) return;
+    if (!payload || payload.byteLength < 6) return;
     const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
 
     const magic = view.getUint32(0, true);
@@ -174,8 +178,43 @@ export class MqttBridge {
     view.setUint8(4, msgType);
     view.setUint8(5, 0); // payload len = 0
 
-    const cmdTopic = `${this.config.robotId}/cmd`;
-    this.client.publish(cmdTopic, buf);
+    const ctrlTopic = `robot/robohero/${this.config.robotId}/control`;
+    console.log(`[MQTT TX] -> ${ctrlTopic} (cmd type: ${msgType})`);
+    this.client.publish(ctrlTopic, buf);
+    return true;
+  }
+
+  sendCenter() {
+    return this.sendSimpleCmd(RH_MSG_CENTER);
+  }
+
+  sendZero() {
+    return this.sendSimpleCmd(RH_MSG_ZERO);
+  }
+
+  sendRelax() {
+    return this.sendSimpleCmd(RH_MSG_RELAX);
+  }
+
+  sendStop() {
+    return this.sendSimpleCmd(RH_MSG_STOP);
+  }
+
+  sendPm(id) {
+    if (!this.isConnected || !this.client) return false;
+    const buf = new Uint8Array(6 + 4); // header(6) + TLV_PROG(2+2)
+    const view = new DataView(buf.buffer);
+    view.setUint32(0, RH_MSG_MAGIC, true);
+    view.setUint8(4, RH_MSG_PM);
+    view.setUint8(5, 4); // payload len
+
+    view.setUint8(6, RH_TLV_PROG);
+    view.setUint8(7, 2);
+    view.setInt16(8, id, true);
+
+    const ctrlTopic = `robot/robohero/${this.config.robotId}/control`;
+    console.log(`[MQTT TX] -> ${ctrlTopic} (PM ${id})`);
+    this.client.publish(ctrlTopic, buf);
     return true;
   }
 
@@ -192,8 +231,9 @@ export class MqttBridge {
     view.setUint8(8, chan);
     view.setInt16(9, pos, true);
 
-    const cmdTopic = `${this.config.robotId}/cmd`;
-    this.client.publish(cmdTopic, buf);
+    const ctrlTopic = `robot/robohero/${this.config.robotId}/control`;
+    console.log(`[MQTT TX] -> ${ctrlTopic} (CH${chan} -> ${pos})`);
+    this.client.publish(ctrlTopic, buf);
     return true;
   }
 }

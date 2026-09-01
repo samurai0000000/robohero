@@ -81,7 +81,14 @@ class RoboHeroApp {
       if (res.ok) {
         const defaults = await res.json();
         const cfg = this.mqttBridge.loadConfig();
-        this.mqttBridge.saveConfig({ ...defaults, ...cfg });
+        const merged = {
+          brokerUrl: cfg.brokerUrl || defaults.brokerUrl,
+          robotId: cfg.robotId || defaults.robotId,
+          username: (cfg.username !== undefined && cfg.username !== '') ? cfg.username : defaults.username,
+          password: (cfg.password !== undefined && cfg.password !== '') ? cfg.password : defaults.password,
+          autoConnect: cfg.autoConnect !== undefined ? cfg.autoConnect : defaults.autoConnect,
+        };
+        this.mqttBridge.saveConfig(merged);
       }
     } catch (_) {
       this.mqttBridge.loadConfig();
@@ -150,7 +157,7 @@ class RoboHeroApp {
   }
 
   setupPresetButtons() {
-    const bindPreset = (btnId, poseKey, cmdType = null) => {
+    const bindPose = (btnId, poseKey, actionFn) => {
       const btn = document.getElementById(btnId);
       if (!btn) return;
       btn.onclick = () => {
@@ -160,19 +167,19 @@ class RoboHeroApp {
         } else if (poseKey === 'relax') {
           this.showToast('Relax (PWM Stopped)');
         }
-        if (cmdType !== null && this.mqttBridge.isConnected) {
-          this.mqttBridge.sendSimpleCmd(cmdType);
+        if (actionFn && this.mqttBridge.isConnected) {
+          actionFn();
         }
       };
     };
 
-    bindPreset('preset-standby', 'standby', RH_MSG_CENTER);
-    bindPreset('preset-zero', 'zero', RH_MSG_ZERO);
-    bindPreset('preset-relax', 'relax', RH_MSG_RELAX);
-    bindPreset('preset-bow', 'bow');
-    bindPreset('preset-wave', 'wave');
-    bindPreset('preset-ironman', 'ironman');
-    bindPreset('preset-apache', 'apache');
+    bindPose('preset-standby', 'standby', () => this.mqttBridge.sendCenter());
+    bindPose('preset-zero', 'zero', () => this.mqttBridge.sendZero());
+    bindPose('preset-relax', 'relax', () => this.mqttBridge.sendRelax());
+    bindPose('preset-bow', 'bow', () => this.mqttBridge.sendPm(1));
+    bindPose('preset-wave', 'wave', () => this.mqttBridge.sendPm(2));
+    bindPose('preset-ironman', 'ironman', () => this.mqttBridge.sendPm(3));
+    bindPose('preset-apache', 'apache', () => this.mqttBridge.sendPm(4));
   }
 
   setupSequencerUI() {
@@ -273,7 +280,7 @@ class RoboHeroApp {
     const valVoltage = document.getElementById('val-voltage');
     const hudStatus = document.getElementById('hud-sync-status');
 
-    this.mqttBridge.onStatusChange = (status) => {
+    this.mqttBridge.onStatusChange = (status, errorDetail = null) => {
       if (status === 'connected') {
         btnConnect.className = 'btn-connect connected';
         if (txtStatus) txtStatus.textContent = 'MQTT Connected';
@@ -283,6 +290,11 @@ class RoboHeroApp {
         btnConnect.className = 'btn-connect disconnected';
         if (txtStatus) txtStatus.textContent = 'Connecting...';
         if (hudStatus) hudStatus.textContent = 'Connecting...';
+      } else if (status === 'error') {
+        btnConnect.className = 'btn-connect disconnected';
+        if (txtStatus) txtStatus.textContent = 'Auth / Conn Error';
+        if (hudStatus) hudStatus.textContent = 'Auth Failed';
+        this.showToast(`MQTT Error: ${errorDetail || 'Connection failed'}`);
       } else {
         btnConnect.className = 'btn-connect disconnected';
         if (txtStatus) txtStatus.textContent = 'Connect MQTT';
