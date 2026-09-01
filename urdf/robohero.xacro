@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- =================================================================================== -->
+<!-- |    RoboHero 17-DOF Humanoid Robot XACRO Model                                   | -->
+<!-- |    Copyright (C) 2026, Charles Chiou                                            | -->
+<!-- =================================================================================== -->
+<robot name="robohero" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ==================== Parameters & Properties ==================== -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+  <xacro:property name="SERVO_MAX_VEL" value="3.14159"/>
+  <xacro:property name="SERVO_MAX_EFFORT" value="1.5"/>
+
+  <!-- ==================== Macro: Transmission ==================== -->
+  <xacro:macro name="rh_transmission" params="joint_name channel">
+    <transmission name="${joint_name}_tran">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${joint_name}">
+        <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="servo_${channel}">
+        <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+  <!-- Include Core URDF Definition -->
+  <xacro:include filename="$(find robohero)/urdf/robohero.urdf"/>
+
+  <!-- ==================== Hardware Transmissions ==================== -->
+  <!-- Head -->
+  <xacro:rh_transmission joint_name="head_yaw_joint" channel="16"/>
+
+  <!-- Left Arm -->
+  <xacro:rh_transmission joint_name="left_shoulder_pitch_joint" channel="5"/>
+  <xacro:rh_transmission joint_name="left_shoulder_roll_joint" channel="6"/>
+  <xacro:rh_transmission joint_name="left_elbow_joint" channel="7"/>
+
+  <!-- Right Arm -->
+  <xacro:rh_transmission joint_name="right_shoulder_pitch_joint" channel="10"/>
+  <xacro:rh_transmission joint_name="right_shoulder_roll_joint" channel="9"/>
+  <xacro:rh_transmission joint_name="right_elbow_joint" channel="8"/>
+
+  <!-- Left Leg -->
+  <xacro:rh_transmission joint_name="left_hip_roll_joint" channel="4"/>
+  <xacro:rh_transmission joint_name="left_hip_pitch_joint" channel="3"/>
+  <xacro:rh_transmission joint_name="left_knee_pitch_joint" channel="2"/>
+  <xacro:rh_transmission joint_name="left_ankle_pitch_joint" channel="1"/>
+  <xacro:rh_transmission joint_name="left_ankle_roll_joint" channel="0"/>
+
+  <!-- Right Leg -->
+  <xacro:rh_transmission joint_name="right_hip_roll_joint" channel="11"/>
+  <xacro:rh_transmission joint_name="right_hip_pitch_joint" channel="12"/>
+  <xacro:rh_transmission joint_name="right_knee_pitch_joint" channel="13"/>
+  <xacro:rh_transmission joint_name="right_ankle_pitch_joint" channel="14"/>
+  <xacro:rh_transmission joint_name="right_ankle_roll_joint" channel="15"/>
+
+</robot>
