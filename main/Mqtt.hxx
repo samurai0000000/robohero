@@ -23,6 +23,7 @@ class Mqtt
     bool isConnected() const;
     unsigned txCount() const;
     unsigned rxCount() const;
+    unsigned overflowCount() const;
     virtual ~Mqtt();
 
   protected:
@@ -38,7 +39,9 @@ class Mqtt
     static Mqtt _self;
 
     static esp_err_t eventHandler(esp_mqtt_event_handle_t event);
+    static void pubTask(void *arg);
     bool publishStatus(const char *payload);
+    bool enqueueTx(int kind, int a, int b);
     void rebuildTopics();
 
     esp_mqtt_client_handle_t _client;
@@ -46,6 +49,9 @@ class Mqtt
     bool _connected;
     unsigned _txCount;
     unsigned _rxCount;
+    unsigned _overflow;
+    void *_txQueue;
+    void *_pubTask;
     char _clientId[32];
     char _uri[96];
     char _statusTopic[64];

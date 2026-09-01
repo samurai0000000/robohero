@@ -9,6 +9,9 @@
 
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 
 #include "Config.hxx"
 #include "Mqtt.hxx"
@@ -17,6 +20,16 @@
 #include "Store.hxx"
 
 static const char *TAG = "mqtt";
+
+#define MQTT_TX_QUEUE_LEN 10
+#define MQTT_TX_PWM       0
+#define MQTT_TX_VOLTAGE   1
+
+struct TxItem {
+    uint8_t kind;
+    int16_t a;
+    int16_t b;
+};
 
 Mqtt Mqtt::_self;
 
@@ -27,7 +40,7 @@ Mqtt &Mqtt::instance()
 
 Mqtt::Mqtt()
     : _client(NULL), _running(false), _connected(false), _txCount(0),
-      _rxCount(0)
+      _rxCount(0), _overflow(0), _txQueue(NULL), _pubTask(NULL)
 {
     _clientId[0] = '\0';
     _uri[0] = '\0';
@@ -58,6 +71,11 @@ unsigned Mqtt::txCount() const
 unsigned Mqtt::rxCount() const
 {
     return _rxCount;
+}
+
+unsigned Mqtt::overflowCount() const
+{
+    return _overflow;
 }
 
 int Mqtt::getLowCutoff() const
@@ -96,18 +114,56 @@ bool Mqtt::publishStatus(const char *payload)
     return true;
 }
 
+bool Mqtt::enqueueTx(int kind, int a, int b)
+{
+    TxItem item;
+
+    if (!_running || _txQueue == NULL) {
+        return false;
+    }
+    item.kind = (uint8_t) kind;
+    item.a = (int16_t) a;
+    item.b = (int16_t) b;
+    if (xQueueSend((QueueHandle_t) _txQueue, &item, 0) != pdTRUE) {
+        _overflow++;
+        return false;
+    }
+    return true;
+}
+
 bool Mqtt::sendPwmPos(int chan, int pos)
 {
-    char buf[48];
-    snprintf(buf, sizeof(buf), "chan=%d pos=%d", chan, pos);
-    return publishStatus(buf);
+    return enqueueTx(MQTT_TX_PWM, chan, pos);
 }
 
 bool Mqtt::sendVoltage(int voltage)
 {
-    char buf[32];
-    snprintf(buf, sizeof(buf), "voltage=%d", voltage);
-    return publishStatus(buf);
+    return enqueueTx(MQTT_TX_VOLTAGE, voltage, 0);
+}
+
+void Mqtt::pubTask(void *arg)
+{
+    (void) arg;
+    Mqtt &m = instance();
+    TxItem item;
+    char buf[48];
+
+    while (m._running) {
+        if (xQueueReceive((QueueHandle_t) m._txQueue,
+                          &item,
+                          pdMS_TO_TICKS(50)) != pdTRUE) {
+            continue;
+        }
+        if (item.kind == MQTT_TX_VOLTAGE) {
+            snprintf(buf, sizeof(buf), "voltage=%d", (int) item.a);
+        } else {
+            snprintf(buf, sizeof(buf), "chan=%d pos=%d", (int) item.a,
+                     (int) item.b);
+        }
+        m.publishStatus(buf);
+    }
+    m._pubTask = NULL;
+    vTaskDelete(NULL);
 }
 
 bool Mqtt::setPwmPos(int chan, int pos)
@@ -208,6 +264,7 @@ bool Mqtt::start()
 
     _txCount = 0;
     _rxCount = 0;
+    _overflow = 0;
     _connected = false;
 
     strncpy(_clientId, st.getMqttClientId(), sizeof(_clientId) - 1);
@@ -222,6 +279,12 @@ bool Mqtt::start()
     snprintf(
         _uri, sizeof(_uri), "mqtt://%s:%u", host, (unsigned) st.getMqttPort());
     rebuildTopics();
+
+    _txQueue = xQueueCreate(MQTT_TX_QUEUE_LEN, sizeof(TxItem));
+    if (_txQueue == NULL) {
+        ESP_LOGE(TAG, "tx queue create failed");
+        return false;
+    }
 
     esp_mqtt_client_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
@@ -239,29 +302,55 @@ bool Mqtt::start()
     _client = esp_mqtt_client_init(&cfg);
     if (_client == NULL) {
         ESP_LOGE(TAG, "esp_mqtt_client_init failed");
+        vQueueDelete((QueueHandle_t) _txQueue);
+        _txQueue = NULL;
         return false;
     }
     if (esp_mqtt_client_start(_client) != ESP_OK) {
         ESP_LOGE(TAG, "esp_mqtt_client_start failed");
         esp_mqtt_client_destroy(_client);
         _client = NULL;
+        vQueueDelete((QueueHandle_t) _txQueue);
+        _txQueue = NULL;
         return false;
     }
 
     _running = true;
+    TaskHandle_t handle = NULL;
+    if (xTaskCreate(pubTask, "mqttPub", 2048, NULL, 5, &handle) != pdPASS) {
+        ESP_LOGE(TAG, "mqttPub task failed");
+        _running = false;
+        esp_mqtt_client_stop(_client);
+        esp_mqtt_client_destroy(_client);
+        _client = NULL;
+        vQueueDelete((QueueHandle_t) _txQueue);
+        _txQueue = NULL;
+        return false;
+    }
+    _pubTask = handle;
+
     ESP_LOGI(TAG, "started %s id %s", _uri, _clientId);
     return true;
 }
 
 void Mqtt::stop()
 {
-    if (_client == NULL) {
-        _running = false;
-        _connected = false;
-        return;
-    }
     _running = false;
     _connected = false;
+
+    while (_pubTask) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    QueueHandle_t q = (QueueHandle_t) _txQueue;
+    _txQueue = NULL;
+    if (q) {
+        vQueueDelete(q);
+    }
+
+    if (_client == NULL) {
+        return;
+    }
     esp_mqtt_client_stop(_client);
     esp_mqtt_client_destroy(_client);
     _client = NULL;

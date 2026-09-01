@@ -841,7 +841,8 @@ static int cmdMqtt(int argc, char **argv)
         shellPrintf("  Manage MQTT TCP client (status/control topics).\n");
         shellPrintf("Commands:\n");
         shellPrintf("  mqtt                            "
-                    "Show running/connected status, settings, TX/RX\n");
+                    "Show running/connected status, settings, "
+                    "TX/RX/overflow\n");
         shellPrintf("  mqtt on                         "
                     "Start MQTT client and save enable\n");
         shellPrintf("  mqtt off                        "
@@ -876,6 +877,7 @@ static int cmdMqtt(int argc, char **argv)
                     cid[0] ? cid : "(auto: TTR-xxxx)");
         shellPrintf("  TX:             %u\n", mq.txCount());
         shellPrintf("  RX:             %u\n", mq.rxCount());
+        shellPrintf("  Overflow:       %u\n", mq.overflowCount());
         return 0;
     }
 

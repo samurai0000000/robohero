@@ -717,7 +717,7 @@ void RoboHero::start()
     Servo::instance().setYield(yieldCancel, NULL);
 
     _cmdQueue = xQueueCreate(CMD_QUEUE_LEN, sizeof(MotionCmd));
-    xTaskCreate(motionTask, "motion", 3072, NULL, 5, NULL);
+    xTaskCreate(motionTask, "motion", 3072, NULL, 6, NULL);
 
     if (_engineering == 1) {
         submitPm(100);
