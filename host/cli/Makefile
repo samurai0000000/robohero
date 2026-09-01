@@ -22,4 +22,4 @@ distclean:
 	@rm -rf $(BUILD_DIR)
 
 run: all
-	@./$(BUILD_DIR)/robohero-host
+	@./$(BUILD_DIR)/robohero_cli

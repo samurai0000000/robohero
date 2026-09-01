@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Extract version from root CMakeLists.txt
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../CMakeLists.txt" ROOT_CMAKELISTS)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../CMakeLists.txt" ROOT_CMAKELISTS)
 string(REGEX MATCH "project\\([ \t\r\n]*robohero[ \t\r\n]+VERSION[ \t\r\n]+([0-9]+)\\.([0-9]+)\\.([0-9]+)" _VER_MATCH "${ROOT_CMAKELISTS}")
 if(_VER_MATCH)
     set(PROJ_VER_MAJOR "${CMAKE_MATCH_1}")
@@ -21,7 +21,7 @@ else()
     set(PROJ_VER "1.0.0")
 endif()
 
-project(robohero-host VERSION ${PROJ_VER} LANGUAGES CXX C)
+project(robohero_cli VERSION ${PROJ_VER} LANGUAGES CXX C)
 
 set(PROJECT_VERSION_MAJOR ${PROJ_VER_MAJOR})
 set(PROJECT_VERSION_MINOR ${PROJ_VER_MINOR})
@@ -54,12 +54,12 @@ execute_process(
 )
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../version.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/version.h
     @ONLY
 )
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../version.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.h
     @ONLY
 )
@@ -78,12 +78,12 @@ set(HOST_SRCS
     main.cxx
 )
 
-add_executable(robohero-host ${HOST_SRCS})
+add_executable(robohero_cli ${HOST_SRCS})
 
-target_include_directories(robohero-host PRIVATE
+target_include_directories(robohero_cli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../main
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../main
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/include
     ${LIBCONFIGPP_INCLUDE_DIRS}
@@ -91,7 +91,7 @@ target_include_directories(robohero-host PRIVATE
     ${NCURSES_INCLUDE_DIRS}
 )
 
-target_link_libraries(robohero-host PRIVATE
+target_link_libraries(robohero_cli PRIVATE
     ${LIBCONFIGPP_LIBRARIES}
     ${LIBMOSQUITTO_LIBRARIES}
     ${NCURSES_LIBRARIES}
