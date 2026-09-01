@@ -8,7 +8,11 @@
 #define ROBOHERO_MQTT_HXX
 
 #include <stdbool.h>
+#include <stdint.h>
+
 #include "mqtt_client.h"
+
+#include "Config.hxx"
 
 class Mqtt
 {
@@ -23,7 +27,7 @@ class Mqtt
     bool isConnected() const;
     unsigned txCount() const;
     unsigned rxCount() const;
-    unsigned overflowCount() const;
+    unsigned droppedCount() const;
     virtual ~Mqtt();
 
   protected:
@@ -41,7 +45,8 @@ class Mqtt
     static esp_err_t eventHandler(esp_mqtt_event_handle_t event);
     static void pubTask(void *arg);
     bool publishStatus(const char *payload);
-    bool enqueueTx(int kind, int a, int b);
+    bool enqueuePending(int16_t *slot, int16_t v);
+    void clearPending();
     void rebuildTopics();
 
     esp_mqtt_client_handle_t _client;
@@ -49,8 +54,9 @@ class Mqtt
     bool _connected;
     unsigned _txCount;
     unsigned _rxCount;
-    unsigned _overflow;
-    void *_txQueue;
+    unsigned _dropped;
+    int16_t _pwmPending[ALLSERVOS];
+    int16_t _voltPending;
     void *_pubTask;
     char _clientId[32];
     char _uri[96];
