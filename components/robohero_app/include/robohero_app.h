@@ -40,3 +40,13 @@ void robohero_app_submit_center(void);
 void robohero_app_submit_zero(void);
 
 #endif
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

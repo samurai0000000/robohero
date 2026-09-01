@@ -30,9 +30,9 @@
 #include "robohero_servo.h"
 #include "robohero_store.h"
 
-#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_CONNECTED_BIT  BIT0
 #define WIFI_AP_STARTED_BIT BIT1
-#define CMD_QUEUE_LEN      1
+#define CMD_QUEUE_LEN       1
 
 typedef struct {
     uint8_t type;
@@ -219,8 +219,9 @@ static void check_voltage(void)
         return;
     }
 
-    s_voltage = (s_voltage + map_int((int) adc, 0, 1025, 0,
-                                     servo_get_voltage_value())) / 2;
+    s_voltage = (s_voltage +
+                 map_int((int) adc, 0, 1025, 0, servo_get_voltage_value())) /
+                2;
 
     if (s_engineering == 1) {
         if (s_voltage > 601) {
@@ -369,8 +370,7 @@ bool robohero_app_apply_netif(void)
     }
 
     err = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
-    if (err != ESP_OK &&
-        err != ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) {
+    if (err != ESP_OK && err != ESP_ERR_TCPIP_ADAPTER_DHCP_ALREADY_STOPPED) {
         ESP_LOGE(TAG, "dhcpc_stop: %s", esp_err_to_name(err));
         return false;
     }
@@ -386,8 +386,8 @@ bool robohero_app_apply_netif(void)
         tcpip_adapter_dns_info_t dns;
         memset(&dns, 0, sizeof(dns));
         ip4_addr_set_u32(ip_2_ip4(&dns.ip), dns_addr);
-        err = tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA,
-                                         TCPIP_ADAPTER_DNS_MAIN, &dns);
+        err = tcpip_adapter_set_dns_info(
+            TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &dns);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "set_dns_info: %s", esp_err_to_name(err));
             return false;
@@ -483,14 +483,17 @@ static void start_softap(const char *ssid, const char *pass, uint8_t channel)
     }
     ESP_ERROR_CHECK(esp_wifi_start());
     if (s_wifi_events) {
-        xEventGroupWaitBits(s_wifi_events, WIFI_AP_STARTED_BIT,
-                            pdFALSE, pdTRUE, pdMS_TO_TICKS(3000));
+        xEventGroupWaitBits(s_wifi_events,
+                            WIFI_AP_STARTED_BIT,
+                            pdFALSE,
+                            pdTRUE,
+                            pdMS_TO_TICKS(3000));
     }
     ESP_LOGI(TAG, "AP SSID: %s", ssid);
 }
 
-static void wifi_event_handler(void *arg, esp_event_base_t base,
-                               int32_t id, void *data)
+static void
+wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void) arg;
     (void) data;
@@ -514,7 +517,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t base,
 static bool setup_wifi(void)
 {
     if (uart_escape_pending()) {
-        printf("\nDetected escape key, the  normal booting process is bypassed...\n");
+        printf("\nDetected escape key, the  normal booting process"
+               " is bypassed...\n");
         return false;
     }
 
@@ -525,10 +529,10 @@ static bool setup_wifi(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     esp_wifi_set_ps(WIFI_PS_NONE);
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                                               &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
-                                               &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(
+        WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(
+        IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
 
     uint8_t mode = store_get_wifi_mode();
     const char *ap_ssid = store_get_ap_ssid();
@@ -551,9 +555,11 @@ static bool setup_wifi(void)
 
     wifi_config_t sta_cfg;
     memset(&sta_cfg, 0, sizeof(sta_cfg));
-    strncpy((char *) sta_cfg.sta.ssid, sta_ssid ? sta_ssid : "",
+    strncpy((char *) sta_cfg.sta.ssid,
+            sta_ssid ? sta_ssid : "",
             sizeof(sta_cfg.sta.ssid));
-    strncpy((char *) sta_cfg.sta.password, sta_pass ? sta_pass : "",
+    strncpy((char *) sta_cfg.sta.password,
+            sta_pass ? sta_pass : "",
             sizeof(sta_cfg.sta.password));
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -561,11 +567,14 @@ static bool setup_wifi(void)
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "Connecting to '%s'...", sta_ssid ? sta_ssid : "");
 
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_events, WIFI_CONNECTED_BIT,
-                                           pdFALSE, pdTRUE,
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_events,
+                                           WIFI_CONNECTED_BIT,
+                                           pdFALSE,
+                                           pdTRUE,
                                            pdMS_TO_TICKS(5000));
     if (uart_escape_pending()) {
-        printf("\nDetected escape key, the  normal booting process is bypassed...\n");
+        printf("\nDetected escape key, the  normal booting process"
+               " is bypassed...\n");
         esp_wifi_disconnect();
         return false;
     }
@@ -674,9 +683,20 @@ void robohero_app_start(void)
     if (!uart_escape_pending()) {
         wifi_ok = setup_wifi();
     } else {
-        printf("\nDetected escape key, the  normal booting process is bypassed...\n");
+        printf("\nDetected escape key, the  normal booting process"
+               " is bypassed...\n");
     }
 
     s_voltage_low = 0;
     s_wifi_ready = wifi_ok && store_get_wifi_mode() != ROBOHERO_WIFI_OFF;
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

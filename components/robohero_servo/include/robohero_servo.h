@@ -38,3 +38,13 @@ void servo_set_running_pos(int index, int val);
 void servo_apply_trim(int key, int8_t val);
 
 #endif
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

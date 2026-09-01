@@ -21,7 +21,8 @@ CONFIG_ESP8266_WIFI_NVS_ENABLED=y
 CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_LWIP_TCPIP_TASK_STACK_SIZE=3072
 
-# Browsers send large Cookie/User-Agent/sec-ch-ua headers (default 512 is too small).
+# Browsers send large Cookie/User-Agent/sec-ch-ua headers
+# (default 512 is too small).
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=2048
 CONFIG_HTTPD_MAX_URI_LEN=1024
 

@@ -65,3 +65,13 @@ const char *store_key_name(int key);
 const char *store_wifi_mode_name(uint8_t mode);
 
 #endif
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

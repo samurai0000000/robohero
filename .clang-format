@@ -1,0 +1,42 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+ColumnLimit: 80
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+
+# BSD/KNF: function brace on the next line, control braces attached.
+BreakBeforeBraces: Linux
+
+PointerAlignment: Right
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpacesInContainerLiterals: false
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: true
+
+AlignAfterOpenBracket: Align
+AlignOperands: true
+AlignTrailingComments: true
+AlignConsecutiveMacros: Consecutive
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+
+ReflowComments: true
+SortIncludes: Never
+IncludeBlocks: Preserve
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+PenaltyBreakString: 25
+PenaltyExcessCharacter: 1000000
+...

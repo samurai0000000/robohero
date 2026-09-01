@@ -64,7 +64,9 @@ static void print_version_block(void)
     shell_printf("The RoboHero Firmware\n");
     shell_printf("Version: %s\n", MYPROJECT_VERSION_STRING);
     shell_printf("Built: %s@%s %s\n",
-                 MYPROJECT_WHOAMI, MYPROJECT_HOSTNAME, MYPROJECT_DATE);
+                 MYPROJECT_WHOAMI,
+                 MYPROJECT_HOSTNAME,
+                 MYPROJECT_DATE);
     shell_printf("-------------------------------------------\n");
     shell_printf("Copyright (C) 2026, Charles Chiou\n");
 }
@@ -193,15 +195,23 @@ static int cmd_eeprom(int argc, char **argv)
     if (argc >= 2 &&
         (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         shell_printf("Usage: %s [-h|--help] [command] [args...]\n", argv[0]);
-        shell_printf("  Manage EEPROM parameter storage and calibration values.\n");
+        shell_printf("  Manage EEPROM parameter storage and "
+                     "calibration values.\n");
         shell_printf("Commands:\n");
-        shell_printf("  eeprom                         Display all EEPROM parameters and values\n");
-        shell_printf("  eeprom get <key>               Read parameter at key index (0..19)\n");
-        shell_printf("  eeprom set <key> <val>         Write parameter at key index (-125..125)\n");
-        shell_printf("  eeprom load                    Reload all parameters from physical EEPROM\n");
-        shell_printf("  eeprom save                    Save in-memory parameter cache to EEPROM\n");
-        shell_printf("  eeprom reset [trims|all]       Reset servo trims or all parameters to default\n");
-        shell_printf("  eeprom factory-reset           Reset all settings to compiled defaults\n");
+        shell_printf("  eeprom                         "
+                     "Display all EEPROM parameters and values\n");
+        shell_printf("  eeprom get <key>               "
+                     "Read parameter at key index (0..19)\n");
+        shell_printf("  eeprom set <key> <val>         "
+                     "Write parameter at key index (-125..125)\n");
+        shell_printf("  eeprom load                    "
+                     "Reload all parameters from physical EEPROM\n");
+        shell_printf("  eeprom save                    "
+                     "Save in-memory parameter cache to EEPROM\n");
+        shell_printf("  eeprom reset [trims|all]       "
+                     "Reset servo trims or all parameters to default\n");
+        shell_printf("  eeprom factory-reset           "
+                     "Reset all settings to compiled defaults\n");
         return 0;
     }
 
@@ -209,21 +219,31 @@ static int cmd_eeprom(int argc, char **argv)
         shell_printf("NVS Parameters (Valid: Yes):\n");
         shell_printf(" Key  Value  Name\n");
         for (int i = 0; i < STORE_PARAM_COUNT; i++) {
-            shell_printf(" %3d  %5d  %s\n", i, (int) store_read_key(i), store_key_name(i));
+            shell_printf(" %3d  %5d  %s\n",
+                         i,
+                         (int) store_read_key(i),
+                         store_key_name(i));
         }
         shell_printf("\nWi-Fi & Network:\n");
-        shell_printf("  Boot Wi-Fi Mode: %s\n", store_wifi_mode_name(store_get_wifi_mode()));
+        shell_printf("  Boot Wi-Fi Mode: %s\n",
+                     store_wifi_mode_name(store_get_wifi_mode()));
         shell_printf("  Station SSID:    %s\n", store_get_sta_ssid());
         shell_printf("  SoftAP SSID:     %s\n",
-                     store_get_ap_ssid()[0] ? store_get_ap_ssid() : "(auto: TTR-xxxx)");
-        shell_printf("  SoftAP Channel:  %u\n", (unsigned) store_get_ap_channel());
-        shell_printf("  DHCP Enabled:    %s\n", store_is_dhcp_enabled() ? "Yes" : "No");
+                     store_get_ap_ssid()[0] ? store_get_ap_ssid()
+                                            : "(auto: TTR-xxxx)");
+        shell_printf("  SoftAP Channel:  %u\n",
+                     (unsigned) store_get_ap_channel());
+        shell_printf("  DHCP Enabled:    %s\n",
+                     store_is_dhcp_enabled() ? "Yes" : "No");
         return 0;
     }
 
     if (argc == 3 && strcmp(argv[1], "get") == 0) {
         int key = atoi(argv[2]);
-        shell_printf("Key %d (%s) = %d\n", key, store_key_name(key), (int) store_read_key(key));
+        shell_printf("Key %d (%s) = %d\n",
+                     key,
+                     store_key_name(key),
+                     (int) store_read_key(key));
         return 0;
     }
 
@@ -241,20 +261,24 @@ static int cmd_eeprom(int argc, char **argv)
             servo_set_voltage_value(INPUT_VOLTAGE + (int8_t) val);
             robohero_app_reset_low_voltage();
         }
-        shell_printf("Set key %d (%s) = %d [saved]\n", key, store_key_name(key), val);
+        shell_printf(
+            "Set key %d (%s) = %d [saved]\n", key, store_key_name(key), val);
         return 0;
     }
 
     if (argc == 2 && strcmp(argv[1], "load") == 0) {
-        shell_printf(store_load() ? "NVS reloaded.\n" : "Failed to reload NVS!\n");
+        shell_printf(store_load() ? "NVS reloaded.\n"
+                                  : "Failed to reload NVS!\n");
         return 0;
     }
     if (argc == 2 && strcmp(argv[1], "save") == 0) {
-        shell_printf(store_save() ? "NVS committed.\n" : "Failed to save NVS!\n");
+        shell_printf(store_save() ? "NVS committed.\n"
+                                  : "Failed to save NVS!\n");
         return 0;
     }
     if ((argc >= 2 && strcmp(argv[1], "factory-reset") == 0) ||
-        (argc >= 3 && strcmp(argv[1], "reset") == 0 && strcmp(argv[2], "all") == 0)) {
+        (argc >= 3 && strcmp(argv[1], "reset") == 0 &&
+         strcmp(argv[2], "all") == 0)) {
         store_factory_reset(true);
         shell_printf("Factory defaults saved.\n");
         return 0;
@@ -274,16 +298,25 @@ static int cmd_wifi(int argc, char **argv)
     if (argc >= 2 &&
         (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         shell_printf("Usage: %s [-h|--help] [command] [args...]\n", argv[0]);
-        shell_printf("  Manage Wi-Fi connection and station/AP configuration.\n");
+        shell_printf("  Manage Wi-Fi connection and station/AP "
+                     "configuration.\n");
         shell_printf("Commands:\n");
-        shell_printf("  wifi                           Show current Wi-Fi status and configured settings\n");
-        shell_printf("  wifi scan                      Scan for available Wi-Fi networks\n");
-        shell_printf("  wifi connect [<ssid> <pass>]   Connect to Wi-Fi (uses/saves to EEPROM)\n");
-        shell_printf("  wifi ap [<ssid> <pass> [ch]]   Start Access Point (uses/saves to EEPROM)\n");
-        shell_printf("  wifi set-mode <sta|ap|ap-sta|off>  Set boot Wi-Fi mode in EEPROM\n");
-        shell_printf("  wifi set-sta <ssid> [pass]     Save Station credentials to EEPROM\n");
-        shell_printf("  wifi set-ap <ssid> [pass] [ch] Save Access Point credentials to EEPROM\n");
-        shell_printf("  wifi disconnect                Disconnect from Wi-Fi network\n");
+        shell_printf("  wifi                           "
+                     "Show current Wi-Fi status and configured settings\n");
+        shell_printf("  wifi scan                      "
+                     "Scan for available Wi-Fi networks\n");
+        shell_printf("  wifi connect [<ssid> <pass>]   "
+                     "Connect to Wi-Fi (uses/saves to EEPROM)\n");
+        shell_printf("  wifi ap [<ssid> <pass> [ch]]   "
+                     "Start Access Point (uses/saves to EEPROM)\n");
+        shell_printf("  wifi set-mode <sta|ap|ap-sta|off>  "
+                     "Set boot Wi-Fi mode in EEPROM\n");
+        shell_printf("  wifi set-sta <ssid> [pass]     "
+                     "Save Station credentials to EEPROM\n");
+        shell_printf("  wifi set-ap <ssid> [pass] [ch] "
+                     "Save Access Point credentials to EEPROM\n");
+        shell_printf("  wifi disconnect                "
+                     "Disconnect from Wi-Fi network\n");
         return 0;
     }
 
@@ -304,7 +337,8 @@ static int cmd_wifi(int argc, char **argv)
 
         if (mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) {
             tcpip_adapter_ip_info_t ip;
-            if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip) == ESP_OK) {
+            if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip) ==
+                ESP_OK) {
                 shell_printf("  STA IP:        " IPSTR "\n", IP2STR(&ip.ip));
             }
         }
@@ -315,10 +349,12 @@ static int cmd_wifi(int argc, char **argv)
             }
         }
         shell_printf("\nNVS Wi-Fi Settings:\n");
-        shell_printf("  Boot Mode:     %s\n", store_wifi_mode_name(store_get_wifi_mode()));
+        shell_printf("  Boot Mode:     %s\n",
+                     store_wifi_mode_name(store_get_wifi_mode()));
         shell_printf("  Stored STA:    %s\n", store_get_sta_ssid());
         shell_printf("  Stored AP:     %s (Ch: %u)\n",
-                     store_get_ap_ssid()[0] ? store_get_ap_ssid() : "(auto: TTR-xxxx)",
+                     store_get_ap_ssid()[0] ? store_get_ap_ssid()
+                                            : "(auto: TTR-xxxx)",
                      (unsigned) store_get_ap_channel());
         return 0;
     }
@@ -346,7 +382,9 @@ static int cmd_wifi(int argc, char **argv)
             shell_printf("Found %u networks:\n", (unsigned) n);
             for (uint16_t i = 0; i < n; i++) {
                 shell_printf("  %-32s  %4d  %4d dBm\n",
-                             recs[i].ssid, recs[i].primary, recs[i].rssi);
+                             recs[i].ssid,
+                             recs[i].primary,
+                             recs[i].rssi);
             }
         }
         free(recs);
@@ -364,7 +402,9 @@ static int cmd_wifi(int argc, char **argv)
         wifi_config_t cfg;
         memset(&cfg, 0, sizeof(cfg));
         strncpy((char *) cfg.sta.ssid, ssid ? ssid : "", sizeof(cfg.sta.ssid));
-        strncpy((char *) cfg.sta.password, pass ? pass : "", sizeof(cfg.sta.password));
+        strncpy((char *) cfg.sta.password,
+                pass ? pass : "",
+                sizeof(cfg.sta.password));
         shell_printf("Connecting to '%s'...\n", ssid ? ssid : "");
         esp_wifi_set_mode(WIFI_MODE_STA);
         esp_wifi_set_config(ESP_IF_WIFI_STA, &cfg);
@@ -381,7 +421,8 @@ static int cmd_wifi(int argc, char **argv)
         if (ssid == NULL || ssid[0] == '\0') {
             uint8_t mac[6];
             esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
-            snprintf(auto_ssid, sizeof(auto_ssid), "TTR-%02x%02x", mac[4], mac[5]);
+            snprintf(
+                auto_ssid, sizeof(auto_ssid), "TTR-%02x%02x", mac[4], mac[5]);
             ssid = auto_ssid;
         }
         if (argc >= 3) {
@@ -425,7 +466,8 @@ static int cmd_wifi(int argc, char **argv)
             return -1;
         }
         store_set_wifi_mode(mode, true);
-        shell_printf("Boot Wi-Fi mode set to: %s [saved]\n", store_wifi_mode_name(mode));
+        shell_printf("Boot Wi-Fi mode set to: %s [saved]\n",
+                     store_wifi_mode_name(mode));
         return 0;
     }
 
@@ -441,7 +483,8 @@ static int cmd_wifi(int argc, char **argv)
         store_set_ap_ssid(argv[2], false);
         store_set_ap_password(argc >= 4 ? argv[3] : "", false);
         store_set_ap_channel((uint8_t) ch, true);
-        shell_printf("AP credentials saved (SSID: '%s', Ch: %d)\n", argv[2], ch);
+        shell_printf(
+            "AP credentials saved (SSID: '%s', Ch: %d)\n", argv[2], ch);
         return 0;
     }
 
@@ -460,19 +503,31 @@ static int cmd_net(int argc, char **argv)
     if (argc >= 2 &&
         (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         shell_printf("Usage: %s [-h|--help] [command] [args...]\n", argv[0]);
-        shell_printf("  Manage IP networking and DNS (STA). Settings save to EEPROM.\n");
+        shell_printf("  Manage IP networking and DNS (STA). "
+                     "Settings save to EEPROM.\n");
         shell_printf("Commands:\n");
-        shell_printf("  net                                    Show live IP and DNS\n");
-        shell_printf("  net nvm                                Show stored IP config\n");
-        shell_printf("  net apply                              Apply stored config to STA\n");
-        shell_printf("  net dhcp <on|off>                      Enable or disable DHCP\n");
-        shell_printf("  net ip dhcp                            Enable DHCP (alias)\n");
-        shell_printf("  net ip <ip> netmask <mask> gw <gw>     Set static IP, mask, gateway\n");
-        shell_printf("  net ip <ip>                            Set stored static IP\n");
-        shell_printf("  net netmask <mask>                     Set stored netmask\n");
-        shell_printf("  net gateway <gw>                       Set stored gateway\n");
-        shell_printf("  net dns <ip>                           Set stored DNS\n");
-        shell_printf("  net static <ip> <mask> <gw> [dns]      Set static config (alias)\n");
+        shell_printf("  net                                    "
+                     "Show live IP and DNS\n");
+        shell_printf("  net nvm                                "
+                     "Show stored IP config\n");
+        shell_printf("  net apply                              "
+                     "Apply stored config to STA\n");
+        shell_printf("  net dhcp <on|off>                      "
+                     "Enable or disable DHCP\n");
+        shell_printf("  net ip dhcp                            "
+                     "Enable DHCP (alias)\n");
+        shell_printf("  net ip <ip> netmask <mask> gw <gw>     "
+                     "Set static IP, mask, gateway\n");
+        shell_printf("  net ip <ip>                            "
+                     "Set stored static IP\n");
+        shell_printf("  net netmask <mask>                     "
+                     "Set stored netmask\n");
+        shell_printf("  net gateway <gw>                       "
+                     "Set stored gateway\n");
+        shell_printf("  net dns <ip>                           "
+                     "Set stored DNS\n");
+        shell_printf("  net static <ip> <mask> <gw> [dns]      "
+                     "Set static config (alias)\n");
         return 0;
     }
 
@@ -481,7 +536,8 @@ static int cmd_net(int argc, char **argv)
         tcpip_adapter_dns_info_t dns;
 
         esp_wifi_get_mode(&mode);
-        shell_printf("%s\n", store_is_dhcp_enabled() ? "(dhcp)" : "(static ip)");
+        shell_printf("%s\n",
+                     store_is_dhcp_enabled() ? "(dhcp)" : "(static ip)");
         if (mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) {
             tcpip_adapter_ip_info_t ip;
             tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip);
@@ -491,8 +547,7 @@ static int cmd_net(int argc, char **argv)
             if (tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA,
                                            TCPIP_ADAPTER_DNS_MAIN,
                                            &dns) == ESP_OK) {
-                shell_printf("dns:     " IPSTR "\n",
-                             IP2STR(ip_2_ip4(&dns.ip)));
+                shell_printf("dns:     " IPSTR "\n", IP2STR(ip_2_ip4(&dns.ip)));
             }
         }
         if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) {
@@ -513,8 +568,8 @@ static int cmd_net(int argc, char **argv)
     }
 
     if (argc >= 3 && strcmp(argv[1], "dhcp") == 0) {
-        bool enable = (strcmp(argv[2], "on") == 0) ||
-                      (strcmp(argv[2], "1") == 0);
+        bool enable =
+            (strcmp(argv[2], "on") == 0) || (strcmp(argv[2], "1") == 0);
         if (!enable && strcmp(argv[2], "off") != 0 &&
             strcmp(argv[2], "0") != 0) {
             shell_printf("syntax error! Type 'net -h' for usage.\n");
@@ -619,31 +674,46 @@ static int cmd_pwm(int argc, char **argv)
     if (argc >= 2 &&
         (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         shell_printf("Usage: %s [-h|--help] [command] [args...]\n", argv[0]);
-        shell_printf("  Manage servo PWM calibration, trims, and positions.\n");
+        shell_printf("  Manage servo PWM calibration, trims, and "
+                     "positions.\n");
         shell_printf("Commands:\n");
-        shell_printf("  pwm                            Show PWM frequency, voltage cal, and trims\n");
-        shell_printf("  pwm freq [<hz>]                Get or set PWM driver frequency (Hz)\n");
-        shell_printf("  pwm trim <servo_id> [<val>]    Get or set trim for servo 0..16 or delay 17\n");
-        shell_printf("  pwm set <servo_id> <pos>       Set raw position (1..270) for servo 0..16\n");
-        shell_printf("  pwm zero                       Move servos to zero alignment pose\n");
-        shell_printf("  pwm center                     Move servos to standby center pose\n");
-        shell_printf("  pwm run <prog_id>              Run motion program (1..6, 11..12, 99, 100)\n");
-        shell_printf("  pwm stop                       Cancel the running motion program\n");
+        shell_printf("  pwm                            "
+                     "Show PWM frequency, voltage cal, and trims\n");
+        shell_printf("  pwm freq [<hz>]                "
+                     "Get or set PWM driver frequency (Hz)\n");
+        shell_printf("  pwm trim <servo_id> [<val>]    "
+                     "Get or set trim for servo 0..16 or delay 17\n");
+        shell_printf("  pwm set <servo_id> <pos>       "
+                     "Set raw position (1..270) for servo 0..16\n");
+        shell_printf("  pwm zero                       "
+                     "Move servos to zero alignment pose\n");
+        shell_printf("  pwm center                     "
+                     "Move servos to standby center pose\n");
+        shell_printf("  pwm run <prog_id>              "
+                     "Run motion program (1..6, 11..12, 99, 100)\n");
+        shell_printf("  pwm stop                       "
+                     "Cancel the running motion program\n");
         return 0;
     }
 
     if (argc == 1) {
         shell_printf("PWM & Calibration Status:\n");
         shell_printf("  PWM Frequency:   %d Hz (base %d + offset %d)\n",
-                     servo_get_pwm_frequency(), PWM_FREQUENCY,
+                     servo_get_pwm_frequency(),
+                     PWM_FREQUENCY,
                      (int) store_get_pwm_freq_trim());
-        shell_printf("  Voltage Setting: %d (base %d + offset %d, current ADC volt %d)\n",
-                     servo_get_voltage_value(), INPUT_VOLTAGE,
-                     (int) store_get_voltage_trim(), robohero_app_get_voltage());
-        shell_printf("  Delay Offset:    %d ms\n", (int) store_get_delay_trim());
+        shell_printf("  Voltage Setting: %d (base %d + offset %d, "
+                     "current ADC volt %d)\n",
+                     servo_get_voltage_value(),
+                     INPUT_VOLTAGE,
+                     (int) store_get_voltage_trim(),
+                     robohero_app_get_voltage());
+        shell_printf("  Delay Offset:    %d ms\n",
+                     (int) store_get_delay_trim());
         shell_printf("\nServo Trims and Running Positions:\n");
         for (int i = 0; i < ALLSERVOS; i++) {
-            shell_printf("  %4d   %4d  %10d  %s\n", i,
+            shell_printf("  %4d   %4d  %10d  %s\n",
+                         i,
                          (int) store_get_servo_trim(i),
                          servo_get_running_pos(i),
                          (i == 16) ? "GPIO 12" : "PCA9685");
@@ -675,14 +745,17 @@ static int cmd_pwm(int argc, char **argv)
         }
         if (strcmp(argv[2], "all") == 0) {
             for (int i = 0; i < ALLMATRIX; i++) {
-                shell_printf("Trim %d (%s) = %d\n", i, store_key_name(i),
+                shell_printf("Trim %d (%s) = %d\n",
+                             i,
+                             store_key_name(i),
                              (int) store_get_matrix_trim(i));
             }
             return 0;
         }
         int id = atoi(argv[2]);
         if (argc == 3) {
-            shell_printf("Servo %d trim = %d\n", id, (int) store_get_matrix_trim(id));
+            shell_printf(
+                "Servo %d trim = %d\n", id, (int) store_get_matrix_trim(id));
             return 0;
         }
         int val = atoi(argv[3]);
@@ -861,3 +934,13 @@ void shell_start(void)
 {
     xTaskCreate(shell_task, "shell", 3072, NULL, 4, NULL);
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

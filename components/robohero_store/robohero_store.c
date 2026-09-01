@@ -378,6 +378,7 @@ bool store_set_static_dns(uint32_t dns, bool auto_save)
 const char *store_key_name(int key)
 {
     static const char *const names[STORE_PARAM_COUNT] = {
+        /* clang-format off */
         "Servo 0 Trim",
         "Servo 1 Trim",
         "Servo 2 Trim",
@@ -398,6 +399,7 @@ const char *store_key_name(int key)
         "Delay Time Offset",
         "PWM Frequency Offset",
         "Voltage Cal Offset",
+        /* clang-format on */
     };
 
     if (key >= 0 && key < STORE_PARAM_COUNT) {
@@ -422,3 +424,13 @@ const char *store_wifi_mode_name(uint8_t mode)
     }
     return "Unknown";
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

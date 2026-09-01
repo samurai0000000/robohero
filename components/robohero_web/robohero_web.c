@@ -25,7 +25,8 @@ extern const uint8_t calibrate_html_end[] asm("_binary_calibrate_html_end");
 
 static void no_cache(httpd_req_t *req)
 {
-    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
+    httpd_resp_set_hdr(
+        req, "Cache-Control", "no-cache, no-store, must-revalidate");
 }
 
 static void send_json(httpd_req_t *req, const char *status, const char *body)
@@ -36,14 +37,16 @@ static void send_json(httpd_req_t *req, const char *status, const char *body)
     httpd_resp_send(req, body, strlen(body));
 }
 
-static void send_html(httpd_req_t *req, const uint8_t *start, const uint8_t *end)
+static void
+send_html(httpd_req_t *req, const uint8_t *start, const uint8_t *end)
 {
     no_cache(req);
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *) start, end - start);
 }
 
-static bool query_get(const char *query, const char *key, char *out, size_t outlen)
+static bool
+query_get(const char *query, const char *key, char *out, size_t outlen)
 {
     return query && httpd_query_key_value(query, key, out, outlen) == ESP_OK;
 }
@@ -59,7 +62,8 @@ static esp_err_t handle_index(httpd_req_t *req)
 
     if (query_get(query, "stop", val, sizeof(val))) {
         bool busy = robohero_app_request_stop();
-        send_json(req, "200 OK",
+        send_json(req,
+                  "200 OK",
                   busy ? "{\"status\":\"ok\",\"stopped\":true}"
                        : "{\"status\":\"ok\",\"stopped\":false}");
         return ESP_OK;
@@ -67,7 +71,8 @@ static esp_err_t handle_index(httpd_req_t *req)
 
     if (query_get(query, "pm", val, sizeof(val))) {
         if (robohero_app_is_low_voltage()) {
-            send_json(req, "503 Service Unavailable", "{\"status\":\"voltage_low\"}");
+            send_json(
+                req, "503 Service Unavailable", "{\"status\":\"voltage_low\"}");
             return ESP_OK;
         }
         int pm = atoi(val);
@@ -80,7 +85,8 @@ static esp_err_t handle_index(httpd_req_t *req)
 
     if (query_get(query, "pms", val, sizeof(val))) {
         if (robohero_app_is_low_voltage()) {
-            send_json(req, "503 Service Unavailable", "{\"status\":\"voltage_low\"}");
+            send_json(
+                req, "503 Service Unavailable", "{\"status\":\"voltage_low\"}");
             return ESP_OK;
         }
         int pms = atoi(val);
@@ -133,9 +139,11 @@ static esp_err_t handle_calibrate(httpd_req_t *req)
             robohero_app_reset_low_voltage();
         }
         char body[96];
-        snprintf(body, sizeof(body),
+        snprintf(body,
+                 sizeof(body),
                  "{\"status\":\"ok\",\"applied\":true,\"key\":%d,\"val\":%d}",
-                 key, ival);
+                 key,
+                 ival);
         send_json(req, "200 OK", body);
         return ESP_OK;
     }
@@ -159,9 +167,11 @@ static esp_err_t handle_calibrate(httpd_req_t *req)
             robohero_app_reset_low_voltage();
         }
         bool saved = store_save();
-        send_json(req, "200 OK",
+        send_json(req,
+                  "200 OK",
                   saved ? "{\"status\":\"ok\",\"msg\":\"Saved to EEPROM!\"}"
-                        : "{\"status\":\"error\",\"msg\":\"Failed to save EEPROM\"}");
+                        : "{\"status\":\"error\","
+                          "\"msg\":\"Failed to save EEPROM\"}");
         return ESP_OK;
     }
 
@@ -169,8 +179,11 @@ static esp_err_t handle_calibrate(httpd_req_t *req)
         char json[160];
         int n = snprintf(json, sizeof(json), "{\"trims\":[");
         for (int i = 0; i <= 19; i++) {
-            n += snprintf(json + n, sizeof(json) - (size_t) n, "%s%d",
-                          (i > 0) ? "," : "", (int) store_read_key(i));
+            n += snprintf(json + n,
+                          sizeof(json) - (size_t) n,
+                          "%s%d",
+                          (i > 0) ? "," : "",
+                          (int) store_read_key(i));
         }
         snprintf(json + n, sizeof(json) - (size_t) n, "]}");
         send_json(req, "200 OK", json);
@@ -184,7 +197,8 @@ static esp_err_t handle_calibrate(httpd_req_t *req)
             robohero_app_submit_center();
         }
         char body[64];
-        snprintf(body, sizeof(body), "{\"status\":\"ok\",\"pose\":\"%s\"}", val);
+        snprintf(
+            body, sizeof(body), "{\"status\":\"ok\",\"pose\":\"%s\"}", val);
         send_json(req, "200 OK", body);
         return ESP_OK;
     }
@@ -227,3 +241,13 @@ void web_start(void)
     httpd_register_uri_handler(s_server, &cal_uri);
     ESP_LOGI(TAG, "HTTP server on port %d", config.server_port);
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

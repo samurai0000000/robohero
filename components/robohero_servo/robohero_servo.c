@@ -50,7 +50,8 @@ void servo_write_gpio12(int val)
     if (val > 180) {
         val = 180;
     }
-    s_head_duty = (uint32_t) map_int(val, 0, 180, HEAD_SERVO_MIN_US, HEAD_SERVO_MAX_US);
+    s_head_duty =
+        (uint32_t) map_int(val, 0, 180, HEAD_SERVO_MIN_US, HEAD_SERVO_MAX_US);
     pwm_set_duty(0, s_head_duty);
     pwm_start();
 }
@@ -69,8 +70,10 @@ void servo_set_pwm(int servo, int val)
 void servo_init(void)
 {
     s_head_duty = HEAD_SERVO_MIN_US +
-        (90 * (HEAD_SERVO_MAX_US - HEAD_SERVO_MIN_US)) / 180;
+                  (90 * (HEAD_SERVO_MAX_US - HEAD_SERVO_MIN_US)) / 180;
     pwm_init(HEAD_PWM_PERIOD_US, &s_head_duty, 1, &s_head_pin);
+    /* SDK leaves channel phase uninitialized; 0 is in-range. */
+    pwm_set_phase(0, 0);
     pwm_start();
 
     if (pca9685_init() != ESP_OK) {
@@ -136,11 +139,15 @@ bool servo_program_run(const int matrix[][ALLMATRIX], int steps)
         for (int step = 0; step < nsteps; step++) {
             for (int s = 0; s < ALLSERVOS; s++) {
                 int from = s_running_pos[s];
-                int to = matrix[main_i][s] + clamp_trim(store_get_servo_trim(s));
+                int to =
+                    matrix[main_i][s] + clamp_trim(store_get_servo_trim(s));
                 if (from == to) {
                     continue;
                 }
-                int delta = map_int(BASEDELAYTIME * step, 0, total, 0,
+                int delta = map_int(BASEDELAYTIME * step,
+                                    0,
+                                    total,
+                                    0,
                                     (from > to) ? (from - to) : (to - from));
                 if (from > to) {
                     if (from - delta >= to) {
@@ -158,7 +165,8 @@ bool servo_program_run(const int matrix[][ALLMATRIX], int steps)
         }
 
         for (int i = 0; i < ALLMATRIX; i++) {
-            s_running_pos[i] = matrix[main_i][i] + clamp_trim(store_get_matrix_trim(i));
+            s_running_pos[i] =
+                matrix[main_i][i] + clamp_trim(store_get_matrix_trim(i));
         }
     }
 
@@ -249,3 +257,13 @@ void servo_apply_trim(int key, int8_t val)
         servo_set_voltage_value(INPUT_VOLTAGE + val);
     }
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

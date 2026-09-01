@@ -14,12 +14,12 @@
 #include "pca9685.h"
 #include "robohero_config.h"
 
-#define MODE1           0x00
-#define PRESCALE        0xFE
-#define LED0_ON_L       0x06
-#define MODE1_SLEEP     0x10
-#define MODE1_AI        0x20
-#define MODE1_RESTART   0x80
+#define MODE1         0x00
+#define PRESCALE      0xFE
+#define LED0_ON_L     0x06
+#define MODE1_SLEEP   0x10
+#define MODE1_AI      0x20
+#define MODE1_RESTART 0x80
 
 static const char *TAG = "pca9685";
 static SemaphoreHandle_t s_i2c_mutex;
@@ -171,3 +171,13 @@ esp_err_t pca9685_set_pwm(int channel, uint16_t on, uint16_t off)
     unlock_i2c();
     return err;
 }
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */
