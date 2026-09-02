@@ -152,7 +152,7 @@
     <parent link="left_shoulder_pitch_link"/>
     <child link="left_upper_arm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.0873" upper="2.9671" effort="1.2" velocity="3.14"/>
+    <limit lower="0.0000" upper="4.7298" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="left_upper_arm_link">
@@ -251,7 +251,7 @@
     <parent link="right_shoulder_pitch_link"/>
     <child link="right_upper_arm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-2.9671" upper="0.0873" effort="1.2" velocity="3.14"/>
+    <limit lower="-4.3284" upper="0.0000" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="right_upper_arm_link">
