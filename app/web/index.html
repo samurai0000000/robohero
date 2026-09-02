@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>RoboHero 3D Studio & Digital Twin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,73 +66,86 @@
   <main class="app-layout">
     <!-- Left Sidebar: Joint Sliders & Presets -->
     <aside class="sidebar" id="control-sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-title">Pose & Joint Controls</span>
-        <div class="sync-toggle-group" title="Sync Mode">
-          <label class="toggle-switch">
-            <input type="checkbox" id="chk-live-send" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label">Sync to Robot</span>
+      <!-- Fixed Top Pane (Always Visible) -->
+      <div class="sidebar-top-pane">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Pose &amp; Joint Controls</span>
+          <div class="sync-toggle-group" title="Sync Mode">
+            <label class="toggle-switch">
+              <input type="checkbox" id="chk-live-send" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Sync to Robot</span>
+          </div>
+        </div>
+
+        <!-- Quick Preset Actions -->
+        <div class="section-card">
+          <div class="section-title">Quick Poses</div>
+          <div class="preset-grid">
+            <button class="btn-preset" id="preset-standby">Standby</button>
+            <button class="btn-preset" id="preset-zero">Zero</button>
+            <button class="btn-preset" id="preset-relax">Relax</button>
+          </div>
+        </div>
+
+        <!-- Locomotion & Recovery -->
+        <div class="section-card">
+          <div class="section-title">Locomotion &amp; Recovery</div>
+          <div class="dpad-grid">
+            <button class="btn-loco" id="btn-turn-left" title="Turn Left (PM 3)">Turn L</button>
+            <button class="btn-loco" id="btn-forward" title="Forward (PM 1)">Forward</button>
+            <button class="btn-loco" id="btn-turn-right" title="Turn Right (PM 4)">Turn R</button>
+            <button class="btn-loco" id="btn-move-left" title="Move Left (PM 5)">Move L</button>
+            <button class="btn-loco-standby" id="btn-loco-standby" title="Standby Center">STANDBY</button>
+            <button class="btn-loco" id="btn-move-right" title="Move Right (PM 6)">Move R</button>
+            <button class="btn-loco-relax" id="btn-loco-relax" title="Relax Servos">Relax</button>
+            <button class="btn-loco" id="btn-backward" title="Backward (PM 2)">Backward</button>
+            <button class="btn-loco-stop" id="btn-loco-stop" title="Emergency Stop">STOP</button>
+          </div>
+          <div class="actions-grid mt-2">
+            <button class="btn-loco" id="btn-get-up" title="Get Up from Back (PM 11)">Get Up</button>
+            <button class="btn-loco" id="btn-get-up-face" title="Face-Down Get Up (PM 12)">Face-Down</button>
+          </div>
+        </div>
+
+        <!-- Actions & Gestures -->
+        <div class="section-card">
+          <div class="section-title">Actions &amp; Gestures</div>
+          <div class="actions-grid">
+            <button class="btn-action" id="btn-action-bow" title="Bow (PMS 1)">Bow</button>
+            <button class="btn-action" id="btn-action-apache" title="Apache (PMS 4)">Apache</button>
+            <button class="btn-action" id="btn-action-wave" title="Waving (PMS 2)">Waving</button>
+            <button class="btn-action" id="btn-action-balance" title="Balance (PMS 5)">Balance</button>
+            <button class="btn-action" id="btn-action-ironman" title="Iron Man (PMS 3)">Iron Man</button>
+            <button class="btn-action" id="btn-action-warmup" title="Warm-Up (PMS 6)">Warm-Up</button>
+            <button class="btn-action" id="btn-action-clap" title="Clap Hands (PMS 7)">Clap Hands</button>
+            <button class="btn-action" id="btn-action-goilc" title="GOILC (PMS 8)">GOILC</button>
+            <button class="btn-action" id="btn-action-dance" title="Dance (PMS 9)">Dance</button>
+            <button class="btn-action btn-auto" id="btn-action-auto" title="Auto Demo Loop (PMS 99)">Auto Demo</button>
+            <button class="btn-action btn-stop-full" id="btn-action-stop" title="Emergency Stop">STOP</button>
+          </div>
         </div>
       </div>
 
-      <!-- Quick Preset Actions -->
-      <div class="section-card">
-        <div class="section-title">Quick Poses</div>
-        <div class="preset-grid">
-          <button class="btn-preset" id="preset-standby">Standby</button>
-          <button class="btn-preset" id="preset-zero">Zero</button>
-          <button class="btn-preset" id="preset-relax">Relax</button>
-        </div>
+      <!-- Vertical Split Resizer between Top Action Pane and Sliders -->
+      <div class="split-resizer split-resizer-row" id="resizer-sidebar-v" title="Drag to resize panel vertically (Double-click to reset)">
+        <div class="resizer-handle-row"></div>
       </div>
 
-      <!-- Locomotion (D-Pad Matching Firmware) -->
-      <div class="section-card">
-        <div class="section-title">Locomotion</div>
-        <div class="dpad-grid">
-          <button class="btn-loco" id="btn-turn-left" title="Turn Left (PM 3)">Turn L</button>
-          <button class="btn-loco" id="btn-forward" title="Forward (PM 1)">Forward</button>
-          <button class="btn-loco" id="btn-turn-right" title="Turn Right (PM 4)">Turn R</button>
-          <button class="btn-loco" id="btn-move-left" title="Move Left (PM 5)">Move L</button>
-          <button class="btn-loco-standby" id="btn-loco-standby" title="Standby Center">STANDBY</button>
-          <button class="btn-loco" id="btn-move-right" title="Move Right (PM 6)">Move R</button>
-          <button class="btn-loco-relax" id="btn-loco-relax" title="Relax Servos">Relax</button>
-          <button class="btn-loco" id="btn-backward" title="Backward (PM 2)">Backward</button>
-          <button class="btn-loco-stop" id="btn-loco-stop" title="Emergency Stop">STOP</button>
+      <!-- Dedicated Scrollable Lower Pane for Sliders -->
+      <div class="sidebar-sliders-pane">
+        <div class="sliders-pane-header">
+          <span class="section-title">Joint Sliders (17 Servos)</span>
         </div>
+        <div id="joint-controls-container" class="joint-controls-scroll"></div>
       </div>
-
-      <!-- Recovery -->
-      <div class="section-card">
-        <div class="section-title">Recovery</div>
-        <div class="actions-grid">
-          <button class="btn-loco" id="btn-get-up" title="Get Up from Back (PM 11)">Get Up</button>
-          <button class="btn-loco" id="btn-get-up-face" title="Face-Down Get Up (PM 12)">Face-Down</button>
-        </div>
-      </div>
-
-      <!-- Actions & Gestures -->
-      <div class="section-card">
-        <div class="section-title">Actions &amp; Gestures</div>
-        <div class="actions-grid">
-          <button class="btn-action" id="btn-action-bow" title="Bow (PMS 1)">Bow</button>
-          <button class="btn-action" id="btn-action-apache" title="Apache (PMS 4)">Apache</button>
-          <button class="btn-action" id="btn-action-wave" title="Waving (PMS 2)">Waving</button>
-          <button class="btn-action" id="btn-action-balance" title="Balance (PMS 5)">Balance</button>
-          <button class="btn-action" id="btn-action-ironman" title="Iron Man (PMS 3)">Iron Man</button>
-          <button class="btn-action" id="btn-action-warmup" title="Warm-Up (PMS 6)">Warm-Up</button>
-          <button class="btn-action" id="btn-action-clap" title="Clap Hands (PMS 7)">Clap Hands</button>
-          <button class="btn-action" id="btn-action-goilc" title="GOILC (PMS 8)">GOILC</button>
-          <button class="btn-action" id="btn-action-dance" title="Dance (PMS 9)">Dance</button>
-          <button class="btn-action btn-auto" id="btn-action-auto" title="Auto Demo Loop (PMS 99)">Auto Demo</button>
-          <button class="btn-action btn-stop-full" id="btn-action-stop" title="Emergency Stop">STOP</button>
-        </div>
-      </div>
-
-      <!-- Joint Sliders Container (dynamically built by LimbControls.js) -->
-      <div id="joint-controls-container"></div>
     </aside>
+
+    <!-- Horizontal Split Resizer (Sidebar Width) -->
+    <div class="split-resizer split-resizer-col" id="resizer-sidebar-h" title="Drag to resize sidebar width (Double-click to reset)">
+      <div class="resizer-handle-col"></div>
+    </div>
 
     <!-- Center 3D Viewport -->
     <section class="viewport-container">
@@ -146,6 +162,11 @@
         <span id="hud-sync-status">Idle</span>
       </div>
     </section>
+
+    <!-- Vertical Split Resizer (Sequencer Dock Height) -->
+    <div class="split-resizer split-resizer-dock" id="resizer-dock-v" title="Drag to resize motion dock (Double-click to reset)">
+      <div class="resizer-handle-row"></div>
+    </div>
 
     <!-- Bottom Motion Sequencer Dock -->
     <section class="sequencer-dock" id="sequencer-dock">

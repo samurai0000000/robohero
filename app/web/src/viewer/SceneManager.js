@@ -133,17 +133,21 @@ export class SceneManager {
   setCameraPreset(type) {
     switch (type) {
       case 'front':
-        this.camera.position.set(0, 0.14, 0.55);
-        break;
-      case 'side':
+        // Robot faces +X in Three.js world coordinates (chest is at +X)
         this.camera.position.set(0.55, 0.14, 0);
         break;
+      case 'side':
+        // Robot's right side profile is viewed along +Z
+        this.camera.position.set(0, 0.14, 0.55);
+        break;
       case 'top':
-        this.camera.position.set(0, 0.65, 0.01);
+        // Looking straight down from above (+Y)
+        this.camera.position.set(0.01, 0.65, 0);
         break;
       case 'persp':
       default:
-        this.camera.position.set(0.38, 0.28, 0.48);
+        // Three-quarter perspective showing front (+X) and side (+Z)
+        this.camera.position.set(0.42, 0.28, 0.42);
         break;
     }
     if (this.controls) {

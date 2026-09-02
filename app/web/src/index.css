@@ -31,6 +31,11 @@
 
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Resizable Panel Dimensions */
+  --sidebar-width: 380px;
+  --sidebar-top-height: 385px;
+  --dock-height: 140px;
 }
 
 * {
@@ -241,33 +246,221 @@ body {
 .app-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 380px 1fr;
-  grid-template-rows: 1fr 140px;
+  grid-template-columns: var(--sidebar-width) 6px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 6px var(--dock-height);
   height: calc(100vh - 56px);
+  max-height: calc(100vh - 56px);
+  min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 /* ==================== Sidebar ==================== */
 .sidebar {
+  grid-column: 1;
   grid-row: 1 / -1;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(16px);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 56px);
+  min-height: 0;
+  overflow: hidden;
   z-index: 40;
 }
 
+/* Fixed Top Pane: Action & Gesture Controls (Always Visible) */
+.sidebar-top-pane {
+  flex: 0 0 var(--sidebar-top-height, 385px);
+  height: var(--sidebar-top-height, 385px);
+  min-height: 120px;
+  max-height: calc(100% - 120px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.98);
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.sidebar-top-pane .section-card {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-top-pane .section-card:last-child {
+  border-bottom: none;
+}
+
+.sidebar-top-pane .section-title {
+  margin-bottom: 8px;
+}
+
+.mt-2 {
+  margin-top: 6px;
+}
+
+/* Split Resizer Styles */
+.split-resizer {
+  position: relative;
+  background: rgba(15, 23, 42, 0.9);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  z-index: 45;
+  user-select: none;
+}
+
+/* Horizontal Resizer: Sidebar Width */
+.split-resizer-col {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  width: 6px;
+  cursor: col-resize;
+  background: rgba(15, 23, 42, 0.85);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.split-resizer-col:hover,
+.split-resizer-col.active {
+  background: var(--accent-cyan) !important;
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.resizer-handle-col {
+  width: 2px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 1px;
+}
+
+.split-resizer-col:hover .resizer-handle-col,
+.split-resizer-col.active .resizer-handle-col {
+  background: #fff;
+}
+
+/* Vertical Resizer: Top Pane vs Sliders */
+.split-resizer-row {
+  height: 8px;
+  cursor: row-resize;
+  border-top: 1px solid rgba(6, 182, 212, 0.25);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.split-resizer-row:hover,
+.split-resizer-row.active {
+  background: var(--accent-cyan) !important;
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.resizer-handle-row {
+  width: 36px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+}
+
+.split-resizer-row:hover .resizer-handle-row,
+.split-resizer-row.active .resizer-handle-row {
+  background: #fff;
+}
+
+/* Vertical Resizer: Dock Height */
+.split-resizer-dock {
+  grid-column: 3;
+  grid-row: 2;
+  height: 6px;
+  cursor: row-resize;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.split-resizer-dock:hover,
+.split-resizer-dock.active {
+  background: var(--accent-cyan) !important;
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.split-resizer-dock:hover .resizer-handle-row,
+.split-resizer-dock.active .resizer-handle-row {
+  background: #fff;
+}
+
+/* Dedicated Scrollable Sliders Lower Pane */
+.sidebar-sliders-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(10, 15, 26, 0.7);
+}
+
+.sliders-pane-header {
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sliders-pane-header .section-title {
+  margin-bottom: 0;
+  color: var(--accent-cyan);
+}
+
+.joint-controls-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #38bdf8 #0f172a;
+  padding-bottom: 30px;
+}
+
+.joint-controls-scroll::-webkit-scrollbar {
+  width: 12px !important;
+  display: block !important;
+}
+
+.joint-controls-scroll::-webkit-scrollbar-track {
+  background: #0f172a !important;
+  border-left: 1px solid var(--border) !important;
+}
+
+.joint-controls-scroll::-webkit-scrollbar-thumb {
+  background: #38bdf8 !important;
+  border-radius: 6px !important;
+  border: 2px solid #0f172a !important;
+}
+
+.joint-controls-scroll::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4 !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.9) !important;
+}
+
 .sidebar-header {
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(15, 23, 42, 0.98);
   backdrop-filter: blur(12px);
   z-index: 10;
 }
@@ -628,6 +821,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ==================== 3D Viewport ==================== */
 .viewport-container {
+  grid-column: 3;
+  grid-row: 1;
   position: relative;
   background: radial-gradient(circle at center, #1e293b 0%, #07090e 100%);
   overflow: hidden;
@@ -697,9 +892,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ==================== Sequencer Dock ==================== */
 .sequencer-dock {
+  grid-column: 3;
+  grid-row: 3;
   background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border);
+  border-top: none;
   display: flex;
   flex-direction: column;
   padding: 10px 18px;

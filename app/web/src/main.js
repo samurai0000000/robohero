@@ -9,6 +9,7 @@
 import { SceneManager } from './viewer/SceneManager.js';
 import { RobotModel } from './viewer/RobotModel.js';
 import { LimbControls } from './ui/LimbControls.js';
+import { PanelResizer } from './ui/PanelResizer.js';
 import { MqttBridge, RH_MSG_CENTER, RH_MSG_ZERO, RH_MSG_RELAX } from './telemetry/MqttBridge.js';
 import { PRESET_POSES } from './studio/Presets.js';
 import { PoseSequencer } from './studio/PoseSequencer.js';
@@ -24,6 +25,7 @@ class RoboHeroApp {
     this.limbControls = null;
     this.mqttBridge = new MqttBridge();
     this.sequencer = null;
+    this.panelResizer = null;
 
     this.init();
   }
@@ -71,7 +73,10 @@ class RoboHeroApp {
     this.setupSettingsModal();
     this.setupExportModal();
 
-    // 7. Load Configuration & Auto-connect if enabled
+    // 7. Setup Interactive Panel Split Resizers
+    this.panelResizer = new PanelResizer();
+
+    // 8. Load Configuration & Auto-connect if enabled
     await this.loadInitialConfig();
   }
 
