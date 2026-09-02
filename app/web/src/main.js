@@ -452,6 +452,9 @@ class RoboHeroApp {
       // Physical robot sent status update -> update 3D model & sliders
       this.robotModel.setServoPwm(chan, pos);
       this.limbControls.setValue(chan, pos);
+      if (this.modelCalibrator) {
+        this.modelCalibrator.setPwmValue(chan, pos);
+      }
     };
 
     this.mqttBridge.onVoltageUpdate = (voltRaw) => {

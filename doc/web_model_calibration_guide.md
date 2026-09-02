@@ -75,6 +75,11 @@ flowchart LR
 3. Click the **`Current -> Center`** button in the tuning grid.
 4. The 3D model instantly sets this pulse position as $0.0^\circ$ ($0.0000\text{ rad}$).
 
+> [!NOTE]
+> **Shoulder Roll Zero Convention**:
+> In the humanoid URDF model, angle $0.0^\circ$ ($0.0000\text{ rad}$) is defined as the upright standing pose where the arms hang straight **down** beside the ribs.
+> On RoboHero, the electrical servo midpoint (~163) corresponds to the horizontal T-pose ($+90^\circ$). To hang the arms down at standing zero, the physical servos rotate $90^\circ$ to **PWM 243** (Left Shoulder Roll, Ch 6) and **PWM 75** (Right Shoulder Roll, Ch 9). Therefore, the geometric center datum ($PWM_0$) where angle $= 0.0^\circ$ is **243** for Ch 6 and **75** for Ch 9.
+
 ### Step 2: Tune Angular Scaling Factor ($^\circ/\text{count}$)
 1. Move the joint slider to a known reference angle (e.g. raise the arm horizontally to $90^\circ$ or kick forward).
 2. Measure the physical angle on the real robot using a protractor.

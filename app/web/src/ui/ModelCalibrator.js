@@ -388,8 +388,8 @@ export class ModelCalibrator {
     const lowerInput = document.createElement('input');
     lowerInput.type = 'number';
     lowerInput.className = 'cal-num-input';
-    lowerInput.step = '0.1';
-    lowerInput.value = cal.lowerDeg.toFixed(1);
+    lowerInput.step = '1';
+    lowerInput.value = Math.round(cal.lowerDeg);
     lowerInput.id = `cal-lower-${ch}`;
     lowerInput.onchange = () => {
       const lowerDeg = parseFloat(lowerInput.value);
@@ -406,8 +406,9 @@ export class ModelCalibrator {
     btnSetLower.title = 'Capture current joint angle as lower mechanical stop';
     btnSetLower.onclick = () => {
       const angle = this.robotModel.getJointAngle(ch);
-      lowerInput.value = angle.deg.toFixed(1);
-      this.robotModel.setJointCalibration(ch, { lowerDeg: angle.deg });
+      const roundedDeg = Math.round(angle.deg);
+      lowerInput.value = roundedDeg;
+      this.robotModel.setJointCalibration(ch, { lowerDeg: roundedDeg });
       document.getElementById(`cal-lower-rad-${ch}`).textContent = `${angle.rad.toFixed(4)} rad`;
     };
 
@@ -431,8 +432,8 @@ export class ModelCalibrator {
     const upperInput = document.createElement('input');
     upperInput.type = 'number';
     upperInput.className = 'cal-num-input';
-    upperInput.step = '0.1';
-    upperInput.value = cal.upperDeg.toFixed(1);
+    upperInput.step = '1';
+    upperInput.value = Math.round(cal.upperDeg);
     upperInput.id = `cal-upper-${ch}`;
     upperInput.onchange = () => {
       const upperDeg = parseFloat(upperInput.value);
@@ -449,8 +450,9 @@ export class ModelCalibrator {
     btnSetUpper.title = 'Capture current joint angle as upper mechanical stop';
     btnSetUpper.onclick = () => {
       const angle = this.robotModel.getJointAngle(ch);
-      upperInput.value = angle.deg.toFixed(1);
-      this.robotModel.setJointCalibration(ch, { upperDeg: angle.deg });
+      const roundedDeg = Math.round(angle.deg);
+      upperInput.value = roundedDeg;
+      this.robotModel.setJointCalibration(ch, { upperDeg: roundedDeg });
       document.getElementById(`cal-upper-rad-${ch}`).textContent = `${angle.rad.toFixed(4)} rad`;
     };
 
