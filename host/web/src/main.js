@@ -422,6 +422,7 @@ class RoboHeroApp {
         btnConnect.className = 'btn-connect disconnected';
         if (txtStatus) txtStatus.textContent = 'Connect MQTT';
         if (hudStatus) hudStatus.textContent = 'Idle';
+        if (valVoltage) valVoltage.textContent = '---';
       }
     };
 
@@ -433,8 +434,7 @@ class RoboHeroApp {
 
     this.mqttBridge.onVoltageUpdate = (voltRaw) => {
       if (valVoltage) {
-        const v = (voltRaw / 100.0).toFixed(2);
-        valVoltage.textContent = `${v} V`;
+        valVoltage.textContent = String(voltRaw);
       }
     };
 

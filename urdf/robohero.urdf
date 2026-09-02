@@ -6,28 +6,28 @@
 <robot name="robohero">
 
   <!-- ==================== Materials ==================== -->
-  <material name="slate_dark">
-    <color rgba="0.12 0.16 0.23 1.0"/>
+  <material name="armor_red">
+    <color rgba="0.84 0.23 0.18 1.0"/>
   </material>
 
-  <material name="cyan_accent">
-    <color rgba="0.02 0.71 0.83 1.0"/>
+  <material name="chest_gold">
+    <color rgba="0.86 0.68 0.48 1.0"/>
   </material>
 
-  <material name="blue_accent">
-    <color rgba="0.23 0.51 0.96 1.0"/>
+  <material name="servo_black">
+    <color rgba="0.16 0.17 0.20 1.0"/>
+  </material>
+
+  <material name="reactor_cyan">
+    <color rgba="0.18 0.82 1.0 1.0"/>
+  </material>
+
+  <material name="lens_dark">
+    <color rgba="0.08 0.09 0.11 0.95"/>
   </material>
 
   <material name="metal_gray">
-    <color rgba="0.45 0.48 0.53 1.0"/>
-  </material>
-
-  <material name="light_gray">
-    <color rgba="0.82 0.85 0.90 1.0"/>
-  </material>
-
-  <material name="visor_black">
-    <color rgba="0.05 0.05 0.08 0.95"/>
+    <color rgba="0.35 0.37 0.40 1.0"/>
   </material>
 
   <!-- ==================== Base / Torso Link ==================== -->
@@ -42,15 +42,23 @@
       <geometry>
         <box size="0.055 0.076 0.080"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="armor_red"/>
     </visual>
-    <!-- Chest decoration visual -->
+    <!-- Gold Chest Armor Plate -->
     <visual>
-      <origin xyz="0.029 0 0.010" rpy="0 0 0"/>
+      <origin xyz="0.029 0 0.008" rpy="0 0 0"/>
       <geometry>
-        <box size="0.004 0.048 0.040"/>
+        <box size="0.004 0.052 0.046"/>
       </geometry>
-      <material name="cyan_accent"/>
+      <material name="chest_gold"/>
+    </visual>
+    <!-- Arc Reactor Core -->
+    <visual>
+      <origin xyz="0.032 0 0.012" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.003 0.020 0.020"/>
+      </geometry>
+      <material name="reactor_cyan"/>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -75,19 +83,29 @@
       <mass value="0.040"/>
       <inertia ixx="0.00002" ixy="0.0" ixz="0.0" iyy="0.00002" iyz="0.0" izz="0.00002"/>
     </inertial>
+    <!-- Red Helmet Dome -->
     <visual>
       <origin xyz="0 0 0.020" rpy="0 0 0"/>
       <geometry>
         <box size="0.038 0.040 0.036"/>
       </geometry>
-      <material name="cyan_accent"/>
+      <material name="armor_red"/>
     </visual>
+    <!-- Gold Eye Bezel -->
     <visual>
-      <origin xyz="0.020 0 0.020" rpy="0 0 0"/>
+      <origin xyz="0.020 0 0.022" rpy="0 0 0"/>
       <geometry>
-        <box size="0.004 0.032 0.016"/>
+        <box size="0.003 0.024 0.024"/>
       </geometry>
-      <material name="visor_black"/>
+      <material name="chest_gold"/>
+    </visual>
+    <!-- Dark Eye Lens -->
+    <visual>
+      <origin xyz="0.022 0 0.022" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.016 0.016"/>
+      </geometry>
+      <material name="lens_dark"/>
     </visual>
     <collision>
       <origin xyz="0 0 0.020" rpy="0 0 0"/>
@@ -118,7 +136,7 @@
       <geometry>
         <box size="0.024 0.018 0.024"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0.008 0" rpy="0 0 0"/>
@@ -148,7 +166,7 @@
       <geometry>
         <box size="0.024 0.024 0.044"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.022" rpy="0 0 0"/>
@@ -178,7 +196,7 @@
       <geometry>
         <box size="0.022 0.022 0.044"/>
       </geometry>
-      <material name="blue_accent"/>
+      <material name="armor_red"/>
     </visual>
     <!-- Left Hand -->
     <visual>
@@ -186,7 +204,7 @@
       <geometry>
         <box size="0.016 0.020 0.014"/>
       </geometry>
-      <material name="light_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.026" rpy="0 0 0"/>
@@ -217,7 +235,7 @@
       <geometry>
         <box size="0.024 0.018 0.024"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 -0.008 0" rpy="0 0 0"/>
@@ -247,7 +265,7 @@
       <geometry>
         <box size="0.024 0.024 0.044"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.022" rpy="0 0 0"/>
@@ -277,7 +295,7 @@
       <geometry>
         <box size="0.022 0.022 0.044"/>
       </geometry>
-      <material name="blue_accent"/>
+      <material name="armor_red"/>
     </visual>
     <!-- Right Hand -->
     <visual>
@@ -285,7 +303,7 @@
       <geometry>
         <box size="0.016 0.020 0.014"/>
       </geometry>
-      <material name="light_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.026" rpy="0 0 0"/>
@@ -316,7 +334,7 @@
       <geometry>
         <box size="0.028 0.026 0.020"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.009" rpy="0 0 0"/>
@@ -346,7 +364,7 @@
       <geometry>
         <box size="0.026 0.028 0.048"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.024" rpy="0 0 0"/>
@@ -376,7 +394,7 @@
       <geometry>
         <box size="0.026 0.028 0.048"/>
       </geometry>
-      <material name="blue_accent"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.024" rpy="0 0 0"/>
@@ -406,7 +424,7 @@
       <geometry>
         <box size="0.028 0.026 0.018"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.008" rpy="0 0 0"/>
@@ -436,7 +454,7 @@
       <geometry>
         <box size="0.076 0.048 0.008"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0.010 0 -0.004" rpy="0 0 0"/>
@@ -467,7 +485,7 @@
       <geometry>
         <box size="0.028 0.026 0.020"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.009" rpy="0 0 0"/>
@@ -497,7 +515,7 @@
       <geometry>
         <box size="0.026 0.028 0.048"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.024" rpy="0 0 0"/>
@@ -527,7 +545,7 @@
       <geometry>
         <box size="0.026 0.028 0.048"/>
       </geometry>
-      <material name="blue_accent"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.024" rpy="0 0 0"/>
@@ -557,7 +575,7 @@
       <geometry>
         <box size="0.028 0.026 0.018"/>
       </geometry>
-      <material name="metal_gray"/>
+      <material name="servo_black"/>
     </visual>
     <collision>
       <origin xyz="0 0 -0.008" rpy="0 0 0"/>
@@ -587,7 +605,7 @@
       <geometry>
         <box size="0.076 0.048 0.008"/>
       </geometry>
-      <material name="slate_dark"/>
+      <material name="armor_red"/>
     </visual>
     <collision>
       <origin xyz="0.010 0 -0.004" rpy="0 0 0"/>
