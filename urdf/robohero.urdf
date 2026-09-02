@@ -74,7 +74,7 @@
     <parent link="base_link"/>
     <child link="head_link"/>
     <axis xyz="0 0 1"/>
-    <limit lower="-1.5708" upper="1.5708" effort="0.8" velocity="3.14"/>
+    <limit lower="-1.3963" upper="1.3963" effort="0.8" velocity="3.14"/>
   </joint>
 
   <link name="head_link">
@@ -122,7 +122,7 @@
     <parent link="base_link"/>
     <child link="left_shoulder_pitch_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-3.1416" upper="3.1416" effort="1.2" velocity="3.14"/>
+    <limit lower="-3.1416" upper="1.5708" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="left_shoulder_pitch_link">
@@ -152,7 +152,7 @@
     <parent link="left_shoulder_pitch_link"/>
     <child link="left_upper_arm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.3491" upper="2.6180" effort="1.2" velocity="3.14"/>
+    <limit lower="-0.0873" upper="2.9671" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="left_upper_arm_link">
@@ -182,7 +182,7 @@
     <parent link="left_upper_arm_link"/>
     <child link="left_forearm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-2.6180" upper="0.5236" effort="1.2" velocity="3.14"/>
+    <limit lower="-1.3090" upper="1.4835" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="left_forearm_link">
@@ -221,7 +221,7 @@
     <parent link="base_link"/>
     <child link="right_shoulder_pitch_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-3.1416" upper="3.1416" effort="1.2" velocity="3.14"/>
+    <limit lower="-1.5708" upper="2.0071" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="right_shoulder_pitch_link">
@@ -251,7 +251,7 @@
     <parent link="right_shoulder_pitch_link"/>
     <child link="right_upper_arm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-2.6180" upper="0.3491" effort="1.2" velocity="3.14"/>
+    <limit lower="-2.9671" upper="0.0873" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="right_upper_arm_link">
@@ -281,7 +281,7 @@
     <parent link="right_upper_arm_link"/>
     <child link="right_forearm_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.5236" upper="2.6180" effort="1.2" velocity="3.14"/>
+    <limit lower="-1.4835" upper="0.9599" effort="1.2" velocity="3.14"/>
   </joint>
 
   <link name="right_forearm_link">
@@ -320,7 +320,7 @@
     <parent link="base_link"/>
     <child link="left_hip_roll_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.6981" upper="0.8727" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.3491" upper="1.6057" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_hip_roll_link">
@@ -350,7 +350,7 @@
     <parent link="left_hip_roll_link"/>
     <child link="left_thigh_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.6981" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_thigh_link">
@@ -380,7 +380,7 @@
     <parent link="left_thigh_link"/>
     <child link="left_shin_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-0.3491" upper="2.6180" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.6981" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_shin_link">
@@ -410,7 +410,7 @@
     <parent link="left_shin_link"/>
     <child link="left_ankle_pitch_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.7854" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_ankle_pitch_link">
@@ -440,7 +440,7 @@
     <parent link="left_ankle_pitch_link"/>
     <child link="left_foot_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.8727" upper="0.8727" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.4363" upper="1.3090" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_foot_link">
@@ -471,7 +471,7 @@
     <parent link="base_link"/>
     <child link="right_hip_roll_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.8727" upper="0.6981" effort="1.5" velocity="3.14"/>
+    <limit lower="-1.7453" upper="0.3491" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="right_hip_roll_link">
@@ -501,7 +501,7 @@
     <parent link="right_hip_roll_link"/>
     <child link="right_thigh_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.6981" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="right_thigh_link">
@@ -531,7 +531,7 @@
     <parent link="right_thigh_link"/>
     <child link="right_shin_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-0.3491" upper="2.6180" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.6981" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="right_shin_link">
@@ -561,7 +561,7 @@
     <parent link="right_shin_link"/>
     <child link="right_ankle_pitch_link"/>
     <axis xyz="0 1 0"/>
-    <limit lower="-1.5708" upper="1.5708" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.8727" upper="1.5708" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="right_ankle_pitch_link">
@@ -591,7 +591,7 @@
     <parent link="right_ankle_pitch_link"/>
     <child link="right_foot_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.8727" upper="0.8727" effort="1.5" velocity="3.14"/>
+    <limit lower="-0.4363" upper="1.2217" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="right_foot_link">
