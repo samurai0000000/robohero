@@ -1,7 +1,7 @@
 {
   "timestamp": "2026-09-02T16:30:00+08:00",
   "robot_id": "TTR-ee40",
-  "project_version": "2.1.10",
+  "project_version": "2.1.11",
   "host_version": "2.1.7",
   "scale_constants": {
     "arm_pitch_roll_rad_per_pwm": 0.023271056693257726,

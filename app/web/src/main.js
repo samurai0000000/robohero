@@ -9,6 +9,7 @@
 import { SceneManager } from './viewer/SceneManager.js';
 import { RobotModel } from './viewer/RobotModel.js';
 import { LimbControls } from './ui/LimbControls.js';
+import { ModelCalibrator } from './ui/ModelCalibrator.js';
 import { PanelResizer } from './ui/PanelResizer.js';
 import { MqttBridge, RH_MSG_CENTER, RH_MSG_ZERO, RH_MSG_RELAX } from './telemetry/MqttBridge.js';
 import { PRESET_POSES } from './studio/Presets.js';
@@ -23,6 +24,7 @@ class RoboHeroApp {
     this.sceneManager = null;
     this.robotModel = null;
     this.limbControls = null;
+    this.modelCalibrator = null;
     this.mqttBridge = new MqttBridge();
     this.sequencer = null;
     this.panelResizer = null;
@@ -45,15 +47,25 @@ class RoboHeroApp {
       this.handleSliderChange(chan, val);
     });
 
-    // 4. Initialize Pose Sequencer
+    // 4. Initialize Model Calibrator UI
+    const calibratorContainer = document.getElementById('model-calibrator-container');
+    this.modelCalibrator = new ModelCalibrator(
+      calibratorContainer,
+      this.robotModel,
+      (chan, val) => this.handleSliderChange(chan, val),
+      () => this.openExtractModal()
+    );
+
+    // 5. Initialize Pose Sequencer
     this.sequencer = new PoseSequencer(this.robotModel, (pwm) => {
       this.applyPoseToAll(pwm);
     });
 
-    // 5. Load URDF Model
+    // 6. Load URDF Model
     try {
       await this.robotModel.load('./urdf/robohero.urdf');
       this.limbControls.setAllValues(this.robotModel.getAllPwm());
+      this.modelCalibrator.setAllPwmValues(this.robotModel.getAllPwm());
       if (this.loadingOverlay) {
         this.loadingOverlay.classList.add('hidden');
       }
@@ -65,18 +77,20 @@ class RoboHeroApp {
       }
     }
 
-    // 6. Setup Event Listeners
+    // 7. Setup Event Listeners & Modals
+    this.setupSidebarTabs();
     this.setupViewControls();
     this.setupPresetButtons();
     this.setupSequencerUI();
     this.setupMqttBridge();
     this.setupSettingsModal();
     this.setupExportModal();
+    this.setupExtractModal();
 
-    // 7. Setup Interactive Panel Split Resizers
+    // 8. Setup Interactive Panel Split Resizers
     this.panelResizer = new PanelResizer();
 
-    // 8. Load Configuration & Auto-connect if enabled
+    // 9. Load Configuration & Auto-connect if enabled
     await this.loadInitialConfig();
   }
 
@@ -131,6 +145,9 @@ class RoboHeroApp {
   applyPoseToAll(pwmArray, sendToRobot = true) {
     this.robotModel.applyAllPwm(pwmArray);
     this.limbControls.setAllValues(pwmArray);
+    if (this.modelCalibrator) {
+      this.modelCalibrator.setAllPwmValues(pwmArray);
+    }
 
     const liveSend = document.getElementById('chk-live-send')?.checked;
     if (sendToRobot && liveSend && this.mqttBridge.isConnected) {
@@ -521,6 +538,108 @@ class RoboHeroApp {
             closeModal();
           });
         }
+      };
+    }
+  }
+
+  setupSidebarTabs() {
+    const tabStudio = document.getElementById('tab-btn-studio');
+    const tabCalibrator = document.getElementById('tab-btn-calibrator');
+    const panelStudio = document.getElementById('panel-pose-studio');
+    const panelCalibrator = document.getElementById('panel-model-calibrator');
+
+    if (tabStudio && tabCalibrator && panelStudio && panelCalibrator) {
+      tabStudio.onclick = () => {
+        tabStudio.classList.add('active');
+        tabCalibrator.classList.remove('active');
+        panelStudio.style.display = 'flex';
+        panelCalibrator.style.display = 'none';
+      };
+
+      tabCalibrator.onclick = () => {
+        tabCalibrator.classList.add('active');
+        tabStudio.classList.remove('active');
+        panelStudio.style.display = 'none';
+        panelCalibrator.style.display = 'flex';
+        if (this.modelCalibrator) {
+          this.modelCalibrator.setAllPwmValues(this.robotModel.getAllPwm());
+        }
+      };
+    }
+  }
+
+  openExtractModal(tab = 'urdf') {
+    const modal = document.getElementById('modal-extract-params');
+    if (!modal) return;
+    this.switchExtractTab(tab);
+    modal.classList.add('show');
+  }
+
+  switchExtractTab(tab) {
+    this.activeExtractTab = tab;
+    const btnUrdf = document.getElementById('btn-tab-urdf');
+    const btnJs = document.getElementById('btn-tab-js');
+    const btnJson = document.getElementById('btn-tab-json');
+    const desc = document.getElementById('txt-extract-desc');
+    const code = document.getElementById('txt-extract-code');
+
+    btnUrdf?.classList.toggle('active', tab === 'urdf');
+    btnJs?.classList.toggle('active', tab === 'js');
+    btnJson?.classList.toggle('active', tab === 'json');
+
+    if (tab === 'urdf') {
+      if (desc) desc.innerHTML = 'Copy and replace the corresponding <code>&lt;limit ... /&gt;</code> tags in <code>urdf/robohero.urdf</code>:';
+      if (code) code.textContent = this.modelCalibrator.generateUrdfXml();
+    } else if (tab === 'js') {
+      if (desc) desc.innerHTML = 'Replace <code>export const CHANNEL_MAP = ...</code> in <code>app/web/src/viewer/RobotModel.js</code>:';
+      if (code) code.textContent = this.modelCalibrator.generateChannelMapJs();
+    } else if (tab === 'json') {
+      if (desc) desc.innerHTML = 'Complete machine-readable calibration dataset (can be saved to <code>doc/joint_calibration_results.json</code>):';
+      if (code) code.textContent = this.modelCalibrator.generateCalibrationJson();
+    }
+  }
+
+  setupExtractModal() {
+    const modal = document.getElementById('modal-extract-params');
+    const btnClose = document.getElementById('btn-close-extract-params');
+    const btnCloseBtn = document.getElementById('btn-close-extract-modal-btn');
+    const btnCopy = document.getElementById('btn-copy-extract-code');
+    const btnDownload = document.getElementById('btn-download-json');
+    const codeBox = document.getElementById('txt-extract-code');
+
+    const btnUrdf = document.getElementById('btn-tab-urdf');
+    const btnJs = document.getElementById('btn-tab-js');
+    const btnJson = document.getElementById('btn-tab-json');
+
+    if (btnUrdf) btnUrdf.onclick = () => this.switchExtractTab('urdf');
+    if (btnJs) btnJs.onclick = () => this.switchExtractTab('js');
+    if (btnJson) btnJson.onclick = () => this.switchExtractTab('json');
+
+    const closeModal = () => modal?.classList.remove('show');
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCloseBtn) btnCloseBtn.onclick = closeModal;
+
+    if (btnCopy) {
+      btnCopy.onclick = () => {
+        if (codeBox) {
+          navigator.clipboard.writeText(codeBox.textContent).then(() => {
+            this.showToast('Parameters copied to clipboard!');
+          });
+        }
+      };
+    }
+
+    if (btnDownload) {
+      btnDownload.onclick = () => {
+        const jsonStr = this.modelCalibrator.generateCalibrationJson();
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `robohero_calibration_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showToast('Downloaded calibration JSON!');
       };
     }
   }

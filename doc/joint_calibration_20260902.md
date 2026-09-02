@@ -3,9 +3,9 @@
 **Calibration Date**: September 2, 2026 (2026-09-02)  
 **Robot ID**: `TTR-ee40`  
 **Host Controller Version**: `v2.1.7`  
-**Project Version**: `v2.1.10`  
+**Project Version**: `v2.1.11`  
 
-All 17 revolute joints on RoboHero have been physically measured using a protractor, calibrated for true angular scale ($\text{radPerPwm}$), and encoded into [urdf/robohero.urdf](file:///home/samurai/work/robohero/urdf/robohero.urdf) and [RobotModel.js](file:///home/samurai/work/robohero/app/web/src/viewer/RobotModel.js).
+All 17 revolute joints on RoboHero have been physically measured using a protractor, calibrated for true angular scale ($\text{radPerPwm}$), and encoded into [urdf/robohero.urdf](../urdf/robohero.urdf) and [RobotModel.js](../app/web/src/viewer/RobotModel.js).
 
 ---
 
@@ -46,10 +46,10 @@ The under-rotation issue was resolved by replacing the hardcoded $\frac{\pi}{270
 
 ## 3. Permanent Reference Documentation Created
 
-1. **[doc/joint_calibration_and_measurement_guide.md](file:///home/samurai/work/robohero/doc/joint_calibration_and_measurement_guide.md)**: Full physical measurement protocol, reference planes, and mathematical equations.
-2. **[doc/joint_calibration_results.md](file:///home/samurai/work/robohero/doc/joint_calibration_results.md)**: Full empirical results report with recommended EEPROM trims.
-3. **[doc/joint_calibration_results.json](file:///home/samurai/work/robohero/doc/joint_calibration_results.json)**: Machine-readable calibration dataset.
-4. **[doc/joint_calibration_20260902.md](file:///home/samurai/work/robohero/doc/joint_calibration_20260902.md)**: Calibration summary and execution records.
+1. **[joint_calibration_and_measurement_guide.md](joint_calibration_and_measurement_guide.md)**: Full physical measurement protocol, reference planes, and mathematical equations.
+2. **[joint_calibration_results.md](joint_calibration_results.md)**: Full empirical results report with recommended EEPROM trims.
+3. **[joint_calibration_results.json](joint_calibration_results.json)**: Machine-readable calibration dataset.
+4. **[joint_calibration_20260902.md](joint_calibration_20260902.md)**: Calibration summary and execution records.
 
 ---
 

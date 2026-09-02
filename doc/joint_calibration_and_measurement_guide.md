@@ -59,7 +59,7 @@ To ensure high statistical confidence across all 16 body servos (which share ide
 1. **Shoulder Pitch (CH 5)**: Measure angle at $PWM_1 = 120$ and $PWM_2 = 200$.
 2. **Knee Pitch (CH 2)**: Measure angle at $PWM_1 = 100$ and $PWM_2 = 180$.
 3. **Hip Pitch (CH 12)**: Measure angle at $PWM_1 = 90$ and $PWM_2 = 170$.
-4. Compute the average $\text{radPerPwm}$ and update [RobotModel.js](file:///home/samurai/work/robohero/app/web/src/viewer/RobotModel.js).
+4. Compute the average $\text{radPerPwm}$ and update [RobotModel.js](../app/web/src/viewer/RobotModel.js).
 
 ---
 
@@ -108,8 +108,8 @@ To ensure high statistical confidence across all 16 body servos (which share ide
 
 ## 6. Model Updating & Verification
 
-1. **Update URDF**: In [robohero.urdf](file:///home/samurai/work/robohero/urdf/robohero.urdf), edit the `<limit>` tag for each joint.
-2. **Update Web Viewer**: In [RobotModel.js](file:///home/samurai/work/robohero/app/web/src/viewer/RobotModel.js), set the calibrated `radPerPwm` and joint limits.
+1. **Update URDF**: In [robohero.urdf](../urdf/robohero.urdf), edit the `<limit>` tag for each joint.
+2. **Update Web Viewer**: In [RobotModel.js](../app/web/src/viewer/RobotModel.js), set the calibrated `radPerPwm` and joint limits.
 3. **Validate**:
    ```bash
    python3 scripts/validate_urdf.py

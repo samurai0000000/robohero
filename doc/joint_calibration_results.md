@@ -1,9 +1,7 @@
 # RoboHero Joint Calibration & Empirical Measurement Results
 
-**Date**: 2026-09-02  
-**Robot ID**: `TTR-ee40`  
-**Host Version**: `v2.1.7` / Project `v2.1.10`  
-**Kinematic Model**: `urdf/robohero.urdf`  
+**Calibration Date**: September 2, 2026 (2026-09-02)  
+**Host Version**: `v2.1.7` / Project `v2.1.11`  
 **Viewer Mapping**: `app/web/src/viewer/RobotModel.js`  
 
 ---
