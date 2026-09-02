@@ -218,6 +218,24 @@ export class MqttBridge {
     return true;
   }
 
+  sendPms(id) {
+    if (!this.isConnected || !this.client) return false;
+    const buf = new Uint8Array(6 + 4); // header(6) + TLV_PROG(2+2)
+    const view = new DataView(buf.buffer);
+    view.setUint32(0, RH_MSG_MAGIC, true);
+    view.setUint8(4, RH_MSG_PMS);
+    view.setUint8(5, 4); // payload len
+
+    view.setUint8(6, RH_TLV_PROG);
+    view.setUint8(7, 2);
+    view.setInt16(8, id, true);
+
+    const ctrlTopic = `robot/robohero/${this.config.robotId}/control`;
+    console.log(`[MQTT TX] -> ${ctrlTopic} (PMS ${id})`);
+    this.client.publish(ctrlTopic, buf);
+    return true;
+  }
+
   sendSetPwm(chan, pos) {
     if (!this.isConnected || !this.client) return false;
     const buf = new Uint8Array(6 + 5); // header(6) + TLV_SERVO(2+3)

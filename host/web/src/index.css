@@ -107,6 +107,7 @@ body {
   letter-spacing: -0.01em;
   background: linear-gradient(135deg, #fff 40%, var(--accent-cyan));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -367,6 +368,148 @@ input:checked + .toggle-slider:before {
   border-color: var(--accent-cyan);
   color: #fff;
   transform: translateY(-1px);
+}
+
+/* D-Pad Grid for Locomotion */
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.btn-loco {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(29, 78, 216, 0.25));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  user-select: none;
+}
+
+.btn-loco:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-loco:active, .btn-action:active, .btn-preset:active {
+  transform: scale(0.97);
+}
+
+.btn-loco-standby {
+  background: linear-gradient(135deg, rgba(219, 39, 119, 0.3), rgba(190, 24, 93, 0.3));
+  border: 1px solid rgba(236, 72, 153, 0.5);
+  color: #fbcfe8;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btn-loco-standby:hover {
+  background: linear-gradient(135deg, #db2777, #be185d);
+  color: #fff;
+  border-color: #f472b6;
+  box-shadow: 0 0 12px rgba(219, 39, 119, 0.6);
+  transform: translateY(-1px);
+}
+
+.btn-loco-relax {
+  background: linear-gradient(135deg, rgba(71, 85, 105, 0.4), rgba(51, 65, 85, 0.4));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btn-loco-relax:hover {
+  background: linear-gradient(135deg, #475569, #334155);
+  color: #fff;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.btn-loco-stop {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.35), rgba(185, 28, 28, 0.35));
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btn-loco-stop:hover, .btn-stop-full:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  border-color: #f87171;
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.7);
+  transform: translateY(-1px);
+}
+
+.btn-action {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btn-action:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+  border-color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-auto {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.25), rgba(4, 120, 87, 0.25));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+}
+
+.btn-auto:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+  border-color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.btn-stop-full {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.35), rgba(185, 28, 28, 0.35));
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  font-weight: 700;
 }
 
 /* Joint Group Card */
