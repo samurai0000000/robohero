@@ -123,12 +123,12 @@ class RoboHeroApp {
     }
   }
 
-  applyPoseToAll(pwmArray) {
+  applyPoseToAll(pwmArray, sendToRobot = true) {
     this.robotModel.applyAllPwm(pwmArray);
     this.limbControls.setAllValues(pwmArray);
 
     const liveSend = document.getElementById('chk-live-send')?.checked;
-    if (liveSend && this.mqttBridge.isConnected) {
+    if (sendToRobot && liveSend && this.mqttBridge.isConnected) {
       for (let i = 0; i < 17 && i < pwmArray.length; i++) {
         this.mqttBridge.sendSetPwm(i, pwmArray[i]);
       }
@@ -162,50 +162,69 @@ class RoboHeroApp {
       if (btn) btn.onclick = fn;
     };
 
-    const bindPose = (btnId, poseKey, actionFn) => {
-      bindBtn(btnId, () => {
-        if (PRESET_POSES[poseKey]) {
-          this.applyPoseToAll(PRESET_POSES[poseKey].pwm);
-          this.showToast(`Applied ${PRESET_POSES[poseKey].name}`);
-        } else if (poseKey === 'relax') {
-          this.showToast('Relax (PWM Stopped)');
-        }
-        if (actionFn && this.mqttBridge.isConnected) {
-          actionFn();
-        }
-      });
-    };
-
     // Quick Poses
-    bindPose('preset-standby', 'standby', () => this.mqttBridge.sendCenter());
-    bindPose('preset-zero', 'zero', () => this.mqttBridge.sendZero());
-    bindPose('preset-relax', 'relax', () => this.mqttBridge.sendRelax());
+    bindBtn('preset-standby', () => {
+      this.showToast('Standby Pose');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendCenter();
+      } else if (PRESET_POSES.standby) {
+        this.applyPoseToAll(PRESET_POSES.standby.pwm, false);
+      }
+    });
+
+    bindBtn('preset-zero', () => {
+      this.showToast('Zero Alignment Pose');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendZero();
+      } else if (PRESET_POSES.zero) {
+        this.applyPoseToAll(PRESET_POSES.zero.pwm, false);
+      }
+    });
+
+    bindBtn('preset-relax', () => {
+      this.showToast('Relax (PWM Stopped)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendRelax();
+      }
+    });
 
     // Locomotion (D-Pad matching firmware)
     bindBtn('btn-turn-left', () => {
-      this.showToast('Turn Left');
+      this.showToast('Turn Left (PM 3)');
       this.mqttBridge.sendPm(3);
     });
     bindBtn('btn-forward', () => {
-      this.showToast('Forward');
+      this.showToast('Forward (PM 1)');
       this.mqttBridge.sendPm(1);
     });
     bindBtn('btn-turn-right', () => {
-      this.showToast('Turn Right');
+      this.showToast('Turn Right (PM 4)');
       this.mqttBridge.sendPm(4);
     });
     bindBtn('btn-move-left', () => {
-      this.showToast('Move Left');
+      this.showToast('Move Left (PM 5)');
       this.mqttBridge.sendPm(5);
     });
-    bindPose('btn-loco-standby', 'standby', () => this.mqttBridge.sendCenter());
+    bindBtn('btn-loco-standby', () => {
+      this.showToast('Standby Pose');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendCenter();
+      } else if (PRESET_POSES.standby) {
+        this.applyPoseToAll(PRESET_POSES.standby.pwm, false);
+      }
+    });
     bindBtn('btn-move-right', () => {
-      this.showToast('Move Right');
+      this.showToast('Move Right (PM 6)');
       this.mqttBridge.sendPm(6);
     });
-    bindPose('btn-loco-relax', 'relax', () => this.mqttBridge.sendRelax());
+    bindBtn('btn-loco-relax', () => {
+      this.showToast('Relax (PWM Stopped)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendRelax();
+      }
+    });
     bindBtn('btn-backward', () => {
-      this.showToast('Backward');
+      this.showToast('Backward (PM 2)');
       this.mqttBridge.sendPm(2);
     });
     bindBtn('btn-loco-stop', () => {
@@ -215,41 +234,69 @@ class RoboHeroApp {
 
     // Recovery
     bindBtn('btn-get-up', () => {
-      this.showToast('Get Up (Recover from Back)');
+      this.showToast('Get Up (PM 11)');
       this.mqttBridge.sendPm(11);
     });
     bindBtn('btn-get-up-face', () => {
-      this.showToast('Face-Down Get Up');
+      this.showToast('Face-Down Get Up (PM 12)');
       this.mqttBridge.sendPm(12);
     });
 
-    // Actions & Gestures
-    bindPose('btn-action-bow', 'bow', () => this.mqttBridge.sendPms(1));
-    bindPose('btn-action-apache', 'apache', () => this.mqttBridge.sendPms(4));
-    bindPose('btn-action-wave', 'wave', () => this.mqttBridge.sendPms(2));
+    // Actions & Gestures (PMS 1..9, 99 matching firmware)
+    bindBtn('btn-action-bow', () => {
+      this.showToast('Bow (PMS 1)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendPms(1);
+      } else if (PRESET_POSES.bow) {
+        this.applyPoseToAll(PRESET_POSES.bow.pwm, false);
+      }
+    });
+    bindBtn('btn-action-apache', () => {
+      this.showToast('Apache (PMS 4)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendPms(4);
+      } else if (PRESET_POSES.apache) {
+        this.applyPoseToAll(PRESET_POSES.apache.pwm, false);
+      }
+    });
+    bindBtn('btn-action-wave', () => {
+      this.showToast('Waving (PMS 2)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendPms(2);
+      } else if (PRESET_POSES.wave) {
+        this.applyPoseToAll(PRESET_POSES.wave.pwm, false);
+      }
+    });
     bindBtn('btn-action-balance', () => {
-      this.showToast('Balance Pose');
+      this.showToast('Balance (PMS 5)');
       this.mqttBridge.sendPms(5);
     });
-    bindPose('btn-action-ironman', 'ironman', () => this.mqttBridge.sendPms(3));
+    bindBtn('btn-action-ironman', () => {
+      this.showToast('Iron Man (PMS 3)');
+      if (this.mqttBridge.isConnected) {
+        this.mqttBridge.sendPms(3);
+      } else if (PRESET_POSES.ironman) {
+        this.applyPoseToAll(PRESET_POSES.ironman.pwm, false);
+      }
+    });
     bindBtn('btn-action-warmup', () => {
-      this.showToast('Warm-Up');
+      this.showToast('Warm-Up (PMS 6)');
       this.mqttBridge.sendPms(6);
     });
     bindBtn('btn-action-clap', () => {
-      this.showToast('Clap Hands');
+      this.showToast('Clap Hands (PMS 7)');
       this.mqttBridge.sendPms(7);
     });
     bindBtn('btn-action-goilc', () => {
-      this.showToast('GOILC Action');
+      this.showToast('GOILC (PMS 8)');
       this.mqttBridge.sendPms(8);
     });
     bindBtn('btn-action-dance', () => {
-      this.showToast('Dance');
+      this.showToast('Dance (PMS 9)');
       this.mqttBridge.sendPms(9);
     });
     bindBtn('btn-action-auto', () => {
-      this.showToast('Auto Demo Loop Started');
+      this.showToast('Auto Demo Loop (PMS 99)');
       this.mqttBridge.sendPms(99);
     });
     bindBtn('btn-action-stop', () => {
