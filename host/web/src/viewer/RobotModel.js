@@ -10,23 +10,24 @@ import * as THREE from 'three';
 import URDFLoader from 'urdf-loader';
 
 // Mapping from RoboHero hardware channel (0..16) to URDF Joint Name & conversion properties
+// Centers match the physical calibrated Standby baseline so 0 rad = upright balanced stance.
 export const CHANNEL_MAP = {
-  0:  { name: 'left_ankle_roll_joint',      group: 'left_leg',  label: 'Ankle Roll',      center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  1:  { name: 'left_ankle_pitch_joint',     group: 'left_leg',  label: 'Ankle Pitch',     center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  2:  { name: 'left_knee_pitch_joint',      group: 'left_leg',  label: 'Knee Pitch',      center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  3:  { name: 'left_hip_pitch_joint',       group: 'left_leg',  label: 'Hip Pitch',       center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  4:  { name: 'left_hip_roll_joint',        group: 'left_leg',  label: 'Hip Roll',        center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  5:  { name: 'left_shoulder_pitch_joint',  group: 'left_arm',  label: 'Shoulder Pitch',  center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  6:  { name: 'left_shoulder_roll_joint',   group: 'left_arm',  label: 'Shoulder Roll',   center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  7:  { name: 'left_elbow_joint',           group: 'left_arm',  label: 'Elbow',           center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  8:  { name: 'right_elbow_joint',          group: 'right_arm', label: 'Elbow',           center: 135, sign: -1.0, radPerPwm: (Math.PI / 180) },
-  9:  { name: 'right_shoulder_roll_joint',  group: 'right_arm', label: 'Shoulder Roll',   center: 135, sign: -1.0, radPerPwm: (Math.PI / 180) },
-  10: { name: 'right_shoulder_pitch_joint', group: 'right_arm', label: 'Shoulder Pitch',  center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  11: { name: 'right_hip_roll_joint',       group: 'right_leg', label: 'Hip Roll',        center: 135, sign: -1.0, radPerPwm: (Math.PI / 180) },
-  12: { name: 'right_hip_pitch_joint',      group: 'right_leg', label: 'Hip Pitch',       center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  13: { name: 'right_knee_pitch_joint',     group: 'right_leg', label: 'Knee Pitch',      center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  14: { name: 'right_ankle_pitch_joint',    group: 'right_leg', label: 'Ankle Pitch',     center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
-  15: { name: 'right_ankle_roll_joint',     group: 'right_leg', label: 'Ankle Roll',      center: 135, sign:  1.0, radPerPwm: (Math.PI / 180) },
+  0:  { name: 'left_ankle_roll_joint',      group: 'left_leg',  label: 'Ankle Roll',      center: 160, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  1:  { name: 'left_ankle_pitch_joint',     group: 'left_leg',  label: 'Ankle Pitch',     center: 161, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  2:  { name: 'left_knee_pitch_joint',      group: 'left_leg',  label: 'Knee Pitch',      center: 141, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  3:  { name: 'left_hip_pitch_joint',       group: 'left_leg',  label: 'Hip Pitch',       center: 168, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  4:  { name: 'left_hip_roll_joint',        group: 'left_leg',  label: 'Hip Roll',        center: 158, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  5:  { name: 'left_shoulder_pitch_joint',  group: 'left_arm',  label: 'Shoulder Pitch',  center: 158, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  6:  { name: 'left_shoulder_roll_joint',   group: 'left_arm',  label: 'Shoulder Roll',   center: 243, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  7:  { name: 'left_elbow_joint',           group: 'left_arm',  label: 'Elbow',           center: 159, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  8:  { name: 'right_elbow_joint',          group: 'right_arm', label: 'Elbow',           center: 163, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  9:  { name: 'right_shoulder_roll_joint',  group: 'right_arm', label: 'Shoulder Roll',   center:  75, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  10: { name: 'right_shoulder_pitch_joint', group: 'right_arm', label: 'Shoulder Pitch',  center: 156, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  11: { name: 'right_hip_roll_joint',       group: 'right_leg', label: 'Hip Roll',        center: 161, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  12: { name: 'right_hip_pitch_joint',      group: 'right_leg', label: 'Hip Pitch',       center: 129, sign: -1.0, radPerPwm: (Math.PI / 270) },
+  13: { name: 'right_knee_pitch_joint',     group: 'right_leg', label: 'Knee Pitch',      center: 150, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  14: { name: 'right_ankle_pitch_joint',    group: 'right_leg', label: 'Ankle Pitch',     center: 165, sign:  1.0, radPerPwm: (Math.PI / 270) },
+  15: { name: 'right_ankle_roll_joint',     group: 'right_leg', label: 'Ankle Roll',      center: 162, sign: -1.0, radPerPwm: (Math.PI / 270) },
   16: { name: 'head_yaw_joint',             group: 'head',      label: 'Head Yaw',        center:  90, sign:  1.0, radPerPwm: (Math.PI / 180) },
 };
 
@@ -35,8 +36,10 @@ export class RobotModel {
     this.scene = scene;
     this.robot = null;
     this.joints = {};
-    this.currentPwm = new Array(17).fill(135);
-    this.currentPwm[16] = 90; // Head centered at 90
+    this.currentPwm = [
+      160, 161, 141, 168, 158, 158, 243, 159,
+      163,  75, 156, 161, 129, 150, 165, 162,  90
+    ];
   }
 
   async load(urdfUrl = './urdf/robohero.urdf') {
