@@ -28,7 +28,7 @@ export const CHANNEL_MAP = {
   13: { name: 'right_knee_pitch_joint',     group: 'right_leg', label: 'Knee Pitch',      center: 150, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.6981, upper: 1.5708 },
   14: { name: 'right_ankle_pitch_joint',    group: 'right_leg', label: 'Ankle Pitch',     center: 165, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.8727, upper: 1.5708 },
   15: { name: 'right_ankle_roll_joint',     group: 'right_leg', label: 'Ankle Roll',      center: 162, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.4363, upper: 1.2217 },
-  16: { name: 'head_yaw_joint',             group: 'head',      label: 'Head Yaw',        center:  90, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -1.3963, upper: 1.3963 },
+  16: { name: 'head_yaw_joint',             group: 'head',      label: 'Head Yaw',        center:  90, sign:  1.0, radPerPwm: (0.02827433),    lower: -0.9756, upper: 0.9233 },
 };
 
 const STORAGE_KEY = 'robohero_model_calibration_v1';
