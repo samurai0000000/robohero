@@ -8,7 +8,7 @@ class PreferencesManager(context: Context) {
         context.getSharedPreferences("robohero_prefs", Context.MODE_PRIVATE)
 
     var robotIp: String
-        get() = prefs.getString(KEY_ROBOT_IP, "192.168.4.1") ?: "192.168.4.1"
+        get() = prefs.getString(KEY_ROBOT_IP, "") ?: ""
         set(value) = prefs.edit().putString(KEY_ROBOT_IP, value).apply()
 
     var robotPort: Int

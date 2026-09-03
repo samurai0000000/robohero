@@ -12,6 +12,7 @@ import com.selfso.robohero.ui.components.SectionCard
 
 @Composable
 fun ControllerScreen(
+    isConnected: Boolean = true,
     onSendCmd: (key: String, value: Int) -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -35,18 +36,21 @@ fun ControllerScreen(
                         text = "Turn Left",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 3) }
                     )
                     RoboHeroButton(
                         text = "Forward",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 1) }
                     )
                     RoboHeroButton(
                         text = "Turn Right",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 4) }
                     )
                 }
@@ -60,18 +64,21 @@ fun ControllerScreen(
                         text = "Move Left",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 5) }
                     )
                     RoboHeroButton(
                         text = "STANDBY",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.STANDBY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 99) }
                     )
                     RoboHeroButton(
                         text = "Move Right",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 6) }
                     )
                 }
@@ -85,18 +92,21 @@ fun ControllerScreen(
                         text = "Relax",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.RELAX,
+                        enabled = isConnected,
                         onClick = { onSendCmd("relax", 1) }
                     )
                     RoboHeroButton(
                         text = "Backward",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.PRIMARY,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pm", 2) }
                     )
                     RoboHeroButton(
                         text = "STOP",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.STOP,
+                        enabled = isConnected,
                         onClick = { onSendCmd("stop", 1) }
                     )
                 }
@@ -113,12 +123,14 @@ fun ControllerScreen(
                     text = "Get Up",
                     modifier = Modifier.weight(1f),
                     type = RoboHeroButtonType.PRIMARY,
+                    enabled = isConnected,
                     onClick = { onSendCmd("pm", 11) }
                 )
                 RoboHeroButton(
                     text = "Face-Down Get Up",
                     modifier = Modifier.weight(1f),
                     type = RoboHeroButtonType.PRIMARY,
+                    enabled = isConnected,
                     onClick = { onSendCmd("pm", 12) }
                 )
             }
@@ -135,12 +147,14 @@ fun ControllerScreen(
                         text = "Bow",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 1) }
                     )
                     RoboHeroButton(
                         text = "Apache",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 4) }
                     )
                 }
@@ -153,12 +167,14 @@ fun ControllerScreen(
                         text = "Waving",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 2) }
                     )
                     RoboHeroButton(
                         text = "Balance",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 5) }
                     )
                 }
@@ -171,12 +187,14 @@ fun ControllerScreen(
                         text = "Iron Man",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 3) }
                     )
                     RoboHeroButton(
                         text = "Warm-Up",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 6) }
                     )
                 }
@@ -189,12 +207,14 @@ fun ControllerScreen(
                         text = "Clap Hands",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 7) }
                     )
                     RoboHeroButton(
                         text = "GOILC",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 8) }
                     )
                 }
@@ -207,12 +227,14 @@ fun ControllerScreen(
                         text = "Dance",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.ACTION,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 9) }
                     )
                     RoboHeroButton(
                         text = "Auto Demo Loop",
                         modifier = Modifier.weight(1f),
                         type = RoboHeroButtonType.AUTO,
+                        enabled = isConnected,
                         onClick = { onSendCmd("pms", 99) }
                     )
                 }

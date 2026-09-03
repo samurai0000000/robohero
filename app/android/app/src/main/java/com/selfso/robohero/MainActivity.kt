@@ -29,6 +29,7 @@ import com.selfso.robohero.net.DeviceDiscoveryManager
 import com.selfso.robohero.net.MqttManager
 import com.selfso.robohero.net.RoboHeroHttpClient
 import com.selfso.robohero.ui.components.ConnectionDialog
+import com.selfso.robohero.ui.components.DiscoveredCandidate
 import com.selfso.robohero.ui.screens.CalibrationScreen
 import com.selfso.robohero.ui.screens.ControllerScreen
 import com.selfso.robohero.ui.screens.SettingsScreen
@@ -72,6 +73,10 @@ class MainActivity : ComponentActivity() {
         var statusLabel by remember { mutableStateOf("Connecting...") }
         var isScanning by remember { mutableStateOf(false) }
         var scanMsg by remember { mutableStateOf("Idle") }
+        var candidateDevice by remember { mutableStateOf<DiscoveredCandidate?>(null) }
+
+        val isConnected = connectionStatus == ConnectionStatus.CONNECTED_HTTP ||
+                connectionStatus == ConnectionStatus.CONNECTED_MQTT
 
         var toastText by remember { mutableStateOf<String?>(null) }
         val trimsState = remember { mutableStateListOf<TrimItem>().apply { addAll(TrimDefinitions.defaultTrims()) } }
@@ -82,27 +87,39 @@ class MainActivity : ComponentActivity() {
 
         // Initialize networking
         LaunchedEffect(Unit) {
-            // Ping cached IP first
-            httpClient.ping { alive ->
-                if (alive) {
-                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                    statusLabel = prefs.robotIp
-                } else {
+            // Setup centralized error listener on httpClient
+            httpClient.onConnectionError = {
+                if (connectionStatus != ConnectionStatus.DISCONNECTED) {
                     connectionStatus = ConnectionStatus.DISCONNECTED
                     statusLabel = "Offline"
                 }
             }
 
-            // Setup discovery
+            // Ping cached IP first if set
+            val initialIp = prefs.robotIp
+            if (initialIp.isNotBlank()) {
+                httpClient.updateTarget(initialIp, prefs.robotPort)
+                httpClient.ping { alive ->
+                    if (alive) {
+                        connectionStatus = ConnectionStatus.CONNECTED_HTTP
+                        statusLabel = initialIp
+                    } else {
+                        connectionStatus = ConnectionStatus.DISCONNECTED
+                        statusLabel = "Offline"
+                    }
+                }
+            } else {
+                connectionStatus = ConnectionStatus.DISCONNECTED
+                statusLabel = "Disconnected"
+            }
+
+            // Setup discovery: candidate is presented for user confirmation (not automatically applied)
             discoveryManager = DeviceDiscoveryManager(
                 context = this@MainActivity,
                 onDeviceDiscovered = { ip, port, name ->
-                    prefs.robotIp = ip
-                    prefs.robotPort = port
-                    httpClient.updateTarget(ip, port)
-                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                    statusLabel = ip
-                    showToast("Found $name ($ip)")
+                    candidateDevice = DiscoveredCandidate(ip, port, name)
+                    showConnectionDialog = true
+                    scanMsg = "Candidate found: $ip"
                 },
                 onStatusChanged = { scanning, msg ->
                     isScanning = scanning
@@ -131,6 +148,30 @@ class MainActivity : ComponentActivity() {
                     pass = prefs.mqttPass,
                     clientId = prefs.mqttClientId
                 )
+            }
+        }
+
+        // Heartbeat check every 10 seconds for connection health
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(10_000L)
+                val targetIp = prefs.robotIp
+                if (targetIp.isNotBlank()) {
+                    httpClient.ping { alive ->
+                        if (alive) {
+                            if (connectionStatus != ConnectionStatus.CONNECTED_HTTP &&
+                                connectionStatus != ConnectionStatus.CONNECTED_MQTT) {
+                                connectionStatus = ConnectionStatus.CONNECTED_HTTP
+                                statusLabel = targetIp
+                            }
+                        } else {
+                            if (connectionStatus != ConnectionStatus.DISCONNECTED) {
+                                connectionStatus = ConnectionStatus.DISCONNECTED
+                                statusLabel = "Offline"
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -281,8 +322,13 @@ class MainActivity : ComponentActivity() {
                 when (currentScreen) {
                     Screen.CONTROLLER -> {
                         ControllerScreen(
+                            isConnected = isConnected,
                             onSendCmd = { key, value ->
                                 httpClient.sendMotion(key, value) { success, msg ->
+                                    if (!success) {
+                                        connectionStatus = ConnectionStatus.DISCONNECTED
+                                        statusLabel = "Offline"
+                                    }
                                     showToast(msg)
                                 }
                             }
@@ -291,6 +337,7 @@ class MainActivity : ComponentActivity() {
                     Screen.CALIBRATION -> {
                         CalibrationScreen(
                             trims = trimsState,
+                            isConnected = isConnected,
                             onTrimChanged = { key, value ->
                                 val idx = trimsState.indexOfFirst { it.id == key }
                                 if (idx != -1) {
@@ -301,11 +348,19 @@ class MainActivity : ComponentActivity() {
                             onSaveTrims = {
                                 val list = trimsState.map { it.value }
                                 httpClient.saveTrims(list) { success, msg ->
+                                    if (!success) {
+                                        connectionStatus = ConnectionStatus.DISCONNECTED
+                                        statusLabel = "Offline"
+                                    }
                                     showToast(msg)
                                 }
                             },
                             onSetPose = { pose ->
                                 httpClient.sendPose(pose) { success ->
+                                    if (!success) {
+                                        connectionStatus = ConnectionStatus.DISCONNECTED
+                                        statusLabel = "Offline"
+                                    }
                                     showToast(if (success) "Pose applied" else "Pose failed")
                                 }
                             }
@@ -347,16 +402,48 @@ class MainActivity : ComponentActivity() {
                         currentPort = prefs.robotPort,
                         isScanning = isScanning,
                         scanMessage = scanMsg,
+                        candidateDevice = candidateDevice,
                         onStartScan = {
+                            candidateDevice = null
                             discoveryManager.startDiscovery()
+                        },
+                        onAcceptCandidate = { candidate ->
+                            candidateDevice = null
+                            discoveryManager.stopDiscovery()
+                            httpClient.updateTarget(candidate.ip, candidate.port)
+                            httpClient.ping { alive ->
+                                if (alive) {
+                                    prefs.robotIp = candidate.ip
+                                    prefs.robotPort = candidate.port
+                                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
+                                    statusLabel = candidate.ip
+                                    showToast("Connected to ${candidate.name} (${candidate.ip})")
+                                } else {
+                                    connectionStatus = ConnectionStatus.DISCONNECTED
+                                    statusLabel = "Offline"
+                                    showToast("Failed to connect to ${candidate.ip}")
+                                }
+                            }
+                        },
+                        onRejectCandidate = {
+                            candidateDevice = null
+                            scanMsg = "Candidate rejected"
                         },
                         onConnectDirectAp = {
                             prefs.robotIp = "192.168.4.1"
                             prefs.robotPort = 80
                             httpClient.updateTarget("192.168.4.1", 80)
-                            connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                            statusLabel = "192.168.4.1"
-                            showToast("Connected to Robot AP")
+                            httpClient.ping { alive ->
+                                if (alive) {
+                                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
+                                    statusLabel = "192.168.4.1"
+                                    showToast("Connected to Robot AP")
+                                } else {
+                                    connectionStatus = ConnectionStatus.DISCONNECTED
+                                    statusLabel = "Offline"
+                                    showToast("Robot AP not reachable")
+                                }
+                            }
                         },
                         onSaveManual = { ip, port ->
                             prefs.robotIp = ip
@@ -368,7 +455,10 @@ class MainActivity : ComponentActivity() {
                                 showToast(if (alive) "Connected to $ip" else "Failed to connect to $ip")
                             }
                         },
-                        onDismiss = { showConnectionDialog = false }
+                        onDismiss = {
+                            candidateDevice = null
+                            showConnectionDialog = false
+                        }
                     )
                 }
             }

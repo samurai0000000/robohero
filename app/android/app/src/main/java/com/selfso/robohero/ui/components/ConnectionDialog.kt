@@ -9,11 +9,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.selfso.robohero.ui.theme.*
+
+data class DiscoveredCandidate(
+    val ip: String,
+    val port: Int,
+    val name: String
+)
 
 @Composable
 fun ConnectionDialog(
@@ -21,13 +28,16 @@ fun ConnectionDialog(
     currentPort: Int,
     isScanning: Boolean,
     scanMessage: String,
+    candidateDevice: DiscoveredCandidate? = null,
     onStartScan: () -> Unit,
+    onAcceptCandidate: (DiscoveredCandidate) -> Unit,
+    onRejectCandidate: () -> Unit,
     onConnectDirectAp: () -> Unit,
     onSaveManual: (ip: String, port: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var ipText by remember { mutableStateOf(currentIp) }
-    var portText by remember { mutableStateOf(currentPort.toString()) }
+    var ipText by remember(currentIp) { mutableStateOf(currentIp) }
+    var portText by remember(currentPort) { mutableStateOf(if (currentPort > 0) currentPort.toString() else "80") }
     val shape = RoundedCornerShape(16.dp)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -50,7 +60,7 @@ fun ConnectionDialog(
 
             // Discovery status
             Text(
-                text = if (isScanning) "Status: Scanning LAN..." else "Status: $scanMessage",
+                text = if (isScanning) "Status: Scanning LAN (mDNS + UDP)..." else "Status: $scanMessage",
                 fontSize = 12.sp,
                 color = if (isScanning) AccentCyan else TextMuted
             )
@@ -78,6 +88,58 @@ fun ConnectionDialog(
                 )
             }
 
+            // Candidate confirmation banner
+            if (candidateDevice != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0x3310B981))
+                        .border(1.dp, AccentGreen.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Candidate Found: ${candidateDevice.name}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentGreen
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "IP: ${candidateDevice.ip}:${candidateDevice.port}\nAccept and connect to this address?",
+                        fontSize = 12.sp,
+                        color = TextMain
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onRejectCandidate,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                        ) {
+                            Text("Reject", color = TextMuted, fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = {
+                                ipText = candidateDevice.ip
+                                portText = candidateDevice.port.toString()
+                                onAcceptCandidate(candidateDevice)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                        ) {
+                            Text("Accept", color = TextMain, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = BorderSubtle)
             Spacer(modifier = Modifier.height(16.dp))
@@ -95,6 +157,7 @@ fun ConnectionDialog(
                 value = ipText,
                 onValueChange = { ipText = it },
                 label = { Text("Robot IP Address") },
+                placeholder = { Text("e.g. 192.168.1.100") },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextMain,

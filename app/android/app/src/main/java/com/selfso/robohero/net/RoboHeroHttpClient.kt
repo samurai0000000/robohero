@@ -23,6 +23,14 @@ class RoboHeroHttpClient(
         .writeTimeout(1500, TimeUnit.MILLISECONDS)
         .build()
 
+    var onConnectionError: (() -> Unit)? = null
+
+    private fun notifyError() {
+        mainHandler.post {
+            onConnectionError?.invoke()
+        }
+    }
+
     fun updateTarget(host: String, port: Int = 80) {
         baseHost = host
         basePort = port
@@ -35,11 +43,13 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(false) }
             }
             override fun onResponse(call: Call, response: Response) {
                 val success = response.isSuccessful
                 response.close()
+                if (!success) notifyError()
                 mainHandler.post { callback(success) }
             }
         })
@@ -50,6 +60,7 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(false, "Connection error") }
             }
 
@@ -88,6 +99,7 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(null) }
             }
 
@@ -117,6 +129,7 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(false) }
             }
 
@@ -143,6 +156,7 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(urlBuilder.build()).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(false, "Save failed: Network error") }
             }
 
@@ -166,6 +180,7 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                notifyError()
                 mainHandler.post { callback(false) }
             }
 

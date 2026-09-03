@@ -26,6 +26,7 @@ import com.selfso.robohero.ui.theme.*
 @Composable
 fun CalibrationScreen(
     trims: List<TrimItem>,
+    isConnected: Boolean = true,
     onTrimChanged: (key: Int, value: Int) -> Unit,
     onSaveTrims: () -> Unit,
     onSetPose: (pose: String) -> Unit,
@@ -50,18 +51,21 @@ fun CalibrationScreen(
                     text = "Zero Pose",
                     modifier = Modifier.weight(1f),
                     type = RoboHeroButtonType.OUTLINE,
+                    enabled = isConnected,
                     onClick = { onSetPose("zero") }
                 )
                 RoboHeroButton(
                     text = "Center Pose",
                     modifier = Modifier.weight(1f),
                     type = RoboHeroButtonType.OUTLINE,
+                    enabled = isConnected,
                     onClick = { onSetPose("center") }
                 )
                 RoboHeroButton(
                     text = "Save EEPROM",
                     modifier = Modifier.weight(1.3f),
                     type = RoboHeroButtonType.SUCCESS,
+                    enabled = isConnected,
                     onClick = onSaveTrims
                 )
             }
@@ -77,6 +81,7 @@ fun CalibrationScreen(
                         catTrims.forEach { item ->
                             TrimRow(
                                 item = item,
+                                enabled = isConnected,
                                 onValueChange = { newVal ->
                                     onTrimChanged(item.id, newVal)
                                 }
@@ -94,16 +99,18 @@ fun CalibrationScreen(
 @Composable
 private fun TrimRow(
     item: TrimItem,
+    enabled: Boolean = true,
     onValueChange: (Int) -> Unit
 ) {
     val shape = RoundedCornerShape(8.dp)
+    val alpha = if (enabled) 1f else 0.45f
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
             .background(Color(0x22000000))
-            .border(1.dp, BorderSubtle, shape)
+            .border(1.dp, BorderSubtle.copy(alpha = alpha), shape)
             .padding(10.dp)
     ) {
         Row(
@@ -113,20 +120,20 @@ private fun TrimRow(
         ) {
             Text(
                 text = item.name,
-                color = TextMain,
+                color = TextMain.copy(alpha = alpha),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0x3306B6D4))
-                    .border(1.dp, AccentCyan.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                    .background(Color(0x3306B6D4).copy(alpha = alpha))
+                    .border(1.dp, AccentCyan.copy(alpha = 0.5f * alpha), RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = "${item.value}",
-                    color = AccentCyan,
+                    color = AccentCyan.copy(alpha = alpha),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -146,13 +153,13 @@ private fun TrimRow(
                     .size(36.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(BgCard)
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp))
-                    .padding(0.dp),
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 RoboHeroButton(
                     text = "-",
                     type = RoboHeroButtonType.OUTLINE,
+                    enabled = enabled,
                     modifier = Modifier.fillMaxSize(),
                     onClick = {
                         val v = (item.value - 1).coerceIn(item.min, item.max)
@@ -165,9 +172,10 @@ private fun TrimRow(
                 value = item.value.toFloat(),
                 onValueChange = { onValueChange(it.toInt()) },
                 valueRange = item.min.toFloat()..item.max.toFloat(),
+                enabled = enabled,
                 colors = SliderDefaults.colors(
-                    thumbColor = AccentCyan,
-                    activeTrackColor = AccentBlue,
+                    thumbColor = if (enabled) AccentCyan else Color.Gray,
+                    activeTrackColor = if (enabled) AccentBlue else Color.DarkGray,
                     inactiveTrackColor = Color(0x33FFFFFF)
                 ),
                 modifier = Modifier.weight(1f)
@@ -185,6 +193,7 @@ private fun TrimRow(
                 RoboHeroButton(
                     text = "+",
                     type = RoboHeroButtonType.OUTLINE,
+                    enabled = enabled,
                     modifier = Modifier.fillMaxSize(),
                     onClick = {
                         val v = (item.value + 1).coerceIn(item.min, item.max)
@@ -205,6 +214,7 @@ private fun TrimRow(
                 RoboHeroButton(
                     text = "0",
                     type = RoboHeroButtonType.OUTLINE,
+                    enabled = enabled,
                     modifier = Modifier.fillMaxSize(),
                     onClick = { onValueChange(0) }
                 )
