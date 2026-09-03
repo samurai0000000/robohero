@@ -13,7 +13,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class RoboHeroHttpClient(
-    private var baseHost: String = "192.168.4.1",
+    private var baseHost: String = "",
     private var basePort: Int = 80
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -23,14 +23,6 @@ class RoboHeroHttpClient(
         .writeTimeout(1500, TimeUnit.MILLISECONDS)
         .build()
 
-    var onConnectionError: (() -> Unit)? = null
-
-    private fun notifyError() {
-        mainHandler.post {
-            onConnectionError?.invoke()
-        }
-    }
-
     fun updateTarget(host: String, port: Int = 80) {
         baseHost = host
         basePort = port
@@ -39,28 +31,33 @@ class RoboHeroHttpClient(
     fun getHost(): String = baseHost
 
     fun ping(callback: (Boolean) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(false) }
+            return
+        }
         val url = "http://$baseHost:$basePort/?_t=${System.currentTimeMillis()}"
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(false) }
             }
             override fun onResponse(call: Call, response: Response) {
                 val success = response.isSuccessful
                 response.close()
-                if (!success) notifyError()
                 mainHandler.post { callback(success) }
             }
         })
     }
 
     fun sendMotion(key: String, value: Int, callback: (Boolean, String) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(false, "No target IP configured") }
+            return
+        }
         val url = "http://$baseHost:$basePort/?$key=$value&_t=${System.currentTimeMillis()}"
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(false, "Connection error") }
             }
 
@@ -95,11 +92,14 @@ class RoboHeroHttpClient(
     }
 
     fun getTrims(callback: (List<Int>?) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(null) }
+            return
+        }
         val url = "http://$baseHost:$basePort/calibrate?json=1&_t=${System.currentTimeMillis()}"
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(null) }
             }
 
@@ -125,11 +125,14 @@ class RoboHeroHttpClient(
     }
 
     fun applyTrim(key: Int, value: Int, callback: (Boolean) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(false) }
+            return
+        }
         val url = "http://$baseHost:$basePort/calibrate?apply=1&key=$key&val=$value&_t=${System.currentTimeMillis()}"
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(false) }
             }
 
@@ -142,6 +145,10 @@ class RoboHeroHttpClient(
     }
 
     fun saveTrims(trims: List<Int>, callback: (Boolean, String) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(false, "No target IP configured") }
+            return
+        }
         val urlBuilder = HttpUrl.Builder()
             .scheme("http")
             .host(baseHost)
@@ -156,7 +163,6 @@ class RoboHeroHttpClient(
         val req = Request.Builder().url(urlBuilder.build()).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(false, "Save failed: Network error") }
             }
 
@@ -176,11 +182,14 @@ class RoboHeroHttpClient(
     }
 
     fun sendPose(pose: String, callback: (Boolean) -> Unit) {
+        if (baseHost.isBlank()) {
+            mainHandler.post { callback(false) }
+            return
+        }
         val url = "http://$baseHost:$basePort/calibrate?pose=$pose&_t=${System.currentTimeMillis()}"
         val req = Request.Builder().url(url).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                notifyError()
                 mainHandler.post { callback(false) }
             }
 

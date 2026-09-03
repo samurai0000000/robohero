@@ -85,32 +85,50 @@ class MainActivity : ComponentActivity() {
             toastText = msg
         }
 
-        // Initialize networking
-        LaunchedEffect(Unit) {
-            // Setup centralized error listener on httpClient
-            httpClient.onConnectionError = {
+        var consecutiveFailures by remember { mutableIntStateOf(0) }
+        val maxConsecutiveFailures = 3
+
+        fun registerFailure() {
+            consecutiveFailures++
+            if (consecutiveFailures >= maxConsecutiveFailures) {
                 if (connectionStatus != ConnectionStatus.DISCONNECTED) {
                     connectionStatus = ConnectionStatus.DISCONNECTED
                     statusLabel = "Offline"
                 }
             }
+        }
 
+        fun registerSuccess(ip: String? = null) {
+            consecutiveFailures = 0
+            val resolvedIp = if (!ip.isNullOrBlank()) ip else prefs.robotIp
+            if (connectionStatus != ConnectionStatus.CONNECTED_HTTP &&
+                connectionStatus != ConnectionStatus.CONNECTED_MQTT) {
+                connectionStatus = ConnectionStatus.CONNECTED_HTTP
+                statusLabel = resolvedIp
+            } else if (statusLabel == "Offline" || statusLabel == "Disconnected") {
+                statusLabel = resolvedIp
+            }
+        }
+
+        // Initialize networking
+        LaunchedEffect(Unit) {
             // Ping cached IP first if set
             val initialIp = prefs.robotIp
             if (initialIp.isNotBlank()) {
                 httpClient.updateTarget(initialIp, prefs.robotPort)
                 httpClient.ping { alive ->
                     if (alive) {
-                        connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                        statusLabel = initialIp
+                        registerSuccess(initialIp)
                     } else {
                         connectionStatus = ConnectionStatus.DISCONNECTED
                         statusLabel = "Offline"
+                        consecutiveFailures = maxConsecutiveFailures
                     }
                 }
             } else {
                 connectionStatus = ConnectionStatus.DISCONNECTED
                 statusLabel = "Disconnected"
+                consecutiveFailures = maxConsecutiveFailures
             }
 
             // Setup discovery: candidate is presented for user confirmation (not automatically applied)
@@ -133,6 +151,7 @@ class MainActivity : ComponentActivity() {
                     if (connected) {
                         connectionStatus = ConnectionStatus.CONNECTED_MQTT
                         statusLabel = "MQTT: ${prefs.mqttHost}"
+                        consecutiveFailures = 0
                     }
                 },
                 onMessageReceived = { topic, message ->
@@ -159,16 +178,9 @@ class MainActivity : ComponentActivity() {
                 if (targetIp.isNotBlank()) {
                     httpClient.ping { alive ->
                         if (alive) {
-                            if (connectionStatus != ConnectionStatus.CONNECTED_HTTP &&
-                                connectionStatus != ConnectionStatus.CONNECTED_MQTT) {
-                                connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                                statusLabel = targetIp
-                            }
+                            registerSuccess(targetIp)
                         } else {
-                            if (connectionStatus != ConnectionStatus.DISCONNECTED) {
-                                connectionStatus = ConnectionStatus.DISCONNECTED
-                                statusLabel = "Offline"
-                            }
+                            registerFailure()
                         }
                     }
                 }
@@ -325,9 +337,10 @@ class MainActivity : ComponentActivity() {
                             isConnected = isConnected,
                             onSendCmd = { key, value ->
                                 httpClient.sendMotion(key, value) { success, msg ->
-                                    if (!success) {
-                                        connectionStatus = ConnectionStatus.DISCONNECTED
-                                        statusLabel = "Offline"
+                                    if (success) {
+                                        registerSuccess()
+                                    } else {
+                                        registerFailure()
                                     }
                                     showToast(msg)
                                 }
@@ -348,18 +361,20 @@ class MainActivity : ComponentActivity() {
                             onSaveTrims = {
                                 val list = trimsState.map { it.value }
                                 httpClient.saveTrims(list) { success, msg ->
-                                    if (!success) {
-                                        connectionStatus = ConnectionStatus.DISCONNECTED
-                                        statusLabel = "Offline"
+                                    if (success) {
+                                        registerSuccess()
+                                    } else {
+                                        registerFailure()
                                     }
                                     showToast(msg)
                                 }
                             },
                             onSetPose = { pose ->
                                 httpClient.sendPose(pose) { success ->
-                                    if (!success) {
-                                        connectionStatus = ConnectionStatus.DISCONNECTED
-                                        statusLabel = "Offline"
+                                    if (success) {
+                                        registerSuccess()
+                                    } else {
+                                        registerFailure()
                                     }
                                     showToast(if (success) "Pose applied" else "Pose failed")
                                 }
@@ -415,12 +430,10 @@ class MainActivity : ComponentActivity() {
                                 if (alive) {
                                     prefs.robotIp = candidate.ip
                                     prefs.robotPort = candidate.port
-                                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                                    statusLabel = candidate.ip
+                                    registerSuccess(candidate.ip)
                                     showToast("Connected to ${candidate.name} (${candidate.ip})")
                                 } else {
-                                    connectionStatus = ConnectionStatus.DISCONNECTED
-                                    statusLabel = "Offline"
+                                    registerFailure()
                                     showToast("Failed to connect to ${candidate.ip}")
                                 }
                             }
@@ -435,12 +448,10 @@ class MainActivity : ComponentActivity() {
                             httpClient.updateTarget("192.168.4.1", 80)
                             httpClient.ping { alive ->
                                 if (alive) {
-                                    connectionStatus = ConnectionStatus.CONNECTED_HTTP
-                                    statusLabel = "192.168.4.1"
+                                    registerSuccess("192.168.4.1")
                                     showToast("Connected to Robot AP")
                                 } else {
-                                    connectionStatus = ConnectionStatus.DISCONNECTED
-                                    statusLabel = "Offline"
+                                    registerFailure()
                                     showToast("Robot AP not reachable")
                                 }
                             }
@@ -450,9 +461,13 @@ class MainActivity : ComponentActivity() {
                             prefs.robotPort = port
                             httpClient.updateTarget(ip, port)
                             httpClient.ping { alive ->
-                                connectionStatus = if (alive) ConnectionStatus.CONNECTED_HTTP else ConnectionStatus.DISCONNECTED
-                                statusLabel = if (alive) ip else "Offline"
-                                showToast(if (alive) "Connected to $ip" else "Failed to connect to $ip")
+                                if (alive) {
+                                    registerSuccess(ip)
+                                    showToast("Connected to $ip")
+                                } else {
+                                    registerFailure()
+                                    showToast("Failed to connect to $ip")
+                                }
                             }
                         },
                         onDismiss = {
