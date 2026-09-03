@@ -11,14 +11,14 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # ESP8266 libstdc++ thread-safe statics throw via pthreads.
 idf_build_set_property(CXX_COMPILE_OPTIONS "-fno-threadsafe-statics" APPEND)
 
-project(robohero VERSION 2.1.14 LANGUAGES C CXX ASM)
+project(robohero VERSION 2.1.15 LANGUAGES C CXX ASM)
 
 # ESP8266_RTOS_SDK's project() macro only forwards the name, so VERSION
 # does not populate PROJECT_VERSION_* the way meshroof's IDF does.
-set(PROJECT_VERSION "2.1.14")
+set(PROJECT_VERSION "2.1.15")
 set(PROJECT_VERSION_MAJOR "2")
 set(PROJECT_VERSION_MINOR "1")
-set(PROJECT_VERSION_PATCH "14")
+set(PROJECT_VERSION_PATCH "15")
 
 set(WHOAMI_OUTPUT)
 execute_process(
