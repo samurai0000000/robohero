@@ -29,8 +29,4 @@ serve: build
 clean:
 	@rm -rf dist node_modules
 
-deploy: build
-	@echo "Deploying static assets to $(APACHE_DIR)..."
-	@sudo mkdir -p $(APACHE_DIR)
-	@sudo cp -r dist/* $(APACHE_DIR)/
-	@echo "Deployment complete."
+-include local.deploy.mk

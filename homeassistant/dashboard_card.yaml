@@ -1,0 +1,265 @@
+# RoboHero Controller - Home Assistant Lovelace Card
+#
+# To use:
+# 1. Open your Home Assistant Dashboard.
+# 2. Click the three dots (top right) -> "Edit Dashboard".
+# 3. Click "+ Add Card" -> Scroll to bottom and select "Manual".
+# 4. Replace the sample text with the YAML below and click "Save".
+#
+# Note: If your robot has a customized client ID, replace "robohero"
+# with your robot's entity prefix if needed.
+
+type: vertical-stack
+title: 🤖 RoboHero Controller
+cards:
+  # --- Status & Power Header ---
+  - type: entities
+    show_header_toggle: false
+    entities:
+      - entity: sensor.robohero_battery_level
+        name: Battery Level
+      - entity: sensor.robohero_battery_voltage
+        name: Battery Voltage
+      - entity: sensor.robohero_motion_status
+        name: Motion Status
+      - entity: binary_sensor.robohero_low_voltage_alert
+        name: Low Voltage Alert
+
+  # --- Battery Gauge & Emergency Stop ---
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.robohero_battery_level
+        name: Battery
+        min: 0
+        max: 100
+        severity:
+          red: 0
+          yellow: 20
+          green: 50
+      - type: button
+        name: EMERGENCY STOP
+        icon: mdi:stop-circle
+        color: red
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_stop
+
+  # --- Locomotion 3x3 D-Pad ---
+  - type: grid
+    title: 🎮 Locomotion
+    columns: 3
+    square: false
+    cards:
+      - type: button
+        name: Turn Left
+        icon: mdi:rotate-left
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_turn_left
+
+      - type: button
+        name: Forward
+        icon: mdi:arrow-up-bold
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_forward
+
+      - type: button
+        name: Turn Right
+        icon: mdi:rotate-right
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_turn_right
+
+      - type: button
+        name: Move Left
+        icon: mdi:arrow-left-bold
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_sidestep_left
+
+      - type: button
+        name: Standby
+        icon: mdi:human
+        color: blue
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_standby
+
+      - type: button
+        name: Move Right
+        icon: mdi:arrow-right-bold
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_sidestep_right
+
+      - type: button
+        name: Relax
+        icon: mdi:power-sleep
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_relax
+
+      - type: button
+        name: Backward
+        icon: mdi:arrow-down-bold
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_backward
+
+      - type: button
+        name: Zero Pose
+        icon: mdi:crosshairs-gps
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_zero
+
+  # --- Recovery & Self-Righting ---
+  - type: grid
+    title: 🔄 Recovery
+    columns: 2
+    square: false
+    cards:
+      - type: button
+        name: Get Up (Back)
+        icon: mdi:human-handsup
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_get_up_back
+      - type: button
+        name: Face-Down Get Up
+        icon: mdi:human-handsdown
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_get_up_front
+
+  # --- Gestures & Routines ---
+  - type: grid
+    title: 🎭 Gestures & Routines
+    columns: 3
+    square: false
+    cards:
+      - type: button
+        name: Wave
+        icon: mdi:hand-wave
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_wave
+
+      - type: button
+        name: Bow
+        icon: mdi:human-greeting
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_bow
+
+      - type: button
+        name: Dance
+        icon: mdi:music
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_dance
+
+      - type: button
+        name: Iron Man
+        icon: mdi:shield-star
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_iron_man
+
+      - type: button
+        name: Clap
+        icon: mdi:hand-clap
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_clap
+
+      - type: button
+        name: Warm-Up
+        icon: mdi:run
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_warmup
+
+      - type: button
+        name: Apache
+        icon: mdi:karate
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_apache
+
+      - type: button
+        name: Balance
+        icon: mdi:scale-balance
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_balance
+
+      - type: button
+        name: GOILC
+        icon: mdi:robot-happy
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_goilc
+
+      - type: button
+        name: Auto Demo
+        icon: mdi:play-circle-outline
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.robohero_auto_demo_loop
+
+  # --- Routine Selector & Head Control ---
+  - type: entities
+    title: ⚙️ Controls
+    show_header_toggle: false
+    entities:
+      - entity: select.robohero_select_motion_program
+        name: Select Motion Program
+      - entity: number.robohero_head_pan_angle
+        name: Head Pan Angle
