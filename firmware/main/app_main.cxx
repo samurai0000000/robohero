@@ -8,6 +8,7 @@
 #include "esp_system.h"
 #include "nvs_flash.h"
 
+#include "Discovery.hxx"
 #include "Mqtt.hxx"
 #include "RoboHero.hxx"
 #include "Shell.hxx"
@@ -16,9 +17,10 @@
 
 static const char *TAG = "main";
 
-static void wifiUpStartWeb(void)
+static void wifiUpStartServices(void)
 {
     Web::instance().start();
+    Discovery::instance().start();
 }
 
 extern "C" void app_main(void)
@@ -32,11 +34,12 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(err);
 
-    RoboHero::instance().onWifiUp(wifiUpStartWeb);
+    RoboHero::instance().onWifiUp(wifiUpStartServices);
     RoboHero::instance().start();
 
     if (RoboHero::instance().wifiReady()) {
         Web::instance().start();
+        Discovery::instance().start();
     }
 
     if (Store::instance().mqttEnabled() && RoboHero::instance().wifiReady()) {

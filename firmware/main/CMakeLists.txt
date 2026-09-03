@@ -7,9 +7,10 @@ idf_component_register(SRCS "app_main.cxx"
                             "Web.cxx"
                             "Pca9685.cxx"
                             "Motions.cxx"
+                            "Discovery.cxx"
                        INCLUDE_DIRS "."
                                     "../include"
                                     "${CMAKE_BINARY_DIR}"
                                     "${CMAKE_BINARY_DIR}/include"
-                       REQUIRES nvs_flash mqtt esp_http_server
+                       REQUIRES nvs_flash mqtt esp_http_server mdns
                        EMBED_FILES "index.html" "calibrate.html")

@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -84,7 +85,7 @@ fun RoboHeroButton(
 
     Box(
         modifier = modifier
-            .height(52.dp)
+            .heightIn(min = 48.dp)
             .clip(shape)
             .then(backgroundModifier)
             .clickable(
@@ -93,16 +94,18 @@ fun RoboHeroButton(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             color = textColor,
-            fontSize = 14.sp,
+            fontSize = 13.sp,
+            lineHeight = 15.sp,
             fontWeight = fontWeight,
             textAlign = TextAlign.Center,
-            maxLines = 1
+            softWrap = true,
+            maxLines = 2
         )
     }
 }

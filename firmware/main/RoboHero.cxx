@@ -27,6 +27,7 @@ extern "C" {
 #include "tcpip_adapter.h"
 
 #include "Config.hxx"
+#include "Discovery.hxx"
 #include "Motions.hxx"
 #include "Mqtt.hxx"
 #include "RoboHero.hxx"
@@ -529,6 +530,7 @@ void RoboHero::handleWifiKind(int kind)
     }
     if (kind == 1) {
         ESP_LOGW(TAG, "STA disconnected");
+        Discovery::instance().stop();
         return;
     }
     if (kind == 2) {
