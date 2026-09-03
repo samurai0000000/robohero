@@ -16,6 +16,10 @@ cards:
   - type: entities
     show_header_toggle: false
     entities:
+      - entity: switch.robohero_power
+        name: Robot Power
+      - entity: binary_sensor.robohero_connectivity
+        name: Online Status
       - entity: sensor.robohero_battery_level
         name: Battery Level
       - entity: sensor.robohero_battery_voltage
@@ -45,7 +49,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_stop
+            entity_id: button.robohero_emergency_stop
 
   # --- Locomotion 3x3 D-Pad ---
   - type: grid
@@ -87,7 +91,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_sidestep_left
+            entity_id: button.robohero_move_left
 
       - type: button
         name: Standby
@@ -106,7 +110,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_sidestep_right
+            entity_id: button.robohero_move_right
 
       - type: button
         name: Relax
@@ -133,7 +137,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_zero
+            entity_id: button.robohero_zero_pose
 
   # --- Recovery & Self-Righting ---
   - type: grid
@@ -156,7 +160,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_get_up_front
+            entity_id: button.robohero_face_down_get_up
 
   # --- Gestures & Routines ---
   - type: grid
@@ -216,7 +220,7 @@ cards:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_warmup
+            entity_id: button.robohero_warm_up
 
       - type: button
         name: Apache

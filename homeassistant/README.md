@@ -51,23 +51,44 @@ reboot
 2. Select the **MQTT** integration card.
 3. You will see **RoboHero** listed under **Devices**.
 4. Click on **RoboHero** to inspect the discovered entities:
-   - **Sensors**:
-     - `sensor.robohero_battery_voltage` (Battery Voltage in V)
-     - `sensor.robohero_battery_level` (Battery % state of charge)
-     - `sensor.robohero_motion_status` (Motion status: `idle`, `moving`, `relaxed`, `voltage_low`)
-   - **Binary Sensors**:
-     - `binary_sensor.robohero_low_voltage_alert` (Problem alert if voltage ≤ 5.9V)
-     - `binary_sensor.robohero_connectivity` (Online / Offline LWT status)
-   - **Switches**:
-     - `switch.robohero_power` (Controls power: ON stands up to Standby, OFF relaxes servos to rest)
-   - **Buttons**:
-     - Locomotion: Forward, Backward, Turn Left, Turn Right, Sidestep Left, Sidestep Right
-     - Recovery: Get Up (Back), Face-Down Get Up
-     - Gestures (All 10): Wave, Bow, Dance, Iron Man, Clap Hands, Warm-Up, Apache, Balance, GOILC, Auto Demo Loop
-     - Safety/State: Emergency Stop, Standby / Center, Relax, Zero
-   - **Controls**:
-     - `select.robohero_select_motion_program` (Dropdown to trigger any motion program)
-     - `number.robohero_head_pan_angle` (Head yaw angle slider: -90° to +90°)
+    - **Switches & Controls**:
+      - `switch.robohero_power` (RoboHero Power: ON stands up to Standby, OFF relaxes servos to rest)
+      - `number.robohero_head_pan_angle` (Head Pan Angle slider: -90° to +90°)
+      - `select.robohero_select_motion_program` (Select Motion Program dropdown)
+    - **Sensors**:
+      - `sensor.robohero_battery_voltage` (Battery Voltage in V)
+      - `sensor.robohero_battery_level` (Battery Level in %)
+      - `sensor.robohero_motion_status` (Motion Status: `idle`, `moving`, `relaxed`, `voltage_low`)
+    - **Binary Sensors (Diagnostics)**:
+      - `binary_sensor.robohero_connectivity` (Connectivity: `online` / `offline` via LWT)
+      - `binary_sensor.robohero_low_voltage_alert` (Low Voltage Alert: `problem` when ≤ 5.9V)
+    - **Buttons (22 Total)**:
+      - **Safety & Pose**:
+        - `button.robohero_emergency_stop` (Emergency Stop)
+        - `button.robohero_standby` (Standby)
+        - `button.robohero_relax` (Relax)
+        - `button.robohero_zero_pose` (Zero Pose)
+      - **Locomotion**:
+        - `button.robohero_forward` (Forward)
+        - `button.robohero_backward` (Backward)
+        - `button.robohero_turn_left` (Turn Left)
+        - `button.robohero_turn_right` (Turn Right)
+        - `button.robohero_move_left` (Move Left)
+        - `button.robohero_move_right` (Move Right)
+      - **Recovery**:
+        - `button.robohero_get_up_back` (Get Up Back)
+        - `button.robohero_face_down_get_up` (Face-Down Get Up)
+      - **Gestures & Routines**:
+        - `button.robohero_dance` (Dance)
+        - `button.robohero_bow` (Bow)
+        - `button.robohero_wave` (Wave)
+        - `button.robohero_iron_man` (Iron Man)
+        - `button.robohero_apache` (Apache)
+        - `button.robohero_balance` (Balance)
+        - `button.robohero_warm_up` (Warm-Up)
+        - `button.robohero_clap` (Clap)
+        - `button.robohero_goilc` (GOILC)
+        - `button.robohero_auto_demo_loop` (Auto Demo Loop)
 
 ---
 
@@ -113,50 +134,94 @@ The dashboard card gives you:
 
 ---
 
-## Step 4: Voice Control via Home Assistant Assist
+## Step 4: Adding All Gesture Routines to Home Assistant
 
-Because all actions are standard Home Assistant `button` entities, you can immediately control RoboHero using Home Assistant Assist voice commands:
+Home Assistant `button` entities are momentary actions. To control routines by voice or through automations, they are exposed as Home Assistant **Scripts**.
 
-- *"Press RoboHero wave"*
-- *"Press RoboHero dance"*
-- *"Press RoboHero standby"*
-- *"Press RoboHero relax"*
-- *"What is RoboHero's battery level?"*
+You can add all gestures at once using either the **Home Assistant UI (Single Script with all gestures)** or by pasting into **`scripts.yaml`**.
 
 ---
 
-## Step 5: Voice Control with Google Home & Nest Audio
+### Method A: Single Script via Home Assistant UI (Latest Version)
 
-To control RoboHero using a **Google Nest Audio**, **Nest Mini**, or the **Google Assistant** app on your phone (e.g. *"Hey Google, tell robot to dance"*), follow these steps:
+This adds **one script** that contains all 12 routines in a dropdown selector directly through the Home Assistant interface (no file editing required).
 
-### 1. Create a Helper Script in Home Assistant
-Because Home Assistant `button` entities are momentary actions rather than stateful switches, you create a **Script** to press the button. Home Assistant then automatically exports this script to Google Assistant as a voice **Scene**:
+#### 1. Open the Script Editor in Home Assistant
+1. In the left sidebar, click **Settings**.
+2. Click **Automations & scenes**.
+3. At the top of the page, click the **Scripts** tab.
+4. Click the blue **+ Add script** button in the bottom-right corner.
 
-**Method A: Via the Visual (GUI) Editor**
-1. In Home Assistant, go to **Settings** &rarr; **Automations & Scenes** &rarr; **Scripts** tab.
-2. Click **+ Add Script**.
-3. Name it **`Robot Dance`** (using `Robot Dance` instead of `RoboHero Dance` avoids naming conflicts with the `RoboHero` power switch).
-4. Under **Sequence**, click **+ Add Action** &rarr; **Perform Action** (Call Service).
-5. Choose **Button: Press** (`button.press`).
-6. Select **RoboHero Dance** (`button.robohero_dance`) as the target.
-7. Click **Save**.
+#### 2. Switch to YAML and Paste the Script
+1. In the top-right corner of the editor, click the **Three Vertical Dots (`⋮`)** menu.
+2. Select **Edit in YAML**.
+3. Replace all existing text in the editor with this complete script containing every gesture:
 
-**Method B: Via the UI YAML Editor**
-1. When creating or editing a script, click the **Three Dots (`⋮`)** in the top-right corner &rarr; **Edit in YAML**.
-2. Paste the following YAML:
-   ```yaml
-   alias: Robot Dance
-   icon: mdi:music
-   sequence:
-     - action: button.press
-       target:
-         entity_id: button.robohero_dance
-   ```
-   *(Note: Do not include a top-level `robot_dance:` key in the UI editor, as Home Assistant manages the ID automatically).*
-3. Click **Save**.
-
-**Method C: If editing raw `scripts.yaml` directly on disk**
 ```yaml
+alias: RoboHero Routines
+icon: mdi:robot
+description: "Execute any RoboHero gesture or recovery routine"
+fields:
+  routine:
+    name: Routine
+    description: "Choose routine to perform"
+    required: true
+    selector:
+      select:
+        options:
+          - label: "Dance"
+            value: "button.robohero_dance"
+          - label: "Bow"
+            value: "button.robohero_bow"
+          - label: "Wave"
+            value: "button.robohero_wave"
+          - label: "Iron Man"
+            value: "button.robohero_iron_man"
+          - label: "Apache"
+            value: "button.robohero_apache"
+          - label: "Balance"
+            value: "button.robohero_balance"
+          - label: "Warm-Up"
+            value: "button.robohero_warm_up"
+          - label: "Clap"
+            value: "button.robohero_clap"
+          - label: "GOILC"
+            value: "button.robohero_goilc"
+          - label: "Auto Demo Loop"
+            value: "button.robohero_auto_demo_loop"
+          - label: "Get Up (Back)"
+            value: "button.robohero_get_up_back"
+          - label: "Face-Down Get Up"
+            value: "button.robohero_face_down_get_up"
+sequence:
+  - action: button.press
+    target:
+      entity_id: "{{ routine }}"
+```
+
+4. Click the blue **Save** button in the bottom-right corner.
+5. To test it immediately: Click the **Three Vertical Dots (`⋮`)** in the top-right corner (next to **Traces**) &rarr; click **Run**. A dialog will open where you can select any routine from the dropdown and watch RoboHero execute it!
+
+---
+
+### Method B: All Individual Routine Scripts via `scripts.yaml`
+
+If you want direct individual voice commands in Google Assistant for each routine (e.g. *"activate Robot Apache"*, *"activate Robot Bow"*), add this block containing all gestures to your `scripts.yaml`:
+
+#### 1. Open `scripts.yaml` in Home Assistant OS 2026
+In Home Assistant OS, system files are edited using the **File Editor** add-on:
+1. Go to **Settings** &rarr; **System** &rarr; **Add-ons**.
+   *(Direct URL: `http://<your-ha-host>:8123/hassio/dashboard`)*.
+2. Click the blue **Add-on Store** button in the bottom-right corner.
+3. Search for **File editor** &rarr; click **INSTALL** &rarr; turn ON **Show in sidebar** &rarr; click **START**.
+4. Click **File editor** in your left sidebar &rarr; click the **Folder icon (`📁`)** in the top toolbar &rarr; open **`scripts.yaml`**.
+5. Paste the complete block below at the end of the file and click the **Save icon (`💾`)**:
+
+```yaml
+# ==============================================================================
+# RoboHero Gesture & Action Routines (All Gestures)
+# ==============================================================================
+
 robot_dance:
   alias: Robot Dance
   icon: mdi:music
@@ -164,57 +229,143 @@ robot_dance:
     - action: button.press
       target:
         entity_id: button.robohero_dance
+
+robot_bow:
+  alias: Robot Bow
+  icon: mdi:human-greeting
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_bow
+
+robot_wave:
+  alias: Robot Wave
+  icon: mdi:hand-wave
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_wave
+
+robot_iron_man:
+  alias: Robot Iron Man
+  icon: mdi:shield-star
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_iron_man
+
+robot_apache:
+  alias: Robot Apache
+  icon: mdi:karate
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_apache
+
+robot_balance:
+  alias: Robot Balance
+  icon: mdi:scale-balance
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_balance
+
+robot_warmup:
+  alias: Robot Warmup
+  icon: mdi:run
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_warm_up
+
+robot_clap:
+  alias: Robot Clap
+  icon: mdi:hand-clap
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_clap
+
+robot_goilc:
+  alias: Robot Goilc
+  icon: mdi:robot-happy
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_goilc
+
+robot_auto_demo:
+  alias: Robot Auto Demo
+  icon: mdi:play-circle-outline
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_auto_demo_loop
+
+robot_get_up_back:
+  alias: Robot Get Up
+  icon: mdi:human-handsup
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_get_up_back
+
+robot_get_up_front:
+  alias: Robot Face Up
+  icon: mdi:human-handsdown
+  sequence:
+    - action: button.press
+      target:
+        entity_id: button.robohero_face_down_get_up
 ```
 
+#### 2. Reload Scripts in Home Assistant 2026:
+1. In the left sidebar, click **Tools** (the **`>_`** icon at `/config/tools/yaml`).
+2. On the **YAML** tab, under **YAML configuration reloading**:
+   - Click **All YAML configuration** (or scroll down and click **Scripts**).
+3. All routines will immediately appear in **Settings** &rarr; **Automations & scenes** &rarr; **Scripts**.
+
 ---
 
-### 2. Mandatory Step: Expose the Script as a Scene to Google Assistant
+## Step 5: Expose to Google Assistant / Nest Audio
+
+To control the routines with your Google Nest Audio or Google Assistant:
+
 > [!IMPORTANT]
-> **Why Google Says "Can't find scene called Robot Dance"**:
-> Newly created scripts and scenes in Home Assistant are **NOT exposed to Google Assistant by default**. Google will not know the scene exists until you turn on its exposure toggle!
+> **Why New Scripts Do Not Appear in the Expose Table Automatically**:
+> The table under **Settings &rarr; Voice assistants &rarr; Expose** (`/config/voice-assistants/expose`) only lists entities that have *already* been exposed. Newly created scripts are unexposed by default and will **not** appear in that table until you explicitly add them using the **`+ Expose entity`** button.
 
-1. In Home Assistant, go to **Settings** &rarr; **Voice assistants**.
-2. Click the **Expose** tab at the very top of the page.
-3. Search for: **`Robot Dance`** (or `dance`).
-4. Find the row for `script.robot_dance` and toggle the switch under the **Google Assistant** column to **ON (Blue)**.
-5. In the **Voice name** column, ensure it says **`Robot Dance`**.
-6. Force Google to download the new scene by saying to your Nest Audio:
+### How to Expose Your Routine Scripts:
+1. In the left sidebar, click **Settings** &rarr; **Voice assistants**.
+2. Click the **Expose** tab at the top.
+3. Look at the bottom-right corner and click the blue **`+ Expose entity`** button.
+4. In the search box that pops up, type **`Robot`** to list all routine scripts.
+5. Select the scripts (`Robot Dance`, `Robot Apache`, `Robot Bow`, `Robot Wave`, etc.) and click **Expose**.
+6. Ensure the toggle under the **Google Assistant** column is switched **ON** (blue).
+7. Say to your Nest Audio:
    > **"Hey Google, sync my devices"**
-7. Google will chime: *"Syncing devices for Home Assistant..."*
 
-Once synced, Google Assistant officially registers `Robot Dance` as an active scene!
-
-> [!TIP]
-> **RoboHero As a Native Device in Google Home**:
-> The robot firmware automatically exposes a native Power switch (`switch.robohero_power`). In Google Home, it appears as a dedicated device named **RoboHero**!
-> Once linked, you can say directly to your Nest Audio:
-> - *"Hey Google, turn on RoboHero"* (Powers on and stands up to ready stance)
-> - *"Hey Google, turn off RoboHero"* (Powers down and relaxes servos to rest)
->
-> **Direct Voice Command for Gestures**:
-> Home Assistant scripts are treated by Google Assistant as scenes! You can say to your Nest Audio:
-> - *"Hey Google, activate RoboHero Dance"*
-> - *"Hey Google, start RoboHero Dance"*
+Google will chime *"Syncing devices for Home Assistant..."* and confirm all exposed routines are ready.
 
 ---
 
-### 3. Create a Custom Phrase in Google Home (Optional)
-If you want to use natural phrasing like *"Hey Google, tell robot to dance"*:
+## Voice Commands Reference
 
-1. Open the **Google Home** app on your phone.
-2. Tap the **Automations** tab at the bottom &rarr; tap the **+ Add** (or floating `+`) button.
-3. If prompted to choose a type, select **Household** (or **Personal**).
-4. Under **Starters** (or *"When..."*):
-   - Tap **Add starter** &rarr; select **Voice command** (or **Voice**).
-   - Enter your preferred phrases:
-     - `tell robot to dance`
-     - `make robot dance`
-     - `robot dance`
-5. Under **Actions** (or *"Then..."*):
-   - Tap **Add action** &rarr; select **Adjust Home Devices** &rarr; choose **RoboHero Dance** (or choose **Try adding your own** / **Custom action** and enter: `activate RoboHero Dance`).
-6. Tap **Save**.
+| Voice Command | Action Triggered |
+| :--- | :--- |
+| *"Hey Google, turn on RoboHero"* | Powers up robot and stands in ready stance (`standby`) |
+| *"Hey Google, turn off RoboHero"* | Relaxes servos to rest/sleep (`relax`) |
+| *"Hey Google, activate Robot Dance"* | Executes Dance routine |
+| *"Hey Google, activate Robot Bow"* | Executes Bow greeting |
+| *"Hey Google, activate Robot Wave"* | Executes Waving gesture |
+| *"Hey Google, activate Robot Iron Man"* | Executes Iron Man combat pose |
+| *"Hey Google, activate Robot Apache"* | Executes Apache martial arts routine |
+| *"Hey Google, activate Robot Balance"* | Executes Balance stunt |
+| *"Hey Google, activate Robot Warmup"* | Executes Warm-Up stretching routine |
+| *"Hey Google, activate Robot Clap"* | Executes Hand Clapping routine |
+| *"Hey Google, activate Robot Goilc"* | Executes GOILC dynamic routine |
+| *"Hey Google, activate Robot Auto Demo"* | Starts continuous auto demo showcase |
+| *"Hey Google, activate Robot Get Up"* | Self-rights from back fall |
+| *"Hey Google, activate Robot Face Up"* | Self-rights from stomach fall |
 
-Now you can say directly to your Nest Audio:
-> **"Hey Google, tell robot to dance"**
 
-Google Assistant will trigger the script in Home Assistant, which dispatches the MQTT command to RoboHero to dance!
