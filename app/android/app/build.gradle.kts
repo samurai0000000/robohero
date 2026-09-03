@@ -29,13 +29,47 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = project.findProperty("RELEASE_STORE_FILE") as? String
+                ?: System.getenv("RELEASE_STORE_FILE")
+            val storePass = project.findProperty("RELEASE_STORE_PASSWORD") as? String
+                ?: System.getenv("RELEASE_STORE_PASSWORD")
+            val keyUser = project.findProperty("RELEASE_KEY_ALIAS") as? String
+                ?: System.getenv("RELEASE_KEY_ALIAS")
+            val keyPass = project.findProperty("RELEASE_KEY_PASSWORD") as? String
+                ?: System.getenv("RELEASE_KEY_PASSWORD")
+
+            if (storeFilePath != null && file(storeFilePath).exists() && storePass != null) {
+                storeFile = file(storeFilePath)
+                storePassword = storePass
+                keyAlias = keyUser ?: "selfso"
+                keyPassword = keyPass ?: storePass
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            val outputImpl = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (outputImpl != null) {
+                val suffix = if (buildType.name == "release") "" else "-${buildType.name}"
+                outputImpl.outputFileName = "RoboHero-v${projVersionName}${suffix}.apk"
+            }
         }
     }
     compileOptions {

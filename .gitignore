@@ -9,3 +9,7 @@ local.config.mk
 .cursor
 .*.swp
 *.swp
+*.jks
+*.keystore
+keystore.properties
+
