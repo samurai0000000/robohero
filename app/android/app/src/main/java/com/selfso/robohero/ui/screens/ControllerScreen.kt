@@ -93,7 +93,12 @@ fun ControllerScreen(
                         type = RoboHeroButtonType.PRIMARY,
                         onClick = { onSendCmd("pm", 2) }
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    RoboHeroButton(
+                        text = "STOP",
+                        modifier = Modifier.weight(1f),
+                        type = RoboHeroButtonType.STOP,
+                        onClick = { onSendCmd("stop", 1) }
+                    )
                 }
             }
         }
@@ -204,23 +209,13 @@ fun ControllerScreen(
                         type = RoboHeroButtonType.ACTION,
                         onClick = { onSendCmd("pms", 9) }
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    RoboHeroButton(
+                        text = "Auto Demo Loop",
+                        modifier = Modifier.weight(1f),
+                        type = RoboHeroButtonType.AUTO,
+                        onClick = { onSendCmd("pms", 99) }
+                    )
                 }
-
-                // Full-width buttons
-                RoboHeroButton(
-                    text = "Auto Demo Loop",
-                    modifier = Modifier.fillMaxWidth(),
-                    type = RoboHeroButtonType.AUTO,
-                    onClick = { onSendCmd("pms", 99) }
-                )
-
-                RoboHeroButton(
-                    text = "STOP",
-                    modifier = Modifier.fillMaxWidth(),
-                    type = RoboHeroButtonType.STOP,
-                    onClick = { onSendCmd("stop", 1) }
-                )
             }
         }
 

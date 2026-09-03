@@ -131,13 +131,14 @@ cards:
             entity_id: button.robohero_backward
 
       - type: button
-        name: Zero Pose
-        icon: mdi:crosshairs-gps
+        name: STOP
+        icon: mdi:stop-circle
+        color: red
         tap_action:
           action: call-service
           service: button.press
           target:
-            entity_id: button.robohero_zero_pose
+            entity_id: button.robohero_emergency_stop
 
   # --- Recovery & Self-Righting ---
   - type: grid
