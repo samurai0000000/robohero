@@ -7,7 +7,7 @@
 #
 
 ifeq ($(IDF_PATH),)
-export IDF_PATH := $(CURDIR)/ESP8266_RTOS_SDK
+export IDF_PATH := $(CURDIR)/../ESP8266_RTOS_SDK
 endif
 
 XTENSA_PATH ?= $(HOME)/esp/xtensa-lx106-elf/bin
@@ -44,7 +44,8 @@ $(shell cp "$(CURDIR)/sdkconfig.defaults" "$(CURDIR)/sdkconfig")
 endif
 
 # IDF app descriptor comes from project(... VERSION ...) in CMakeLists.txt.
-PROJECT_VER := $(shell python3 "$(CURDIR)/scripts/gen_version.py")
+GEN_VERSION := $(firstword $(wildcard $(CURDIR)/../scripts/gen_version.py $(CURDIR)/scripts/gen_version.py))
+PROJECT_VER := $(shell python3 "$(GEN_VERSION)")
 ifeq ($(PROJECT_VER),)
 $(error Failed to generate version.h)
 endif

@@ -1,6 +1,9 @@
 build/
+firmware/build/
 sdkconfig
 sdkconfig.old
+firmware/sdkconfig
+firmware/sdkconfig.old
 local.config.mk
 .agents
 .cursor

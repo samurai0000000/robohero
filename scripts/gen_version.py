@@ -15,7 +15,8 @@ import sys
 
 def main():
     root = pathlib.Path(__file__).resolve().parent.parent
-    cmake = (root / "CMakeLists.txt").read_text()
+    firmware = root / "firmware" if (root / "firmware" / "CMakeLists.txt").exists() else root
+    cmake = (firmware / "CMakeLists.txt").read_text()
     match = re.search(
         r"project\(\s*robohero\s+VERSION\s+(\d+)\.(\d+)\.(\d+)", cmake
     )
@@ -30,7 +31,7 @@ def main():
         ["date", "+%Y-%m-%d %H:%M:%S"], text=True
     ).strip()
 
-    text = (root / "version.h.in").read_text()
+    text = (firmware / "version.h.in").read_text()
     text = (
         text.replace("@PROJECT_VERSION_MAJOR@", major)
         .replace("@PROJECT_VERSION_MINOR@", minor)
@@ -41,7 +42,7 @@ def main():
         .replace("@DATE_OUTPUT@", date)
     )
 
-    dest = root / "build" / "include" / "version.h"
+    dest = firmware / "build" / "include" / "version.h"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(text)
     print(version)
