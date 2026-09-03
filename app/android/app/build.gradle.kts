@@ -8,12 +8,23 @@ android {
     namespace = "com.selfso.robohero"
     compileSdk = 35
 
+    val readmeFile = rootProject.projectDir.resolve("../../README.md")
+    val versionRegex = Regex("""(?:<!--\s*robohero-version:\s*|\*\*Version:\s*)([0-9]+)\.([0-9]+)\.([0-9]+)""", RegexOption.IGNORE_CASE)
+    val versionMatch = versionRegex.find(if (readmeFile.exists()) readmeFile.readText() else "")
+    val (projMajor, projMinor, projPatch) = if (versionMatch != null) {
+        Triple(versionMatch.groupValues[1], versionMatch.groupValues[2], versionMatch.groupValues[3])
+    } else {
+        Triple("2", "1", "15")
+    }
+    val projVersionName = "$projMajor.$projMinor.$projPatch"
+    val projVersionCode = projMajor.toInt() * 10000 + projMinor.toInt() * 100 + projPatch.toInt()
+
     defaultConfig {
         applicationId = "com.selfso.robohero"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.1.15"
+        versionCode = projVersionCode
+        versionName = projVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

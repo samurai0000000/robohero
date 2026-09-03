@@ -6,9 +6,9 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-# Extract version from root CMakeLists.txt
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../CMakeLists.txt" ROOT_CMAKELISTS)
-string(REGEX MATCH "project\\([ \t\r\n]*robohero[ \t\r\n]+VERSION[ \t\r\n]+([0-9]+)\\.([0-9]+)\\.([0-9]+)" _VER_MATCH "${ROOT_CMAKELISTS}")
+# Extract version from root README.md
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../README.md" ROOT_README)
+string(REGEX MATCH "robohero-version:[ \t]*([0-9]+)\\.([0-9]+)\\.([0-9]+)" _VER_MATCH "${ROOT_README}")
 if(_VER_MATCH)
     set(PROJ_VER_MAJOR "${CMAKE_MATCH_1}")
     set(PROJ_VER_MINOR "${CMAKE_MATCH_2}")
@@ -54,12 +54,12 @@ execute_process(
 )
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../firmware/version.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/version.h
     @ONLY
 )
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../firmware/version.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.h
     @ONLY
 )
@@ -82,8 +82,8 @@ add_executable(robohero_cli ${HOST_SRCS})
 
 target_include_directories(robohero_cli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../main
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../firmware/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../firmware/main
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/include
     ${LIBCONFIGPP_INCLUDE_DIRS}

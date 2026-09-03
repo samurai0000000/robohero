@@ -16,12 +16,14 @@ import sys
 def main():
     root = pathlib.Path(__file__).resolve().parent.parent
     firmware = root / "firmware" if (root / "firmware" / "CMakeLists.txt").exists() else root
-    cmake = (firmware / "CMakeLists.txt").read_text()
+    readme = (root / "README.md").read_text(encoding="utf-8")
     match = re.search(
-        r"project\(\s*robohero\s+VERSION\s+(\d+)\.(\d+)\.(\d+)", cmake
+        r"(?:<!--\s*robohero-version:\s*|\*\*Version:\s*)([0-9]+)\.([0-9]+)\.([0-9]+)",
+        readme,
+        re.IGNORECASE,
     )
     if not match:
-        sys.exit("could not parse project VERSION from CMakeLists.txt")
+        sys.exit("could not parse project VERSION from README.md")
 
     major, minor, patch = match.groups()
     version = f"{major}.{minor}.{patch}"

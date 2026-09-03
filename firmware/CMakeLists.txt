@@ -11,14 +11,22 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # ESP8266 libstdc++ thread-safe statics throw via pthreads.
 idf_build_set_property(CXX_COMPILE_OPTIONS "-fno-threadsafe-statics" APPEND)
 
-project(robohero VERSION 2.1.15 LANGUAGES C CXX ASM)
+# Extract version from root README.md
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../README.md" ROOT_README)
+string(REGEX MATCH "robohero-version:[ \t]*([0-9]+)\\.([0-9]+)\\.([0-9]+)" _VER_MATCH "${ROOT_README}")
+if(_VER_MATCH)
+  set(PROJECT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+  set(PROJECT_VERSION_MINOR "${CMAKE_MATCH_2}")
+  set(PROJECT_VERSION_PATCH "${CMAKE_MATCH_3}")
+  set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+else()
+  set(PROJECT_VERSION_MAJOR "1")
+  set(PROJECT_VERSION_MINOR "0")
+  set(PROJECT_VERSION_PATCH "0")
+  set(PROJECT_VERSION "1.0.0")
+endif()
 
-# ESP8266_RTOS_SDK's project() macro only forwards the name, so VERSION
-# does not populate PROJECT_VERSION_* the way meshroof's IDF does.
-set(PROJECT_VERSION "2.1.15")
-set(PROJECT_VERSION_MAJOR "2")
-set(PROJECT_VERSION_MINOR "1")
-set(PROJECT_VERSION_PATCH "15")
+project(robohero VERSION ${PROJECT_VERSION} LANGUAGES C CXX ASM)
 
 set(WHOAMI_OUTPUT)
 execute_process(

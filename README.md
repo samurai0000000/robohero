@@ -1,6 +1,9 @@
-# RoboHero firmware (ESP8266_RTOS_SDK)
+# RoboHero
 
-FreeRTOS firmware for the 17-servo TT Robotix RoboHero.
+<!-- robohero-version: 2.1.15 -->
+**Version: 2.1.15**
+
+FreeRTOS firmware for the 17-servo TT Robotix RoboHero, along with companion host CLI, Android mobile app, and Web interface.
 
 `IDF_PATH` is the `ESP8266_RTOS_SDK` git submodule at the repo root
 (branch `release/v3.4`, currently `v3.4-114-g57350732`). The root
