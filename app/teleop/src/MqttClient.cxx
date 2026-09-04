@@ -215,8 +215,6 @@ void MqttClient::subscribeTopics()
     mosquitto_subscribe(_mosq, nullptr, cmdTopic.c_str(), 0);
     mosquitto_subscribe(_mosq, nullptr, shortStatus.c_str(), 0);
     mosquitto_subscribe(_mosq, nullptr, shortCmd.c_str(), 0);
-
-    std::cout << "[MQTT] Subscribed to topics for robotId: " << rid << std::endl;
 }
 
 void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int rc)
@@ -229,12 +227,10 @@ void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int r
 
     if (rc == 0) {
         self->_connected = true;
-        std::cout << "[MQTT] Connected to broker successfully." << std::endl;
         self->subscribeTopics();
         emit self->connected();
     } else {
         self->_connected = false;
-        std::cerr << "[MQTT] Connection failed with code: " << rc << std::endl;
         emit self->connectionError(QString("MQTT Connection failed with code: %1").arg(rc));
     }
 }
@@ -249,7 +245,6 @@ void MqttClient::onDisconnectCallback(struct mosquitto *mosq, void *userdata, in
     }
 
     self->_connected = false;
-    std::cout << "[MQTT] Disconnected from broker." << std::endl;
     emit self->disconnected();
 }
 
@@ -338,8 +333,6 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
     }
 
     if (validCount > 0) {
-        std::cout << "[MQTT] Telemetry parsed from topic: " << topicStr
-                  << " (" << validCount << " servos updated)" << std::endl;
         emit self->telemetryReceived(pwm, valid);
     }
 }

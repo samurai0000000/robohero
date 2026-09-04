@@ -27,7 +27,7 @@ static const UrdfLimits::ChannelCalibration CHANNEL_MAP[17] = {
     {"right_shoulder_roll_joint",  9,   69, -1.0, 0.01692969,     -4.3284,  0.0000},
     {"right_shoulder_pitch_joint", 10, 163, -1.0, 0.02068215,     -2.4906,  2.0054},
     {"right_hip_roll_joint",       11, 161, -1.0, (M_PI / 180.0), -1.7453,  0.3491},
-    {"right_hip_pitch_joint",      12, 129,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
+    {"right_hip_pitch_joint",      12, 129, -1.0, (M_PI / 180.0), -0.6981,  1.5708},
     {"right_knee_pitch_joint",     13, 150,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
     {"right_ankle_pitch_joint",    14, 165,  1.0, (M_PI / 180.0), -0.8727,  1.5708},
     {"right_ankle_roll_joint",     15, 162,  1.0, (M_PI / 180.0), -0.4363,  1.2217},

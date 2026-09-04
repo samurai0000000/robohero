@@ -39,8 +39,13 @@ MainWindow::MainWindow(QWidget *parent)
     , _hasPoseData(false)
     , _lastPoseTimestamp(0)
 {
-    _latestPwm.fill(1500);
-    _latestAngles.fill(0.0);
+    // 1. Initialize Robot URDF Limits from embedded resource
+    UrdfLimits::instance().init(":/urdf/robohero.urdf");
+
+    for (int ch = 0; ch < 17; ++ch) {
+        _latestPwm[ch] = UrdfLimits::instance().getCalibration(ch).center;
+        _latestAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, _latestPwm[ch]);
+    }
 
     setWindowTitle("RoboHero Teleoperation Dashboard");
     setWindowIcon(QIcon(":/icons/robohero_head.png"));
@@ -48,9 +53,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     TeleopConfig::instance().load();
     const auto &cfg = TeleopConfig::instance();
-
-    // 1. Initialize Robot URDF Limits from embedded resource
-    UrdfLimits::instance().init(":/urdf/robohero.urdf");
 
     // 2. Initialize AI Pose Estimator
     _estimator = std::make_shared<PoseEstimator>();
@@ -245,7 +247,7 @@ void MainWindow::setupTelemetryTable()
     _telemetryTable->setColumnCount(6);
     _telemetryTable->setRowCount(17);
     _telemetryTable->setHorizontalHeaderLabels(
-        {"Channel", "Joint Name", "Target (deg)", "PWM (us)", "Safe Lower (deg)", "Safe Upper (deg)"});
+        {"Channel", "Joint Name", "Target (deg)", "PWM", "Safe Lower (deg)", "Safe Upper (deg)"});
 
     const auto &limits = UrdfLimits::instance().getAllLimits();
 
@@ -272,7 +274,8 @@ void MainWindow::setupTelemetryTable()
         degItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         _telemetryTable->setItem(ch, 2, degItem);
 
-        auto pwmItem = new QTableWidgetItem("1500");
+        int defaultPwm = UrdfLimits::instance().getCalibration(ch).center;
+        auto pwmItem = new QTableWidgetItem(QString::number(defaultPwm));
         pwmItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         _telemetryTable->setItem(ch, 3, pwmItem);
 

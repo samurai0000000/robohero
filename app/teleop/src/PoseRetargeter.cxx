@@ -56,7 +56,9 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
     RetargetResult res;
     res.valid = false;
     res.jointAnglesRad.fill(0.0);
-    res.servoPwm.fill(1500);
+    for (int i = 0; i < 17; ++i) {
+        res.servoPwm[i] = UrdfLimits::instance().getCalibration(i).center;
+    }
 
     if (!pose.valid) {
         return res;
