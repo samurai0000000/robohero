@@ -59,8 +59,16 @@ private:
     void drawAxes(float length);
     void drawRobot();
     void drawBox(float dx, float dy, float dz, float r, float g, float b);
-    void drawCylinder(float radius, float height, float r, float g, float b);
-    void drawSphere(float radius, float r, float g, float b);
+    void drawUrdfBox(float sx, float sy, float sz,
+                     float ox, float oy, float oz,
+                     const float color[3]);
+
+    void drawBaseLink();
+    void drawHead();
+    void drawLeftArm();
+    void drawRightArm();
+    void drawLeftLeg();
+    void drawRightLeg();
 };
 
 #endif

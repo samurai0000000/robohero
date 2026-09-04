@@ -423,21 +423,14 @@ void MainWindow::onMqttMessageSent(int bytes)
 void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
                                      const std::array<bool, 17> &validMask)
 {
-    // If teleop is active and operator pose tracking is active,
-    // operator poses have command priority.
-    bool teleopStreaming = _teleopActive && _hasPoseData &&
-        (QDateTime::currentMSecsSinceEpoch() - _lastPoseTimestamp <= 1000);
-
-    if (teleopStreaming) {
-        return;
-    }
-
     bool updated = false;
+    int updatedChannels = 0;
     for (int ch = 0; ch < 17; ++ch) {
         if (validMask[ch]) {
             _latestPwm[ch] = pwmValues[ch];
             _latestAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, pwmValues[ch]);
             updated = true;
+            updatedChannels++;
 
             // Update Telemetry table
             double deg = _latestAngles[ch] * 180.0 / M_PI;
@@ -456,6 +449,9 @@ void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
     if (updated && _urdfViewer) {
         _urdfViewer->setJointAngles(_latestAngles);
         _urdfViewer->setJointPwm(_latestPwm);
+        statusBar()->showMessage(QString("MQTT Telemetry: %1 channels updated (%2)")
+                                 .arg(updatedChannels)
+                                 .arg(QTime::currentTime().toString("hh:mm:ss.zzz")), 2000);
     }
 }
 

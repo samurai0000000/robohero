@@ -151,6 +151,7 @@ void SettingsDialog::setupUi()
     _mqttPasswordEdit->setEchoMode(QLineEdit::Password);
 
     _mqttRobotIdEdit = new QLineEdit(mqttTab);
+    _mqttRobotIdEdit->setPlaceholderText("e.g. TTR-ee40, robohero");
     _mqttKeepaliveSpin = new QSpinBox(mqttTab);
     _mqttKeepaliveSpin->setRange(5, 300);
     _mqttKeepaliveSpin->setSuffix(" s");
@@ -161,7 +162,7 @@ void SettingsDialog::setupUi()
     mqttForm->addRow("Broker Port:", _mqttPortSpin);
     mqttForm->addRow("Username (optional):", _mqttUsernameEdit);
     mqttForm->addRow("Password (optional):", _mqttPasswordEdit);
-    mqttForm->addRow("Robot Topic Base:", _mqttRobotIdEdit);
+    mqttForm->addRow("Robot ID:", _mqttRobotIdEdit);
     mqttForm->addRow("Keepalive Interval:", _mqttKeepaliveSpin);
     mqttForm->addRow("", _mqttAutoConnectCheck);
     _tabWidget->addTab(mqttTab, "MQTT Network");
@@ -288,7 +289,19 @@ void SettingsDialog::applyToConfig()
     cfg.mqtt.port = _mqttPortSpin->value();
     cfg.mqtt.username = _mqttUsernameEdit->text().trimmed().toStdString();
     cfg.mqtt.password = _mqttPasswordEdit->text().toStdString();
-    std::string robotIdStr = _mqttRobotIdEdit->text().trimmed().toStdString();
+    QString robotIdQStr = _mqttRobotIdEdit->text().trimmed();
+    if (robotIdQStr.startsWith("robot/robohero/")) {
+        robotIdQStr.remove(0, QString("robot/robohero/").length());
+    }
+    while (robotIdQStr.endsWith('/')) {
+        robotIdQStr.chop(1);
+    }
+    if (robotIdQStr.endsWith("/control")) {
+        robotIdQStr.chop(QString("/control").length());
+    } else if (robotIdQStr.endsWith("/status")) {
+        robotIdQStr.chop(QString("/status").length());
+    }
+    std::string robotIdStr = robotIdQStr.toStdString();
     cfg.mqtt.robotId = robotIdStr.empty() ? "robohero" : robotIdStr;
     cfg.mqtt.keepalive = _mqttKeepaliveSpin->value();
     cfg.mqtt.autoConnect = _mqttAutoConnectCheck->isChecked();

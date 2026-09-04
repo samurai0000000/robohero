@@ -89,7 +89,23 @@ bool MqttClient::isConnected() const
 
 void MqttClient::setRobotId(const std::string &robotId)
 {
-    _robotId = robotId.empty() ? "robohero" : robotId;
+    std::string id = robotId;
+    const std::string prefix = "robot/robohero/";
+    if (id.rfind(prefix, 0) == 0) {
+        id = id.substr(prefix.length());
+    }
+    while (!id.empty() && id.back() == '/') {
+        id.pop_back();
+    }
+    if (id.size() >= 8 && id.compare(id.size() - 8, 8, "/control") == 0) {
+        id = id.substr(0, id.size() - 8);
+    } else if (id.size() >= 7 && id.compare(id.size() - 7, 7, "/status") == 0) {
+        id = id.substr(0, id.size() - 7);
+    }
+    _robotId = id.empty() ? "robohero" : id;
+    if (_connected) {
+        subscribeTopics();
+    }
 }
 
 bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic)
@@ -177,8 +193,35 @@ bool MqttClient::sendStop(const std::string &topic)
     return mosquitto_publish(_mosq, &mid, topic.c_str(), used, buffer, 0, false) == MOSQ_ERR_SUCCESS;
 }
 
+void MqttClient::subscribeTopics()
+{
+    if (!_mosq || !_connected) {
+        return;
+    }
+
+    std::string rid = _robotId.empty() ? "robohero" : _robotId;
+    std::string statusTopic = "robot/robohero/" + rid + "/status";
+    std::string wildcardStatus = "robot/robohero/+/status";
+    std::string wildcardAll = "robot/robohero/#";
+    std::string controlTopic = "robot/robohero/" + rid + "/control";
+    std::string cmdTopic = "robot/robohero/" + rid + "/cmd";
+    std::string shortStatus = rid + "/status";
+    std::string shortCmd = rid + "/cmd";
+
+    mosquitto_subscribe(_mosq, nullptr, statusTopic.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, wildcardStatus.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, wildcardAll.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, controlTopic.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, cmdTopic.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, shortStatus.c_str(), 0);
+    mosquitto_subscribe(_mosq, nullptr, shortCmd.c_str(), 0);
+
+    std::cout << "[MQTT] Subscribed to topics for robotId: " << rid << std::endl;
+}
+
 void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int rc)
 {
+    (void) mosq;
     auto *self = static_cast<MqttClient *>(userdata);
     if (!self) {
         return;
@@ -186,25 +229,12 @@ void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int r
 
     if (rc == 0) {
         self->_connected = true;
-
-        std::string rid = self->_robotId.empty() ? "robohero" : self->_robotId;
-        std::string statusTopic = "robot/robohero/" + rid + "/status";
-        std::string wildcardStatus = "robot/robohero/+/status";
-        std::string controlTopic = "robot/robohero/" + rid + "/control";
-        std::string cmdTopic = "robot/robohero/" + rid + "/cmd";
-        std::string shortStatus = rid + "/status";
-        std::string shortCmd = rid + "/cmd";
-
-        mosquitto_subscribe(mosq, nullptr, statusTopic.c_str(), 0);
-        mosquitto_subscribe(mosq, nullptr, wildcardStatus.c_str(), 0);
-        mosquitto_subscribe(mosq, nullptr, controlTopic.c_str(), 0);
-        mosquitto_subscribe(mosq, nullptr, cmdTopic.c_str(), 0);
-        mosquitto_subscribe(mosq, nullptr, shortStatus.c_str(), 0);
-        mosquitto_subscribe(mosq, nullptr, shortCmd.c_str(), 0);
-
+        std::cout << "[MQTT] Connected to broker successfully." << std::endl;
+        self->subscribeTopics();
         emit self->connected();
     } else {
         self->_connected = false;
+        std::cerr << "[MQTT] Connection failed with code: " << rc << std::endl;
         emit self->connectionError(QString("MQTT Connection failed with code: %1").arg(rc));
     }
 }
@@ -219,6 +249,7 @@ void MqttClient::onDisconnectCallback(struct mosquitto *mosq, void *userdata, in
     }
 
     self->_connected = false;
+    std::cout << "[MQTT] Disconnected from broker." << std::endl;
     emit self->disconnected();
 }
 
@@ -238,9 +269,11 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
         return;
     }
 
+    std::string topicStr = msg->topic ? msg->topic : "";
     std::array<int, 17> pwm{};
     std::array<bool, 17> valid{};
     valid.fill(false);
+    int validCount = 0;
 
     // 1. Try binary wire protocol first
     rh_msg_view view;
@@ -263,6 +296,7 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
                     if (s.chan < 17) {
                         pwm[s.chan] = s.pos;
                         valid[s.chan] = true;
+                        validCount++;
                     }
                 }
                 off = next;
@@ -282,12 +316,14 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
                     if (ch >= 0 && ch < 17) {
                         pwm[ch] = pos;
                         valid[ch] = true;
+                        validCount++;
                     }
                 } else if (obj.contains("servos") && obj["servos"].isArray()) {
                     QJsonArray arr = obj["servos"].toArray();
                     for (int i = 0; i < arr.size() && i < 17; ++i) {
                         pwm[i] = arr[i].toInt();
                         valid[i] = true;
+                        validCount++;
                     }
                 }
             } else if (doc.isArray()) {
@@ -295,20 +331,15 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
                 for (int i = 0; i < arr.size() && i < 17; ++i) {
                     pwm[i] = arr[i].toInt();
                     valid[i] = true;
+                    validCount++;
                 }
             }
         }
     }
 
-    bool anyValid = false;
-    for (bool v : valid) {
-        if (v) {
-            anyValid = true;
-            break;
-        }
-    }
-
-    if (anyValid) {
+    if (validCount > 0) {
+        std::cout << "[MQTT] Telemetry parsed from topic: " << topicStr
+                  << " (" << validCount << " servos updated)" << std::endl;
         emit self->telemetryReceived(pwm, valid);
     }
 }

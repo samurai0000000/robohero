@@ -50,12 +50,19 @@ private:
     int _port;
     std::string _robotId;
 
+    void subscribeTopics();
+
     static void onConnectCallback(struct mosquitto *mosq, void *userdata, int rc);
     static void onDisconnectCallback(struct mosquitto *mosq, void *userdata, int rc);
     static void onPublishCallback(struct mosquitto *mosq, void *userdata, int mid);
     static void onMessageCallback(struct mosquitto *mosq, void *userdata,
                                   const struct mosquitto_message *msg);
 };
+
+typedef std::array<int, 17> ServoPwmArray;
+typedef std::array<bool, 17> ServoValidArray;
+Q_DECLARE_METATYPE(ServoPwmArray)
+Q_DECLARE_METATYPE(ServoValidArray)
 
 #endif
 

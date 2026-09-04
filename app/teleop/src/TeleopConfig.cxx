@@ -165,6 +165,13 @@ void TeleopConfig::syncFromConfig()
         s.lookupValue("username", mqtt.username);
         s.lookupValue("password", mqtt.password);
         s.lookupValue("robotId", mqtt.robotId);
+        const std::string prefix = "robot/robohero/";
+        if (mqtt.robotId.rfind(prefix, 0) == 0) {
+            mqtt.robotId = mqtt.robotId.substr(prefix.length());
+        }
+        while (!mqtt.robotId.empty() && mqtt.robotId.back() == '/') {
+            mqtt.robotId.pop_back();
+        }
         s.lookupValue("keepalive", mqtt.keepalive);
         s.lookupValue("autoConnect", mqtt.autoConnect);
     }

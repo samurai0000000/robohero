@@ -22,6 +22,17 @@ public:
         double defaultAngle;
     };
 
+    struct ChannelCalibration
+    {
+        std::string name;
+        int channel;
+        int center;
+        double sign;
+        double radPerPwm;
+        double lower;
+        double upper;
+    };
+
     static UrdfLimits &instance();
 
     bool init(const std::string &urdfResourcePath = ":/urdf/robohero.urdf");
@@ -29,6 +40,9 @@ public:
     bool hasLimit(int channel) const;
     JointLimit getLimit(int channel) const;
     const std::map<int, JointLimit> &getAllLimits() const;
+
+    bool hasCalibration(int channel) const;
+    ChannelCalibration getCalibration(int channel) const;
 
     double clamp(int channel, double angleRad, double safetyMarginDeg = 0.0) const;
     int angleToPwm(int channel, double angleRad, double safetyMarginDeg = 0.0) const;

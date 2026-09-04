@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
 
     TeleopConfig::instance().load();
     qRegisterMetaType<PoseEstimator::PersonPose>("PoseEstimator::PersonPose");
+    qRegisterMetaType<std::array<int, 17>>("std::array<int, 17>");
+    qRegisterMetaType<std::array<bool, 17>>("std::array<bool, 17>");
+    qRegisterMetaType<std::array<double, 17>>("std::array<double, 17>");
 
     MainWindow window;
     window.show();

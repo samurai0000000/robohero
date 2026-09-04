@@ -14,6 +14,26 @@
 
 UrdfLimits UrdfLimits::_self;
 
+static const UrdfLimits::ChannelCalibration CHANNEL_MAP[17] = {
+    {"left_ankle_roll_joint",      0,  160,  1.0, (M_PI / 180.0), -0.4363,  1.3090},
+    {"left_ankle_pitch_joint",     1,  161, -1.0, (M_PI / 180.0), -0.7854,  1.5708},
+    {"left_knee_pitch_joint",      2,  141, -1.0, (M_PI / 180.0), -0.6981,  1.5708},
+    {"left_hip_pitch_joint",       3,  168,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
+    {"left_hip_roll_joint",        4,  158, -1.0, (M_PI / 180.0), -0.3491,  1.6057},
+    {"left_shoulder_pitch_joint",  5,  158,  1.0, 0.01823869,     -1.8117,  1.3055},
+    {"left_shoulder_roll_joint",   6,  252, -1.0, 0.01649336,      0.0000,  4.7298},
+    {"left_elbow_joint",           7,  159,  1.0, (M_PI / 180.0), -1.3090,  1.4835},
+    {"right_elbow_joint",          8,  163,  1.0, (M_PI / 180.0), -1.4835,  0.9599},
+    {"right_shoulder_roll_joint",  9,   69, -1.0, 0.01692969,     -4.3284,  0.0000},
+    {"right_shoulder_pitch_joint", 10, 163, -1.0, 0.02068215,     -2.4906,  2.0054},
+    {"right_hip_roll_joint",       11, 161, -1.0, (M_PI / 180.0), -1.7453,  0.3491},
+    {"right_hip_pitch_joint",      12, 129,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
+    {"right_knee_pitch_joint",     13, 150,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
+    {"right_ankle_pitch_joint",    14, 165,  1.0, (M_PI / 180.0), -0.8727,  1.5708},
+    {"right_ankle_roll_joint",     15, 162,  1.0, (M_PI / 180.0), -0.4363,  1.2217},
+    {"head_yaw_joint",             16,  90,  1.0, 0.02827433,     -0.9756,  0.9233},
+};
+
 UrdfLimits &UrdfLimits::instance()
 {
     return _self;
@@ -27,24 +47,10 @@ UrdfLimits::UrdfLimits()
 
 void UrdfLimits::populateFallbackLimits()
 {
-    // Hardcoded fallback limits from robohero.urdf specification
-    _limits[0]  = {"left_ankle_roll",      0,  -0.4363,  1.3090, 0.0};
-    _limits[1]  = {"left_ankle_pitch",     1,  -0.7854,  1.5708, 0.0};
-    _limits[2]  = {"left_knee_pitch",      2,  -0.6981,  1.5708, 0.0};
-    _limits[3]  = {"left_hip_pitch",       3,  -0.6981,  1.5708, 0.0};
-    _limits[4]  = {"left_hip_roll",        4,  -0.3491,  1.6057, 0.0};
-    _limits[5]  = {"left_shoulder_pitch",  5,  -1.8117,  1.3055, 0.0};
-    _limits[6]  = {"left_shoulder_roll",   6,   0.0000,  4.7298, 0.0};
-    _limits[7]  = {"left_elbow",           7,  -1.3090,  1.4835, 0.0};
-    _limits[8]  = {"right_elbow",          8,  -1.4835,  0.9599, 0.0};
-    _limits[9]  = {"right_shoulder_roll",  9,  -4.3284,  0.0000, 0.0};
-    _limits[10] = {"right_shoulder_pitch", 10, -2.4906,  2.0054, 0.0};
-    _limits[11] = {"right_hip_roll",       11, -1.7453,  0.3491, 0.0};
-    _limits[12] = {"right_hip_pitch",      12, -0.6981,  1.5708, 0.0};
-    _limits[13] = {"right_knee_pitch",     13, -0.6981,  1.5708, 0.0};
-    _limits[14] = {"right_ankle_pitch",    14, -0.8727,  1.5708, 0.0};
-    _limits[15] = {"right_ankle_roll",     15, -0.4363,  1.2217, 0.0};
-    _limits[16] = {"head_yaw",             16, -0.9756,  0.9233, 0.0};
+    for (int i = 0; i < TOTAL_SERVOS; ++i) {
+        _limits[i] = {CHANNEL_MAP[i].name, CHANNEL_MAP[i].channel,
+                      CHANNEL_MAP[i].lower, CHANNEL_MAP[i].upper, 0.0};
+    }
 }
 
 bool UrdfLimits::init(const std::string &urdfResourcePath)
@@ -79,22 +85,39 @@ bool UrdfLimits::init(const std::string &urdfResourcePath)
 
     // Map joint names to PCA9685 servo channels
     const std::map<std::string, int> nameToChannel = {
+        {"left_ankle_roll_joint", 0},
         {"left_ankle_roll", 0},
+        {"left_ankle_pitch_joint", 1},
         {"left_ankle_pitch", 1},
+        {"left_knee_pitch_joint", 2},
         {"left_knee_pitch", 2},
+        {"left_hip_pitch_joint", 3},
         {"left_hip_pitch", 3},
+        {"left_hip_roll_joint", 4},
         {"left_hip_roll", 4},
+        {"left_shoulder_pitch_joint", 5},
         {"left_shoulder_pitch", 5},
+        {"left_shoulder_roll_joint", 6},
         {"left_shoulder_roll", 6},
+        {"left_elbow_joint", 7},
         {"left_elbow", 7},
+        {"right_elbow_joint", 8},
         {"right_elbow", 8},
+        {"right_shoulder_roll_joint", 9},
         {"right_shoulder_roll", 9},
+        {"right_shoulder_pitch_joint", 10},
         {"right_shoulder_pitch", 10},
+        {"right_hip_roll_joint", 11},
         {"right_hip_roll", 11},
+        {"right_hip_pitch_joint", 12},
         {"right_hip_pitch", 12},
+        {"right_knee_pitch_joint", 13},
         {"right_knee_pitch", 13},
+        {"right_ankle_pitch_joint", 14},
         {"right_ankle_pitch", 14},
+        {"right_ankle_roll_joint", 15},
         {"right_ankle_roll", 15},
+        {"head_yaw_joint", 16},
         {"head_yaw", 16}
     };
 
@@ -118,7 +141,7 @@ bool UrdfLimits::init(const std::string &urdfResourcePath)
 
 bool UrdfLimits::hasLimit(int channel) const
 {
-    return _limits.find(channel) != _limits.end();
+    return channel >= 0 && channel < TOTAL_SERVOS;
 }
 
 UrdfLimits::JointLimit UrdfLimits::getLimit(int channel) const
@@ -126,6 +149,10 @@ UrdfLimits::JointLimit UrdfLimits::getLimit(int channel) const
     auto it = _limits.find(channel);
     if (it != _limits.end()) {
         return it->second;
+    }
+    if (channel >= 0 && channel < TOTAL_SERVOS) {
+        const auto &cal = CHANNEL_MAP[channel];
+        return {cal.name, channel, cal.lower, cal.upper, 0.0};
     }
     return {"unknown", channel, -M_PI, M_PI, 0.0};
 }
@@ -135,76 +162,69 @@ const std::map<int, UrdfLimits::JointLimit> &UrdfLimits::getAllLimits() const
     return _limits;
 }
 
+bool UrdfLimits::hasCalibration(int channel) const
+{
+    return channel >= 0 && channel < TOTAL_SERVOS;
+}
+
+UrdfLimits::ChannelCalibration UrdfLimits::getCalibration(int channel) const
+{
+    if (channel >= 0 && channel < TOTAL_SERVOS) {
+        return CHANNEL_MAP[channel];
+    }
+    return {"unknown", channel, 135, 1.0, (M_PI / 180.0), -M_PI, M_PI};
+}
+
 double UrdfLimits::clamp(int channel, double angleRad, double safetyMarginDeg) const
 {
-    auto it = _limits.find(channel);
-    if (it == _limits.end()) {
+    if (channel < 0 || channel >= TOTAL_SERVOS) {
         return angleRad;
     }
 
+    const auto &cal = CHANNEL_MAP[channel];
     double marginRad = (safetyMarginDeg * M_PI) / 180.0;
-    double safeLower = it->second.lower + marginRad;
-    double safeUpper = it->second.upper - marginRad;
+    double minLim = std::min(cal.lower, cal.upper) + marginRad;
+    double maxLim = std::max(cal.lower, cal.upper) - marginRad;
 
-    if (safeLower > safeUpper) {
-        safeLower = it->second.lower;
-        safeUpper = it->second.upper;
+    if (minLim > maxLim) {
+        minLim = std::min(cal.lower, cal.upper);
+        maxLim = std::max(cal.lower, cal.upper);
     }
 
-    return std::max(safeLower, std::min(safeUpper, angleRad));
+    return std::max(minLim, std::min(maxLim, angleRad));
 }
 
 int UrdfLimits::angleToPwm(int channel, double angleRad, double safetyMarginDeg) const
 {
-    auto it = _limits.find(channel);
-    if (it == _limits.end()) {
-        return (SERVOMIN + SERVOMAX) / 2;
+    if (channel < 0 || channel >= TOTAL_SERVOS) {
+        return 135;
     }
 
-    double safeAngle = clamp(channel, angleRad, safetyMarginDeg);
-    double lower = it->second.lower;
-    double upper = it->second.upper;
-
-    if (std::abs(upper - lower) < 1e-6) {
-        return (SERVOMIN + SERVOMAX) / 2;
+    const auto &cal = CHANNEL_MAP[channel];
+    double marginRad = (safetyMarginDeg * M_PI) / 180.0;
+    double minLim = std::min(cal.lower, cal.upper) + marginRad;
+    double maxLim = std::max(cal.lower, cal.upper) - marginRad;
+    if (minLim > maxLim) {
+        minLim = std::min(cal.lower, cal.upper);
+        maxLim = std::max(cal.lower, cal.upper);
     }
 
-    double fraction = (safeAngle - lower) / (upper - lower);
-    fraction = std::max(0.0, std::min(1.0, fraction));
-
-    int pwm = static_cast<int>(std::round(SERVOMIN + fraction * (SERVOMAX - SERVOMIN)));
-    return std::max(SERVOMIN, std::min(SERVOMAX, pwm));
+    double clampedAngle = std::max(minLim, std::min(maxLim, angleRad));
+    int pwm = static_cast<int>(std::round(cal.center + (clampedAngle / (cal.radPerPwm * cal.sign))));
+    return pwm;
 }
 
 double UrdfLimits::pwmToAngle(int channel, int pwm) const
 {
-    auto it = _limits.find(channel);
-    if (it == _limits.end()) {
+    if (channel < 0 || channel >= TOTAL_SERVOS) {
         return 0.0;
     }
 
-    double lower = it->second.lower;
-    double upper = it->second.upper;
-
-    // Handle pulse microseconds (500..2500), PCA9685 counts (104..512),
-    // and firmware motion resolution (1..270)
-    double fraction = 0.5;
-    if (pwm > 512) {
-        // Microsecond pulse width (500 - 2500 us)
-        fraction = static_cast<double>(pwm - 500) / 2000.0;
-    } else if (pwm > 270) {
-        // PCA9685 count range (104 - 512)
-        fraction = static_cast<double>(pwm - SERVOMIN) / static_cast<double>(SERVOMAX - SERVOMIN);
-    } else if (pwm >= 1) {
-        // Firmware motion resolution (1 - 270)
-        fraction = static_cast<double>(pwm - PWMRES_MIN) / static_cast<double>(PWMRES_MAX - PWMRES_MIN);
-    } else {
-        fraction = 0.5;
-    }
-
-    fraction = std::max(0.0, std::min(1.0, fraction));
-    double angle = lower + fraction * (upper - lower);
-    return std::max(lower, std::min(upper, angle));
+    const auto &cal = CHANNEL_MAP[channel];
+    double rad = (static_cast<double>(pwm) - cal.center) * cal.radPerPwm * cal.sign;
+    double minLim = std::min(cal.lower, cal.upper);
+    double maxLim = std::max(cal.lower, cal.upper);
+    return std::max(minLim, std::min(maxLim, rad));
 }
 
 /*
