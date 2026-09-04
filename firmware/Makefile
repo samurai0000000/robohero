@@ -7,7 +7,7 @@
 #
 
 ifeq ($(IDF_PATH),)
-export IDF_PATH := $(CURDIR)/../ESP8266_RTOS_SDK
+export IDF_PATH := $(CURDIR)/../third_party/ESP8266_RTOS_SDK
 endif
 
 XTENSA_PATH ?= $(HOME)/esp/xtensa-lx106-elf/bin

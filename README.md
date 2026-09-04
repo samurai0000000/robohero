@@ -5,9 +5,9 @@
 
 FreeRTOS firmware for the 17-servo TT Robotix RoboHero, along with companion host CLI, Android mobile app, and Web interface.
 
-`IDF_PATH` is the `ESP8266_RTOS_SDK` git submodule at the repo root
-(branch `release/v3.4`, currently `v3.4-114-g57350732`). The root
-`Makefile` sets `IDF_PATH` to that directory if it is unset.
+`IDF_PATH` is the `third_party/ESP8266_RTOS_SDK` git submodule
+(branch `release/v3.4`, currently `v3.4-114-g57350732`). The `firmware/Makefile`
+sets `IDF_PATH` to that directory if it is unset.
 
 ## Build
 
@@ -22,7 +22,7 @@ Python packages used by the SDK (once per machine):
 
 ```
 python3 -m pip install --user --break-system-packages \
-    -r ESP8266_RTOS_SDK/requirements.txt
+    -r third_party/ESP8266_RTOS_SDK/requirements.txt
 ```
 
 ```
