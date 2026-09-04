@@ -54,6 +54,7 @@ private:
     void applyTheme();
     void restartCamera();
     void connectMqtt();
+    void updateAiProviderBadges();
 
     // Core components
     std::shared_ptr<PoseEstimator> _estimator;
@@ -71,6 +72,8 @@ private:
     QPushButton *_relaxBtn;
     QPushButton *_stopBtn;
     QLabel *_mqttStatusBadge;
+    QLabel *_aiStatusBadge;
+    QLabel *_aiProviderBadge;
     QLabel *_fpsLabel;
     QLabel *_statusMessageLabel;
 
@@ -84,6 +87,17 @@ private:
     std::array<double, 17> _telemAngles;
     bool _hasPoseData;
     qint64 _lastPoseTimestamp;
+
+    // Cached applied settings for change detection
+    std::string _lastAppliedAiProvider;
+    std::string _lastAppliedModelSource;
+    std::string _lastAppliedCustomModelPath;
+    std::string _lastAppliedMqttHost;
+    int _lastAppliedMqttPort;
+    std::string _lastAppliedMqttUser;
+    std::string _lastAppliedMqttPass;
+    std::string _lastAppliedMqttRobotId;
+    int _lastAppliedMqttKeepalive;
 };
 
 #endif

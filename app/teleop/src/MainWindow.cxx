@@ -61,7 +61,20 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 2. Initialize AI Pose Estimator
     _estimator = std::make_shared<PoseEstimator>();
-    _estimator->init(":/models/yolov8n-pose.onnx", cfg.ai.provider);
+    std::string initModelPath = (cfg.ai.modelSource == "custom" && !cfg.ai.customModelPath.empty())
+                                    ? cfg.ai.customModelPath
+                                    : ":/models/yolov8n-pose.onnx";
+    _estimator->init(initModelPath, cfg.ai.provider);
+
+    _lastAppliedAiProvider = cfg.ai.provider;
+    _lastAppliedModelSource = cfg.ai.modelSource;
+    _lastAppliedCustomModelPath = cfg.ai.customModelPath;
+    _lastAppliedMqttHost = cfg.mqtt.host;
+    _lastAppliedMqttPort = cfg.mqtt.port;
+    _lastAppliedMqttUser = cfg.mqtt.username;
+    _lastAppliedMqttPass = cfg.mqtt.password;
+    _lastAppliedMqttRobotId = cfg.mqtt.robotId;
+    _lastAppliedMqttKeepalive = cfg.mqtt.keepalive;
 
     // 3. Initialize Retargeter
     _retargeter = std::make_unique<PoseRetargeter>();
@@ -84,6 +97,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupMenusAndToolbars();
     setupTelemetryTable();
     applyTheme();
+    updateAiProviderBadges();
 
     // 6. Camera Thread setup
     _cameraThread = new CameraThread(_estimator, this);
@@ -131,10 +145,12 @@ void MainWindow::setupUi()
 
     auto *camHeaderLayout = new QHBoxLayout();
     auto *camTitle = new QLabel("<b>RGB Camera Feed & Pose Estimation</b>", cameraContainer);
+    _aiProviderBadge = new QLabel(cameraContainer);
     _fpsLabel = new QLabel("FPS: --", cameraContainer);
     _fpsLabel->setStyleSheet("color: #00ADB5; font-weight: bold;");
     camHeaderLayout->addWidget(camTitle);
     camHeaderLayout->addStretch();
+    camHeaderLayout->addWidget(_aiProviderBadge);
     camHeaderLayout->addWidget(_fpsLabel);
     camLayout->addLayout(camHeaderLayout);
 
@@ -179,12 +195,14 @@ void MainWindow::setupUi()
     mainLayout->addWidget(vSplitter);
 
     // Status bar labels
+    _aiStatusBadge = new QLabel(this);
     _mqttStatusBadge = new QLabel("MQTT: Disconnected", this);
     _mqttStatusBadge->setStyleSheet("color: #ff5555; padding-right: 15px; font-weight: bold;");
     _statusMessageLabel = new QLabel("Ready. Teleoperation is STANDBY.", this);
     _statusMessageLabel->setObjectName("statusMessage");
     _statusMessageLabel->setStyleSheet("color: #e0e0e0;");
 
+    statusBar()->addPermanentWidget(_aiStatusBadge);
     statusBar()->addPermanentWidget(_mqttStatusBadge);
     statusBar()->addWidget(_statusMessageLabel);
 }
@@ -529,6 +547,10 @@ void MainWindow::onSettingsClicked()
         connect(_settingsDialog, &SettingsDialog::settingsApplied, this, &MainWindow::onSettingsApplied);
     }
     _settingsDialog->loadCurrentConfig();
+    if (_estimator) {
+        _settingsDialog->setEstimatorInfo(_estimator->getActiveProviderName(),
+                                          _estimator->getAvailableProviders());
+    }
     _settingsDialog->exec();
 }
 
@@ -536,22 +558,136 @@ void MainWindow::onSettingsApplied()
 {
     const auto &cfg = TeleopConfig::instance();
 
-    // Reconfigure transmission timer rate
+    // 1. Stop camera thread cleanly before reconfiguring any subsystem
+    if (_cameraThread) {
+        _cameraThread->stopCapture();
+        _cameraThread->wait();
+    }
+
+    // 2. Reinitialize estimator ONLY if AI provider or model path changed
+    bool aiChanged = (_lastAppliedAiProvider != cfg.ai.provider ||
+                      _lastAppliedModelSource != cfg.ai.modelSource ||
+                      _lastAppliedCustomModelPath != cfg.ai.customModelPath);
+    if (aiChanged && _estimator) {
+        std::string modelPath = (cfg.ai.modelSource == "custom" && !cfg.ai.customModelPath.empty())
+                                    ? cfg.ai.customModelPath
+                                    : ":/models/yolov8n-pose.onnx";
+        _estimator->init(modelPath, cfg.ai.provider);
+        _lastAppliedAiProvider = cfg.ai.provider;
+        _lastAppliedModelSource = cfg.ai.modelSource;
+        _lastAppliedCustomModelPath = cfg.ai.customModelPath;
+        updateAiProviderBadges();
+    }
+
+    // 3. Reconfigure transmission timer rate
     int intervalMs = 1000 / (cfg.safety.txRateHz > 0 ? cfg.safety.txRateHz : 30);
     _txTimer.setInterval(intervalMs);
 
-    // Reconfigure camera
+    // 4. Reconfigure and restart camera thread
     restartCamera();
 
-    // Reapply theme
+    // 5. Reapply theme
     applyTheme();
 
-    // Reconnect to updated MQTT broker address
-    connectMqtt();
+    // 6. Reconnect MQTT ONLY if MQTT parameters changed
+    bool mqttChanged = (_lastAppliedMqttHost != cfg.mqtt.host ||
+                        _lastAppliedMqttPort != cfg.mqtt.port ||
+                        _lastAppliedMqttUser != cfg.mqtt.username ||
+                        _lastAppliedMqttPass != cfg.mqtt.password ||
+                        _lastAppliedMqttRobotId != cfg.mqtt.robotId ||
+                        _lastAppliedMqttKeepalive != cfg.mqtt.keepalive);
+    if (mqttChanged) {
+        _lastAppliedMqttHost = cfg.mqtt.host;
+        _lastAppliedMqttPort = cfg.mqtt.port;
+        _lastAppliedMqttUser = cfg.mqtt.username;
+        _lastAppliedMqttPass = cfg.mqtt.password;
+        _lastAppliedMqttRobotId = cfg.mqtt.robotId;
+        _lastAppliedMqttKeepalive = cfg.mqtt.keepalive;
+        connectMqtt();
+        statusBar()->showMessage(QString("Settings applied. Connecting to MQTT broker at %1:%2...")
+                                     .arg(QString::fromStdString(cfg.mqtt.host))
+                                     .arg(cfg.mqtt.port), 3000);
+    } else {
+        statusBar()->showMessage("Settings applied successfully.", 3000);
+    }
+}
 
-    statusBar()->showMessage(QString("Settings applied. Connecting to MQTT broker at %1:%2...")
-                                 .arg(QString::fromStdString(cfg.mqtt.host))
-                                 .arg(cfg.mqtt.port), 3000);
+void MainWindow::updateAiProviderBadges()
+{
+    if (!_estimator) {
+        return;
+    }
+
+    const auto &cfg = TeleopConfig::instance();
+    std::string active = _estimator->getActiveProviderName();
+    std::string pref = cfg.ai.provider;
+    auto available = _estimator->getAvailableProviders();
+
+    QString prefStr = QString::fromStdString(pref);
+    QString activeStr = QString::fromStdString(active);
+
+    QString badgeText;
+    QString statusText;
+    QString badgeStyle;
+    QString statusStyle;
+
+    bool isGpu = (active == "DirectML" || active == "CUDA");
+
+    if (pref == "auto") {
+        if (isGpu) {
+            badgeText = QString("AI: %1 (Auto)").arg(activeStr);
+            statusText = QString("AI: %1 (Auto)").arg(activeStr);
+            badgeStyle = "background-color: #0d2818; color: #00ff88; border: 1px solid #00aa55; border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;";
+            statusStyle = "color: #00ff88; padding-right: 15px; font-weight: bold;";
+        } else {
+            badgeText = "AI: CPU (Auto Fallback)";
+            statusText = "AI: CPU (Auto Fallback)";
+            badgeStyle = "background-color: #2b2106; color: #ffc107; border: 1px solid #b28900; border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;";
+            statusStyle = "color: #ffc107; padding-right: 15px; font-weight: bold;";
+        }
+    } else {
+        badgeText = QString("AI: %1").arg(activeStr);
+        statusText = QString("AI: %1").arg(activeStr);
+        if (isGpu) {
+            badgeStyle = "background-color: #0d2818; color: #00ff88; border: 1px solid #00aa55; border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;";
+            statusStyle = "color: #00ff88; padding-right: 15px; font-weight: bold;";
+        } else {
+            badgeStyle = "background-color: #1a1a24; color: #88aaff; border: 1px solid #3355aa; border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;";
+            statusStyle = "color: #88aaff; padding-right: 15px; font-weight: bold;";
+        }
+    }
+
+    QString availJoined;
+    for (size_t i = 0; i < available.size(); ++i) {
+        if (i > 0) {
+            availJoined += ", ";
+        }
+        availJoined += QString::fromStdString(available[i]);
+    }
+    if (availJoined.isEmpty()) {
+        availJoined = "CPUExecutionProvider";
+    }
+
+    QString tooltip = QString(
+        "<b>YOLOv8 Pose Estimation Inference Backend</b><br>"
+        "<b>Active Execution Provider:</b> %1 (%2)<br>"
+        "<b>Configured Preference:</b> %3<br>"
+        "<b>Detected System Providers:</b> %4")
+        .arg(activeStr)
+        .arg(isGpu ? "GPU Accelerated" : "CPU Software")
+        .arg(prefStr)
+        .arg(availJoined);
+
+    if (_aiProviderBadge) {
+        _aiProviderBadge->setText(badgeText);
+        _aiProviderBadge->setStyleSheet(badgeStyle);
+        _aiProviderBadge->setToolTip(tooltip);
+    }
+    if (_aiStatusBadge) {
+        _aiStatusBadge->setText(statusText);
+        _aiStatusBadge->setStyleSheet(statusStyle);
+        _aiStatusBadge->setToolTip(tooltip);
+    }
 }
 
 void MainWindow::onTxTimerTimeout()

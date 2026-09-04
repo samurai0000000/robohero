@@ -74,10 +74,14 @@ void SettingsDialog::setupUi()
     _targetSelectionCombo->addItem("Largest Bounding Box", "largest");
     _targetSelectionCombo->addItem("Highest Confidence", "confidence");
 
+    _activeProviderLabel = new QLabel("Active Backend: Initializing...", aiTab);
+    _activeProviderLabel->setStyleSheet("color: #00ADB5; font-weight: bold; font-size: 11px;");
+
     auto *modelInfoLabel = new QLabel("Model: Embedded YOLOv8n-pose (640x640 ONNX)", aiTab);
     modelInfoLabel->setStyleSheet("color: #88a; font-style: italic;");
 
     aiForm->addRow("Execution Provider:", _aiProviderCombo);
+    aiForm->addRow("", _activeProviderLabel);
     aiForm->addRow("Person Confidence Thresh:", _confThresholdSpin);
     aiForm->addRow("Keypoint Confidence Thresh:", _kptThresholdSpin);
     aiForm->addRow("Target Person Selection:", _targetSelectionCombo);
@@ -329,6 +333,32 @@ void SettingsDialog::onApplyClicked()
 void SettingsDialog::onCancelClicked()
 {
     reject();
+}
+
+void SettingsDialog::setEstimatorInfo(const std::string &activeProvider,
+                                     const std::vector<std::string> &availableProviders)
+{
+    if (!_activeProviderLabel) {
+        return;
+    }
+
+    QString activeStr = QString::fromStdString(activeProvider);
+    QString availStr;
+    for (size_t i = 0; i < availableProviders.size(); ++i) {
+        if (i > 0) {
+            availStr += ", ";
+        }
+        availStr += QString::fromStdString(availableProviders[i]);
+    }
+
+    bool isGpu = (activeProvider == "DirectML" || activeProvider == "CUDA");
+    QString color = isGpu ? "#00ff88" : "#ffcc00";
+
+    _activeProviderLabel->setText(
+        QString("Active: <span style='color: %1;'>%2</span> (Detected: %3)")
+            .arg(color)
+            .arg(activeStr.isEmpty() ? "None" : activeStr)
+            .arg(availStr.isEmpty() ? "CPU" : availStr));
 }
 
 /*

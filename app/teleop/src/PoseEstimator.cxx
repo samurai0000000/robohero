@@ -16,10 +16,12 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 
 class PoseEstimator::Impl
 {
 public:
+    std::mutex _mutex;
     Ort::Env _env{ORT_LOGGING_LEVEL_WARNING, "RoboHeroPoseEstimator"};
     Ort::SessionOptions _sessionOptions;
     std::unique_ptr<Ort::Session> _session;
@@ -58,6 +60,7 @@ PoseEstimator::~PoseEstimator()
 bool PoseEstimator::init(const std::string &modelPath,
                          const std::string &preferredProvider)
 {
+    std::lock_guard<std::mutex> lock(_impl->_mutex);
     try {
         _impl->_sessionOptions = Ort::SessionOptions();
         _impl->_sessionOptions.SetIntraOpNumThreads(4);
@@ -161,6 +164,7 @@ PoseEstimator::PersonPose PoseEstimator::infer(const cv::Mat &bgrFrame,
     PersonPose result;
     result.valid = false;
 
+    std::lock_guard<std::mutex> lock(_impl->_mutex);
     if (!_impl->_modelLoaded || bgrFrame.empty()) {
         return result;
     }
@@ -293,16 +297,19 @@ PoseEstimator::PersonPose PoseEstimator::infer(const cv::Mat &bgrFrame,
 
 std::string PoseEstimator::getActiveProviderName() const
 {
+    std::lock_guard<std::mutex> lock(_impl->_mutex);
     return _impl->_activeProvider;
 }
 
 std::vector<std::string> PoseEstimator::getAvailableProviders() const
 {
+    std::lock_guard<std::mutex> lock(_impl->_mutex);
     return _impl->_availableProviders;
 }
 
 bool PoseEstimator::isModelLoaded() const
 {
+    std::lock_guard<std::mutex> lock(_impl->_mutex);
     return _impl->_modelLoaded;
 }
 

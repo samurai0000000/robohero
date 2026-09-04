@@ -9,6 +9,7 @@
 
 #include <QDialog>
 #include <QTabWidget>
+#include <QLabel>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QComboBox>
@@ -26,6 +27,8 @@ public:
 
     void loadCurrentConfig();
     void applyToConfig();
+    void setEstimatorInfo(const std::string &activeProvider,
+                          const std::vector<std::string> &availableProviders);
 
 signals:
     void settingsApplied();
@@ -48,6 +51,7 @@ private:
 
     // AI tab
     QComboBox *_aiProviderCombo;
+    QLabel *_activeProviderLabel;
     QDoubleSpinBox *_confThresholdSpin;
     QDoubleSpinBox *_kptThresholdSpin;
     QComboBox *_targetSelectionCombo;
