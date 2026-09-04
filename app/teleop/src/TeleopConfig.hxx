@@ -52,6 +52,8 @@ public:
     {
         std::string host = "localhost";
         int port = 1883;
+        std::string username = "";
+        std::string password = "";
         std::string robotId = "robohero";
         int keepalive = 60;
         bool autoConnect = true;

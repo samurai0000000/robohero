@@ -45,12 +45,16 @@ bool MqttClient::connectToBroker(const std::string &host, int port,
         return false;
     }
 
+    disconnectFromBroker();
+
     _host = host;
     _port = port;
 
     if (!username.empty()) {
         mosquitto_username_pw_set(_mosq, username.c_str(),
                                   password.empty() ? nullptr : password.c_str());
+    } else {
+        mosquitto_username_pw_set(_mosq, nullptr, nullptr);
     }
 
     int rc = mosquitto_connect_async(_mosq, host.c_str(), port, keepaliveSec);

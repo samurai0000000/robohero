@@ -67,6 +67,8 @@ private:
     // MQTT tab
     QLineEdit *_mqttHostEdit;
     QSpinBox *_mqttPortSpin;
+    QLineEdit *_mqttUsernameEdit;
+    QLineEdit *_mqttPasswordEdit;
     QLineEdit *_mqttRobotIdEdit;
     QSpinBox *_mqttKeepaliveSpin;
     QCheckBox *_mqttAutoConnectCheck;

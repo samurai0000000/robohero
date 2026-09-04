@@ -46,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(QIcon(":/icons/robohero_head.png"));
     resize(1280, 800);
 
+    TeleopConfig::instance().load();
     const auto &cfg = TeleopConfig::instance();
 
     // 1. Initialize Robot URDF Limits from embedded resource
@@ -327,10 +328,13 @@ void MainWindow::restartCamera()
 void MainWindow::connectMqtt()
 {
     const auto &cfg = TeleopConfig::instance();
+    _mqttClient->disconnectFromBroker();
     _mqttStatusBadge->setText(QString("MQTT: Connecting to %1:%2...").arg(QString::fromStdString(cfg.mqtt.host)).arg(cfg.mqtt.port));
     _mqttStatusBadge->setStyleSheet("color: #ffaa00; padding-right: 15px; font-weight: bold;");
 
-    _mqttClient->connectToBroker(cfg.mqtt.host, cfg.mqtt.port, "", "", cfg.mqtt.keepalive);
+    _mqttClient->connectToBroker(cfg.mqtt.host, cfg.mqtt.port,
+                                 cfg.mqtt.username, cfg.mqtt.password,
+                                 cfg.mqtt.keepalive);
 }
 
 void MainWindow::onFrameReady(const QImage &image, const PoseEstimator::PersonPose &pose)
@@ -483,7 +487,12 @@ void MainWindow::onSettingsApplied()
     // Reapply theme
     applyTheme();
 
-    statusBar()->showMessage("Settings applied and saved.", 3000);
+    // Reconnect to updated MQTT broker address
+    connectMqtt();
+
+    statusBar()->showMessage(QString("Settings applied. Connecting to MQTT broker at %1:%2...")
+                             .arg(QString::fromStdString(cfg.mqtt.host))
+                             .arg(cfg.mqtt.port), 3000);
 }
 
 void MainWindow::onTxTimerTimeout()

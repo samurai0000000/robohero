@@ -19,11 +19,11 @@ UrdfViewerWidget::UrdfViewerWidget(QWidget *parent)
     , _showJointLabels(false)
     , _meshMode("boxes")
     , _fov(45.0)
-    , _cameraDistance(0.65f)
+    , _cameraDistance(0.48f)
     , _cameraYaw(25.0f)
     , _cameraPitch(20.0f)
     , _panX(0.0f)
-    , _panY(-0.05f)
+    , _panY(0.04f)
 {
     _jointAngles.fill(0.0);
     _jointPwm.fill(1500);
@@ -59,11 +59,11 @@ void UrdfViewerWidget::setViewerConfig(bool showGrid, bool showAxes,
 
 void UrdfViewerWidget::resetCamera()
 {
-    _cameraDistance = 0.65f;
+    _cameraDistance = 0.48f;
     _cameraYaw = 25.0f;
     _cameraPitch = 20.0f;
     _panX = 0.0f;
-    _panY = -0.05f;
+    _panY = 0.04f;
     update();
 }
 

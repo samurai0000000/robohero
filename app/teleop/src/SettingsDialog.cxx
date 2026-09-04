@@ -34,7 +34,6 @@ void SettingsDialog::setupUi()
     auto *camTab = new QWidget();
     auto *camForm = new QFormLayout(camTab);
     _cameraDeviceSpin = new QSpinBox(camTab);
-    _cameraDeviceSpin = new QSpinBox(camTab);
     _cameraDeviceSpin->setRange(0, 10);
 
     _resolutionCombo = new QComboBox(camTab);
@@ -147,6 +146,10 @@ void SettingsDialog::setupUi()
     _mqttPortSpin = new QSpinBox(mqttTab);
     _mqttPortSpin->setRange(1, 65535);
 
+    _mqttUsernameEdit = new QLineEdit(mqttTab);
+    _mqttPasswordEdit = new QLineEdit(mqttTab);
+    _mqttPasswordEdit->setEchoMode(QLineEdit::Password);
+
     _mqttRobotIdEdit = new QLineEdit(mqttTab);
     _mqttKeepaliveSpin = new QSpinBox(mqttTab);
     _mqttKeepaliveSpin->setRange(5, 300);
@@ -156,6 +159,8 @@ void SettingsDialog::setupUi()
 
     mqttForm->addRow("Broker Address:", _mqttHostEdit);
     mqttForm->addRow("Broker Port:", _mqttPortSpin);
+    mqttForm->addRow("Username (optional):", _mqttUsernameEdit);
+    mqttForm->addRow("Password (optional):", _mqttPasswordEdit);
     mqttForm->addRow("Robot Topic Base:", _mqttRobotIdEdit);
     mqttForm->addRow("Keepalive Interval:", _mqttKeepaliveSpin);
     mqttForm->addRow("", _mqttAutoConnectCheck);
@@ -237,6 +242,8 @@ void SettingsDialog::loadCurrentConfig()
 
     _mqttHostEdit->setText(QString::fromStdString(cfg.mqtt.host));
     _mqttPortSpin->setValue(cfg.mqtt.port);
+    _mqttUsernameEdit->setText(QString::fromStdString(cfg.mqtt.username));
+    _mqttPasswordEdit->setText(QString::fromStdString(cfg.mqtt.password));
     _mqttRobotIdEdit->setText(QString::fromStdString(cfg.mqtt.robotId));
     _mqttKeepaliveSpin->setValue(cfg.mqtt.keepalive);
     _mqttAutoConnectCheck->setChecked(cfg.mqtt.autoConnect);
@@ -276,9 +283,13 @@ void SettingsDialog::applyToConfig()
     cfg.safety.txRateHz = _txRateHzSpin->value();
     cfg.safety.watchdogTimeoutMs = _watchdogTimeoutSpin->value();
 
-    cfg.mqtt.host = _mqttHostEdit->text().trimmed().toStdString();
+    std::string hostStr = _mqttHostEdit->text().trimmed().toStdString();
+    cfg.mqtt.host = hostStr.empty() ? "localhost" : hostStr;
     cfg.mqtt.port = _mqttPortSpin->value();
-    cfg.mqtt.robotId = _mqttRobotIdEdit->text().trimmed().toStdString();
+    cfg.mqtt.username = _mqttUsernameEdit->text().trimmed().toStdString();
+    cfg.mqtt.password = _mqttPasswordEdit->text().toStdString();
+    std::string robotIdStr = _mqttRobotIdEdit->text().trimmed().toStdString();
+    cfg.mqtt.robotId = robotIdStr.empty() ? "robohero" : robotIdStr;
     cfg.mqtt.keepalive = _mqttKeepaliveSpin->value();
     cfg.mqtt.autoConnect = _mqttAutoConnectCheck->isChecked();
 

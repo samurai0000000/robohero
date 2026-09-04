@@ -28,6 +28,7 @@ TeleopConfig::TeleopConfig()
     : _loaded(false)
 {
     populateDefaults();
+    load();
 }
 
 std::string TeleopConfig::getDefaultConfigPath()
@@ -107,13 +108,13 @@ bool TeleopConfig::save(const std::string &path)
         _configPath = getDefaultConfigPath();
     }
 
-    syncToConfig();
-
     try {
+        syncToConfig();
         _cfg.writeFile(_configPath.c_str());
         return true;
-    } catch (const libconfig::FileIOException &ex) {
-        std::cerr << "Failed to write config file " << _configPath << std::endl;
+    } catch (const std::exception &ex) {
+        std::cerr << "Failed to write config file " << _configPath
+                  << ": " << ex.what() << std::endl;
         return false;
     }
 }
@@ -161,6 +162,8 @@ void TeleopConfig::syncFromConfig()
         libconfig::Setting &s = root["mqtt"];
         s.lookupValue("host", mqtt.host);
         s.lookupValue("port", mqtt.port);
+        s.lookupValue("username", mqtt.username);
+        s.lookupValue("password", mqtt.password);
         s.lookupValue("robotId", mqtt.robotId);
         s.lookupValue("keepalive", mqtt.keepalive);
         s.lookupValue("autoConnect", mqtt.autoConnect);
@@ -248,6 +251,8 @@ void TeleopConfig::syncToConfig()
     libconfig::Setting &mq = ensureGroup("mqtt");
     setOrAddString(mq, "host", mqtt.host);
     setOrAddInt(mq, "port", mqtt.port);
+    setOrAddString(mq, "username", mqtt.username);
+    setOrAddString(mq, "password", mqtt.password);
     setOrAddString(mq, "robotId", mqtt.robotId);
     setOrAddInt(mq, "keepalive", mqtt.keepalive);
     setOrAddBool(mq, "autoConnect", mqtt.autoConnect);

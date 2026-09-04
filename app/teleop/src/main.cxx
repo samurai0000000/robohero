@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QIcon>
+#include "TeleopConfig.hxx"
 #include "MainWindow.hxx"
 
 int main(int argc, char *argv[])
@@ -15,6 +16,7 @@ int main(int argc, char *argv[])
     app.setApplicationVersion("1.0.0");
     app.setWindowIcon(QIcon(":/icons/robohero_head.png"));
 
+    TeleopConfig::instance().load();
     qRegisterMetaType<PoseEstimator::PersonPose>("PoseEstimator::PersonPose");
 
     MainWindow window;
