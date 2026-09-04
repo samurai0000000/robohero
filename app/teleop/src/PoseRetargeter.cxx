@@ -150,16 +150,34 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
             rawAngles[6] = rollAngle;
         }
 
-        // Left Shoulder Pitch (Ch 5): neutral in coronal 2D tracking
-        rawAngles[5] = 0.0;
+        // Left Shoulder Pitch (Ch 5): Inferred from limb foreshortening when reaching forward
+        if (kpts[kptLHip].conf > 0.3f) {
+            float torsoLen = std::sqrt((hx - sx) * (hx - sx) + (hy - sy) * (hy - sy));
+            float armLen2D = std::sqrt((ex - sx) * (ex - sx) + (ey - sy) * (ey - sy));
+            float armLenRef = torsoLen * 0.65f;
+            if (armLenRef > 1e-4f) {
+                float ratio = std::clamp(armLen2D / armLenRef, 0.15f, 1.0f);
+                // Deadband at 0.85 to keep pure coronal moves (overhead/T-pose) strictly at 0.0 pitch
+                if (ratio < 0.85f) {
+                    float forwardAngle = ((0.85f - ratio) / (0.85f - 0.20f)) * static_cast<float>(M_PI_2);
+                    forwardAngle = std::clamp(forwardAngle, 0.0f, static_cast<float>(M_PI_2));
+                    rawAngles[5] = -forwardAngle; // negative pitch swings forward in URDF
+                } else {
+                    rawAngles[5] = 0.0;
+                }
+            }
+        } else {
+            rawAngles[5] = 0.0;
+        }
 
-        // Left Elbow (Ch 7): angle at elbow (S - E - W)
+        // Left Elbow (Ch 7): angle at elbow (S - E - W) with 2D cross-product bend direction
         if (kpts[kptLWrist].conf > 0.35f) {
             float wx = kpts[kptLWrist].x;
             float wy = kpts[kptLWrist].y;
             double elbowAngle = computeAngle2D(sx, sy, ex, ey, wx, wy);
-            // Inverted so 0 rad is arm extended (180 deg)
-            rawAngles[7] = (M_PI - elbowAngle);
+            double flexion = M_PI - elbowAngle;
+            float cross = (ex - sx) * (wy - ey) - (ey - sy) * (wx - ex);
+            rawAngles[7] = (cross < 0.0f) ? -flexion : flexion;
         }
     }
 
@@ -181,15 +199,34 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
             rawAngles[9] = -rollAngle;
         }
 
-        // Right Shoulder Pitch (Ch 10): neutral in coronal 2D tracking
-        rawAngles[10] = 0.0;
+        // Right Shoulder Pitch (Ch 10): Inferred from limb foreshortening when reaching forward
+        if (kpts[kptRHip].conf > 0.3f) {
+            float torsoLen = std::sqrt((hx - sx) * (hx - sx) + (hy - sy) * (hy - sy));
+            float armLen2D = std::sqrt((ex - sx) * (ex - sx) + (ey - sy) * (ey - sy));
+            float armLenRef = torsoLen * 0.65f;
+            if (armLenRef > 1e-4f) {
+                float ratio = std::clamp(armLen2D / armLenRef, 0.15f, 1.0f);
+                // Deadband at 0.85 to keep pure coronal moves (overhead/T-pose) strictly at 0.0 pitch
+                if (ratio < 0.85f) {
+                    float forwardAngle = ((0.85f - ratio) / (0.85f - 0.20f)) * static_cast<float>(M_PI_2);
+                    forwardAngle = std::clamp(forwardAngle, 0.0f, static_cast<float>(M_PI_2));
+                    rawAngles[10] = -forwardAngle; // negative pitch swings forward in URDF
+                } else {
+                    rawAngles[10] = 0.0;
+                }
+            }
+        } else {
+            rawAngles[10] = 0.0;
+        }
 
-        // Right Elbow (Ch 8): angle at elbow (S - E - W)
+        // Right Elbow (Ch 8): angle at elbow (S - E - W) with 2D cross-product bend direction
         if (kpts[kptRWrist].conf > 0.35f) {
             float wx = kpts[kptRWrist].x;
             float wy = kpts[kptRWrist].y;
             double elbowAngle = computeAngle2D(sx, sy, ex, ey, wx, wy);
-            rawAngles[8] = -(M_PI - elbowAngle);
+            double flexion = M_PI - elbowAngle;
+            float cross = (ex - sx) * (wy - ey) - (ey - sy) * (wx - ex);
+            rawAngles[8] = (cross > 0.0f) ? flexion : -flexion;
         }
     }
 
