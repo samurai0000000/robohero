@@ -12,4 +12,7 @@ local.config.mk
 *.jks
 *.keystore
 keystore.properties
-
+app/teleop/build/
+third_party/onnxruntime/
+third_party/pugixml/
+third_party/opencv/

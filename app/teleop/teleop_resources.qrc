@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="urdf/robohero.urdf">../../urdf/robohero.urdf</file>
+        <file alias="models/yolov8n-pose.onnx">assets/yolov8n-pose.onnx</file>
+        <file alias="icons/robohero_icon.png">assets/robohero_icon.png</file>
+        <file alias="icons/robohero_head.png">assets/robohero_head.png</file>
+    </qresource>
+</RCC>

@@ -2,3 +2,9 @@
 	path = ESP8266_RTOS_SDK
 	url = https://github.com/espressif/ESP8266_RTOS_SDK.git
 	branch = release/v3.4
+[submodule "third_party/eigen"]
+	path = third_party/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "third_party/vcpkg"]
+	path = third_party/vcpkg
+	url = https://github.com/microsoft/vcpkg.git

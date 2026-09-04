@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "robohero-teleop",
+  "version-string": "0.1.0",
+  "description": "RoboHero Humanoid Teleoperation Desktop Application",
+  "dependencies": [
+    "qt6-base",
+    "qt6-openglwidgets",
+    "opencv",
+    "mosquitto",
+    "libconfig",
+    "onnxruntime"
+  ]
+}
