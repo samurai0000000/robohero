@@ -176,6 +176,37 @@ int UrdfLimits::angleToPwm(int channel, double angleRad, double safetyMarginDeg)
     return std::max(SERVOMIN, std::min(SERVOMAX, pwm));
 }
 
+double UrdfLimits::pwmToAngle(int channel, int pwm) const
+{
+    auto it = _limits.find(channel);
+    if (it == _limits.end()) {
+        return 0.0;
+    }
+
+    double lower = it->second.lower;
+    double upper = it->second.upper;
+
+    // Handle pulse microseconds (500..2500), PCA9685 counts (104..512),
+    // and firmware motion resolution (1..270)
+    double fraction = 0.5;
+    if (pwm > 512) {
+        // Microsecond pulse width (500 - 2500 us)
+        fraction = static_cast<double>(pwm - 500) / 2000.0;
+    } else if (pwm > 270) {
+        // PCA9685 count range (104 - 512)
+        fraction = static_cast<double>(pwm - SERVOMIN) / static_cast<double>(SERVOMAX - SERVOMIN);
+    } else if (pwm >= 1) {
+        // Firmware motion resolution (1 - 270)
+        fraction = static_cast<double>(pwm - PWMRES_MIN) / static_cast<double>(PWMRES_MAX - PWMRES_MIN);
+    } else {
+        fraction = 0.5;
+    }
+
+    fraction = std::max(0.0, std::min(1.0, fraction));
+    double angle = lower + fraction * (upper - lower);
+    return std::max(lower, std::min(upper, angle));
+}
+
 /*
  * Local variables:
  * mode: C++

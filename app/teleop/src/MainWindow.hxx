@@ -36,6 +36,8 @@ private slots:
     void onMqttDisconnected();
     void onMqttError(const QString &msg);
     void onMqttMessageSent(int bytes);
+    void onTelemetryReceived(const std::array<int, 17> &pwmValues,
+                             const std::array<bool, 17> &validMask);
 
     void onTeleopToggleClicked();
     void onCenterClicked();

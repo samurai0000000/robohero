@@ -32,9 +32,12 @@ public:
 
     double clamp(int channel, double angleRad, double safetyMarginDeg = 0.0) const;
     int angleToPwm(int channel, double angleRad, double safetyMarginDeg = 0.0) const;
+    double pwmToAngle(int channel, int pwm) const;
 
     static constexpr int SERVOMIN = 104;
     static constexpr int SERVOMAX = 512;
+    static constexpr int PWMRES_MIN = 1;
+    static constexpr int PWMRES_MAX = 270;
     static constexpr int TOTAL_SERVOS = 17;
 
 private:

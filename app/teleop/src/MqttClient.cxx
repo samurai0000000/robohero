@@ -7,6 +7,9 @@
 #include "MqttClient.hxx"
 #include <mosquitto.h>
 #include <robohero/msg.h>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <iostream>
 #include <cstring>
 
@@ -15,6 +18,7 @@ MqttClient::MqttClient(QObject *parent)
     , _mosq(nullptr)
     , _connected(false)
     , _port(1883)
+    , _robotId("robohero")
 {
     mosquitto_lib_init();
     _mosq = mosquitto_new(nullptr, true, this);
@@ -22,6 +26,7 @@ MqttClient::MqttClient(QObject *parent)
         mosquitto_connect_callback_set(_mosq, onConnectCallback);
         mosquitto_disconnect_callback_set(_mosq, onDisconnectCallback);
         mosquitto_publish_callback_set(_mosq, onPublishCallback);
+        mosquitto_message_callback_set(_mosq, onMessageCallback);
     }
 }
 
@@ -80,6 +85,11 @@ void MqttClient::disconnectFromBroker()
 bool MqttClient::isConnected() const
 {
     return _connected;
+}
+
+void MqttClient::setRobotId(const std::string &robotId)
+{
+    _robotId = robotId.empty() ? "robohero" : robotId;
 }
 
 bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic)
@@ -169,7 +179,6 @@ bool MqttClient::sendStop(const std::string &topic)
 
 void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int rc)
 {
-    (void) mosq;
     auto *self = static_cast<MqttClient *>(userdata);
     if (!self) {
         return;
@@ -177,6 +186,22 @@ void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int r
 
     if (rc == 0) {
         self->_connected = true;
+
+        std::string rid = self->_robotId.empty() ? "robohero" : self->_robotId;
+        std::string statusTopic = "robot/robohero/" + rid + "/status";
+        std::string wildcardStatus = "robot/robohero/+/status";
+        std::string controlTopic = "robot/robohero/" + rid + "/control";
+        std::string cmdTopic = "robot/robohero/" + rid + "/cmd";
+        std::string shortStatus = rid + "/status";
+        std::string shortCmd = rid + "/cmd";
+
+        mosquitto_subscribe(mosq, nullptr, statusTopic.c_str(), 0);
+        mosquitto_subscribe(mosq, nullptr, wildcardStatus.c_str(), 0);
+        mosquitto_subscribe(mosq, nullptr, controlTopic.c_str(), 0);
+        mosquitto_subscribe(mosq, nullptr, cmdTopic.c_str(), 0);
+        mosquitto_subscribe(mosq, nullptr, shortStatus.c_str(), 0);
+        mosquitto_subscribe(mosq, nullptr, shortCmd.c_str(), 0);
+
         emit self->connected();
     } else {
         self->_connected = false;
@@ -202,6 +227,90 @@ void MqttClient::onPublishCallback(struct mosquitto *mosq, void *userdata, int m
     (void) mosq;
     (void) userdata;
     (void) mid;
+}
+
+void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
+                                  const struct mosquitto_message *msg)
+{
+    (void) mosq;
+    auto *self = static_cast<MqttClient *>(userdata);
+    if (!self || !msg || !msg->payload || msg->payloadlen <= 0) {
+        return;
+    }
+
+    std::array<int, 17> pwm{};
+    std::array<bool, 17> valid{};
+    valid.fill(false);
+
+    // 1. Try binary wire protocol first
+    rh_msg_view view;
+    if (rh_msg_parse(msg->payload, msg->payloadlen, &view) == 0) {
+        if (view.msg_type == RH_MSG_STATUS || view.msg_type == RH_MSG_SET_PWM) {
+            int off = 0;
+            while (off < static_cast<int>(view.payload_len)) {
+                uint8_t type = 0;
+                uint8_t len = 0;
+                const uint8_t *val = nullptr;
+                int next = rh_tlv_next(view.payload, view.payload_len, off,
+                                       &type, &val, &len);
+                if (next < 0) {
+                    break;
+                }
+
+                if (type == RH_TLV_SERVO && len == sizeof(rh_tlv_servo)) {
+                    rh_tlv_servo s;
+                    std::memcpy(&s, val, sizeof(s));
+                    if (s.chan < 17) {
+                        pwm[s.chan] = s.pos;
+                        valid[s.chan] = true;
+                    }
+                }
+                off = next;
+            }
+        }
+    } else {
+        // 2. Fallback: Try JSON payload
+        QByteArray payloadBytes(static_cast<const char *>(msg->payload), msg->payloadlen);
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(payloadBytes, &err);
+        if (err.error == QJsonParseError::NoError) {
+            if (doc.isObject()) {
+                QJsonObject obj = doc.object();
+                if (obj.contains("channel") && (obj.contains("pos") || obj.contains("pwm"))) {
+                    int ch = obj["channel"].toInt(-1);
+                    int pos = obj.contains("pos") ? obj["pos"].toInt() : obj["pwm"].toInt();
+                    if (ch >= 0 && ch < 17) {
+                        pwm[ch] = pos;
+                        valid[ch] = true;
+                    }
+                } else if (obj.contains("servos") && obj["servos"].isArray()) {
+                    QJsonArray arr = obj["servos"].toArray();
+                    for (int i = 0; i < arr.size() && i < 17; ++i) {
+                        pwm[i] = arr[i].toInt();
+                        valid[i] = true;
+                    }
+                }
+            } else if (doc.isArray()) {
+                QJsonArray arr = doc.array();
+                for (int i = 0; i < arr.size() && i < 17; ++i) {
+                    pwm[i] = arr[i].toInt();
+                    valid[i] = true;
+                }
+            }
+        }
+    }
+
+    bool anyValid = false;
+    for (bool v : valid) {
+        if (v) {
+            anyValid = true;
+            break;
+        }
+    }
+
+    if (anyValid) {
+        emit self->telemetryReceived(pwm, valid);
+    }
 }
 
 /*

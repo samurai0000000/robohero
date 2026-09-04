@@ -65,6 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_mqttClient, &MqttClient::disconnected, this, &MainWindow::onMqttDisconnected);
     connect(_mqttClient, &MqttClient::connectionError, this, &MainWindow::onMqttError);
     connect(_mqttClient, &MqttClient::messageSent, this, &MainWindow::onMqttMessageSent);
+    connect(_mqttClient, &MqttClient::telemetryReceived, this, &MainWindow::onTelemetryReceived);
 
     // 5. Setup UI and Telemetry
     setupUi();
@@ -329,6 +330,7 @@ void MainWindow::connectMqtt()
 {
     const auto &cfg = TeleopConfig::instance();
     _mqttClient->disconnectFromBroker();
+    _mqttClient->setRobotId(cfg.mqtt.robotId);
     _mqttStatusBadge->setText(QString("MQTT: Connecting to %1:%2...").arg(QString::fromStdString(cfg.mqtt.host)).arg(cfg.mqtt.port));
     _mqttStatusBadge->setStyleSheet("color: #ffaa00; padding-right: 15px; font-weight: bold;");
 
@@ -418,6 +420,45 @@ void MainWindow::onMqttMessageSent(int bytes)
     (void) bytes;
 }
 
+void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
+                                     const std::array<bool, 17> &validMask)
+{
+    // If teleop is active and operator pose tracking is active,
+    // operator poses have command priority.
+    bool teleopStreaming = _teleopActive && _hasPoseData &&
+        (QDateTime::currentMSecsSinceEpoch() - _lastPoseTimestamp <= 1000);
+
+    if (teleopStreaming) {
+        return;
+    }
+
+    bool updated = false;
+    for (int ch = 0; ch < 17; ++ch) {
+        if (validMask[ch]) {
+            _latestPwm[ch] = pwmValues[ch];
+            _latestAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, pwmValues[ch]);
+            updated = true;
+
+            // Update Telemetry table
+            double deg = _latestAngles[ch] * 180.0 / M_PI;
+            auto degItem = _telemetryTable->item(ch, 2);
+            if (degItem) {
+                degItem->setText(QString::number(deg, 'f', 1));
+            }
+
+            auto pwmItem = _telemetryTable->item(ch, 3);
+            if (pwmItem) {
+                pwmItem->setText(QString::number(_latestPwm[ch]));
+            }
+        }
+    }
+
+    if (updated && _urdfViewer) {
+        _urdfViewer->setJointAngles(_latestAngles);
+        _urdfViewer->setJointPwm(_latestPwm);
+    }
+}
+
 void MainWindow::onTeleopToggleClicked()
 {
     _teleopActive = _teleopToggleBtn->isChecked();
@@ -436,16 +477,20 @@ void MainWindow::onTeleopToggleClicked()
 void MainWindow::onCenterClicked()
 {
     const auto &cfg = TeleopConfig::instance();
-    std::string topic = cfg.mqtt.robotId + "/cmd";
+    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
+    std::string topic = "robot/robohero/" + rid + "/control";
     _mqttClient->sendCenter(topic);
+    _mqttClient->sendCenter(rid + "/cmd");
     statusBar()->showMessage("Sent CENTER command to robot.", 3000);
 }
 
 void MainWindow::onRelaxClicked()
 {
     const auto &cfg = TeleopConfig::instance();
-    std::string topic = cfg.mqtt.robotId + "/cmd";
+    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
+    std::string topic = "robot/robohero/" + rid + "/control";
     _mqttClient->sendRelax(topic);
+    _mqttClient->sendRelax(rid + "/cmd");
     statusBar()->showMessage("Sent RELAX (torque off) command to robot.", 3000);
 }
 
@@ -458,8 +503,10 @@ void MainWindow::onStopClicked()
     }
 
     const auto &cfg = TeleopConfig::instance();
-    std::string topic = cfg.mqtt.robotId + "/cmd";
+    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
+    std::string topic = "robot/robohero/" + rid + "/control";
     _mqttClient->sendStop(topic);
+    _mqttClient->sendStop(rid + "/cmd");
     statusBar()->showMessage("EMERGENCY STOP TRIGGERED!", 5000);
 }
 
@@ -508,7 +555,8 @@ void MainWindow::onTxTimerTimeout()
         return;
     }
 
-    std::string topic = cfg.mqtt.robotId + "/cmd";
+    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
+    std::string topic = "robot/robohero/" + rid + "/control";
     _mqttClient->sendPwm(_latestPwm, topic);
 }
 

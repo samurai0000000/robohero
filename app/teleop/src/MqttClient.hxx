@@ -28,6 +28,7 @@ public:
                          int keepaliveSec = 60);
     void disconnectFromBroker();
     bool isConnected() const;
+    void setRobotId(const std::string &robotId);
 
     bool sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic);
     bool sendCenter(const std::string &topic);
@@ -39,16 +40,21 @@ signals:
     void disconnected();
     void connectionError(const QString &errorMessage);
     void messageSent(int bytes);
+    void telemetryReceived(const std::array<int, 17> &pwmValues,
+                           const std::array<bool, 17> &validMask);
 
 private:
     struct mosquitto *_mosq;
     bool _connected;
     std::string _host;
     int _port;
+    std::string _robotId;
 
     static void onConnectCallback(struct mosquitto *mosq, void *userdata, int rc);
     static void onDisconnectCallback(struct mosquitto *mosq, void *userdata, int rc);
     static void onPublishCallback(struct mosquitto *mosq, void *userdata, int mid);
+    static void onMessageCallback(struct mosquitto *mosq, void *userdata,
+                                  const struct mosquitto_message *msg);
 };
 
 #endif
