@@ -711,13 +711,14 @@ void Mqtt::onControl(const void *data, int len)
             rh.submitPms((int) id);
             return;
         }
-        if (view.msg_type == RH_MSG_SET_PWM && type == RH_TLV_SERVO &&
-            n == sizeof(rh_tlv_servo)) {
+        if ((view.msg_type == RH_MSG_SET_PWM ||
+             view.msg_type == RH_MSG_STATUS) &&
+            type == RH_TLV_SERVO && n == sizeof(rh_tlv_servo)) {
             rh_tlv_servo s;
             memcpy(&s, val, sizeof(s));
             setPwmPos((int) s.chan, (int) s.pos);
-            return;
         }
+        // Ignore voltage (RH_TLV_VOLTAGE), time (RH_TLV_TIME), and unknown TLVs
         off = next;
     }
 }

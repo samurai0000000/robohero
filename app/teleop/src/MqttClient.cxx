@@ -145,8 +145,17 @@ bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string
         return false;
     }
 
-    int published = 0;
-    int totalBytes = 0;
+    uint8_t buffer[128];
+    int used = rh_msg_begin(buffer, sizeof(buffer), RH_MSG_SET_PWM);
+    if (used < 0) {
+        _lastError = "Failed to encode SET_PWM header";
+        return false;
+    }
+
+    int changedCount = 0;
+    std::array<int, 17> newPwm{};
+    std::array<bool, 17> changed{};
+    changed.fill(false);
 
     for (uint8_t ch = 0; ch < 17; ++ch) {
         int pos = pwmValues[ch];
@@ -160,46 +169,49 @@ bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string
             continue;
         }
 
-        uint8_t buffer[32];
         rh_tlv_servo servo{};
         int16_t pos16 = static_cast<int16_t>(pos);
         servo.chan = ch;
         std::memcpy(&servo.pos, &pos16, sizeof(pos16));
 
-        int used = rh_msg_begin(buffer, sizeof(buffer), RH_MSG_SET_PWM);
-        if (used < 0) {
-            _lastError = "Failed to encode SET_PWM header";
-            return false;
-        }
-        used = rh_tlv_put(buffer, sizeof(buffer), used, RH_TLV_SERVO, &servo,
-                          sizeof(servo));
-        if (used < 0) {
+        int nextUsed = rh_tlv_put(buffer, sizeof(buffer), used, RH_TLV_SERVO,
+                                  &servo, sizeof(servo));
+        if (nextUsed < 0) {
             _lastError = "Failed to encode SET_PWM servo TLV";
             return false;
         }
-        used = rh_msg_finish(buffer, used);
-        if (used < 0) {
-            _lastError = "Failed to finish SET_PWM message";
-            return false;
-        }
+        used = nextUsed;
+        newPwm[ch] = pos;
+        changed[ch] = true;
+        changedCount++;
+    }
 
-        int mid = 0;
-        int rc = mosquitto_publish(_mosq, &mid, topic.c_str(), used, buffer, 0, false);
-        if (rc != MOSQ_ERR_SUCCESS) {
-            _lastError = QString("MQTT publish failed: %1").arg(mosquitto_strerror(rc));
-            return false;
-        }
+    if (changedCount == 0) {
+        return true;
+    }
 
-        _lastSentPwm[ch] = pos;
-        _lastSentValid[ch] = true;
-        published++;
-        totalBytes += used;
+    used = rh_msg_finish(buffer, used);
+    if (used < 0) {
+        _lastError = "Failed to finish SET_PWM message";
+        return false;
+    }
+
+    int mid = 0;
+    int rc = mosquitto_publish(_mosq, &mid, topic.c_str(), used, buffer, 0, false);
+    if (rc != MOSQ_ERR_SUCCESS) {
+        _lastError = QString("MQTT publish failed: %1").arg(mosquitto_strerror(rc));
+        return false;
+    }
+
+    for (uint8_t ch = 0; ch < 17; ++ch) {
+        if (changed[ch]) {
+            _lastSentPwm[ch] = newPwm[ch];
+            _lastSentValid[ch] = true;
+        }
     }
 
     _lastError.clear();
-    if (published > 0) {
-        emit messageSent(totalBytes);
-    }
+    emit messageSent(used);
     return true;
 }
 
