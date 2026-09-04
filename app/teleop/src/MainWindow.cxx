@@ -43,8 +43,12 @@ MainWindow::MainWindow(QWidget *parent)
     UrdfLimits::instance().init(":/urdf/robohero.urdf");
 
     for (int ch = 0; ch < 17; ++ch) {
-        _latestPwm[ch] = UrdfLimits::instance().getCalibration(ch).center;
-        _latestAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, _latestPwm[ch]);
+        int center = UrdfLimits::instance().getCalibration(ch).center;
+        double angle = UrdfLimits::instance().pwmToAngle(ch, center);
+        _commandPwm[ch] = center;
+        _commandAngles[ch] = angle;
+        _telemPwm[ch] = center;
+        _telemAngles[ch] = angle;
     }
 
     setWindowTitle("RoboHero Teleoperation Dashboard");
@@ -63,11 +67,16 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 4. Initialize MQTT Client
     _mqttClient = new MqttClient(this);
-    connect(_mqttClient, &MqttClient::connected, this, &MainWindow::onMqttConnected);
-    connect(_mqttClient, &MqttClient::disconnected, this, &MainWindow::onMqttDisconnected);
-    connect(_mqttClient, &MqttClient::connectionError, this, &MainWindow::onMqttError);
-    connect(_mqttClient, &MqttClient::messageSent, this, &MainWindow::onMqttMessageSent);
-    connect(_mqttClient, &MqttClient::telemetryReceived, this, &MainWindow::onTelemetryReceived);
+    connect(_mqttClient, &MqttClient::connected, this, &MainWindow::onMqttConnected,
+            Qt::QueuedConnection);
+    connect(_mqttClient, &MqttClient::disconnected, this, &MainWindow::onMqttDisconnected,
+            Qt::QueuedConnection);
+    connect(_mqttClient, &MqttClient::connectionError, this, &MainWindow::onMqttError,
+            Qt::QueuedConnection);
+    connect(_mqttClient, &MqttClient::messageSent, this, &MainWindow::onMqttMessageSent,
+            Qt::QueuedConnection);
+    connect(_mqttClient, &MqttClient::telemetryReceived, this, &MainWindow::onTelemetryReceived,
+            Qt::QueuedConnection);
 
     // 5. Setup UI and Telemetry
     setupUi();
@@ -131,7 +140,7 @@ void MainWindow::setupUi()
     _cameraViewLabel = new QLabel("Waiting for camera feed...", cameraContainer);
     _cameraViewLabel->setAlignment(Qt::AlignCenter);
     _cameraViewLabel->setMinimumSize(480, 360);
-    _cameraViewLabel->setStyleSheet("background-color: #1a1a1e; border: 1px solid #333; border-radius: 4px;");
+    _cameraViewLabel->setStyleSheet("background-color: #1a1a1e; color: #e0e0e0; border: 1px solid #333; border-radius: 4px;");
     camLayout->addWidget(_cameraViewLabel);
     hSplitter->addWidget(cameraContainer);
 
@@ -172,6 +181,8 @@ void MainWindow::setupUi()
     _mqttStatusBadge = new QLabel("MQTT: Disconnected", this);
     _mqttStatusBadge->setStyleSheet("color: #ff5555; padding-right: 15px; font-weight: bold;");
     _statusMessageLabel = new QLabel("Ready. Teleoperation is STANDBY.", this);
+    _statusMessageLabel->setObjectName("statusMessage");
+    _statusMessageLabel->setStyleSheet("color: #e0e0e0;");
 
     statusBar()->addPermanentWidget(_mqttStatusBadge);
     statusBar()->addWidget(_statusMessageLabel);
@@ -299,18 +310,47 @@ void MainWindow::applyTheme()
     if (cfg.view.darkTheme) {
         setStyleSheet(
             "QMainWindow { background-color: #1e1e24; color: #e0e0e0; }"
-            "QToolBar { background-color: #26262e; border-bottom: 1px solid #333; spacing: 8px; padding: 4px; }"
+            "QWidget { color: #e0e0e0; }"
+            "QLabel { color: #e0e0e0; }"
+            "QToolBar { background-color: #26262e; color: #e0e0e0; border-bottom: 1px solid #333; spacing: 8px; padding: 4px; }"
+            "QToolBar QLabel { color: #e0e0e0; }"
             "QMenuBar { background-color: #26262e; color: #e0e0e0; border-bottom: 1px solid #333; }"
-            "QMenuBar::item:selected { background-color: #383842; }"
+            "QMenuBar::item { color: #e0e0e0; }"
+            "QMenuBar::item:selected { background-color: #383842; color: #ffffff; }"
             "QMenu { background-color: #26262e; color: #e0e0e0; border: 1px solid #444; }"
+            "QMenu::item { color: #e0e0e0; }"
             "QMenu::item:selected { background-color: #00ADB5; color: #ffffff; }"
             "QTableWidget { background-color: #16161a; alternate-background-color: #1f1f24; color: #ddd; gridline-color: #333; border: 1px solid #333; }"
-            "QHeaderView::section { background-color: #282830; color: #aaa; padding: 4px; border: 1px solid #333; font-weight: bold; }"
-            "QStatusBar { background-color: #1a1a1e; color: #888; }"
+            "QHeaderView::section { background-color: #282830; color: #e0e0e0; padding: 4px; border: 1px solid #333; font-weight: bold; }"
+            "QStatusBar { background-color: #1a1a1e; color: #e0e0e0; }"
+            "QStatusBar QLabel#statusMessage { color: #e0e0e0; background: transparent; }"
             "QPushButton { background-color: #33333d; color: #fff; border: 1px solid #4a4a55; border-radius: 4px; padding: 5px 12px; }"
             "QPushButton:hover { background-color: #3d3d4a; border-color: #00ADB5; }"
             "QPushButton:pressed { background-color: #222228; }"
+            "QCheckBox { color: #e0e0e0; }"
+            "QRadioButton { color: #e0e0e0; }"
+            "QGroupBox { color: #e0e0e0; border: 1px solid #444; margin-top: 8px; }"
+            "QGroupBox::title { color: #e0e0e0; }"
+            "QTabWidget::pane { border: 1px solid #444; background-color: #1e1e24; }"
+            "QTabBar::tab { color: #e0e0e0; background-color: #26262e; padding: 6px 12px; border: 1px solid #444; }"
+            "QTabBar::tab:selected { color: #ffffff; background-color: #383842; }"
+            "QLineEdit { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; padding: 3px; }"
+            "QSpinBox, QDoubleSpinBox, QAbstractSpinBox { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; }"
+            "QComboBox { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; }"
+            "QComboBox QAbstractItemView { color: #e0e0e0; background-color: #26262e; }"
+            "QDialog { background-color: #1e1e24; color: #e0e0e0; }"
+            "QMessageBox { background-color: #26262e; color: #e0e0e0; }"
+            "QMessageBox QLabel { color: #e0e0e0; }"
+            "QSplitter::handle { background-color: #333; }"
         );
+        _statusMessageLabel->setStyleSheet("color: #e0e0e0;");
+        _cameraViewLabel->setStyleSheet("background-color: #1a1a1e; color: #e0e0e0; border: 1px solid #333; border-radius: 4px;");
+    } else {
+        setStyleSheet(
+            "QStatusBar { color: #222222; }"
+            "QStatusBar QLabel#statusMessage { color: #222222; background: transparent; }"
+        );
+        _statusMessageLabel->setStyleSheet("color: #222222;");
     }
 }
 
@@ -363,32 +403,10 @@ void MainWindow::onFrameReady(const QImage &image, const PoseEstimator::PersonPo
                                            cfg.safety.safetyMarginDeg);
 
         if (result.valid) {
-            _latestAngles = result.jointAnglesRad;
-            _latestPwm = result.servoPwm;
+            _commandAngles = result.jointAnglesRad;
+            _commandPwm = result.servoPwm;
             _hasPoseData = true;
             _lastPoseTimestamp = QDateTime::currentMSecsSinceEpoch();
-
-            // Update 3D URDF viewport
-            if (_urdfViewer) {
-                _urdfViewer->setJointAngles(_latestAngles);
-                _urdfViewer->setJointPwm(_latestPwm);
-            }
-
-            // Update Telemetry table
-            for (int ch = 0; ch < 17; ++ch) {
-                double deg = _latestAngles[ch] * 180.0 / M_PI;
-                int pwm = _latestPwm[ch];
-
-                auto degItem = _telemetryTable->item(ch, 2);
-                if (degItem) {
-                    degItem->setText(QString::number(deg, 'f', 1));
-                }
-
-                auto pwmItem = _telemetryTable->item(ch, 3);
-                if (pwmItem) {
-                    pwmItem->setText(QString::number(pwm));
-                }
-            }
         }
     }
 }
@@ -403,14 +421,14 @@ void MainWindow::onMqttConnected()
     const auto &cfg = TeleopConfig::instance();
     _mqttStatusBadge->setText(QString("MQTT: Connected (%1:%2)").arg(QString::fromStdString(cfg.mqtt.host)).arg(cfg.mqtt.port));
     _mqttStatusBadge->setStyleSheet("color: #00ff88; padding-right: 15px; font-weight: bold;");
-    _statusMessageLabel->setText("MQTT Broker Connected. Ready for Teleoperation.");
+    _statusMessageLabel->setText("MQTT broker connected. Ready for teleoperation.");
 }
 
 void MainWindow::onMqttDisconnected()
 {
     _mqttStatusBadge->setText("MQTT: Disconnected");
     _mqttStatusBadge->setStyleSheet("color: #ff5555; padding-right: 15px; font-weight: bold;");
-    _statusMessageLabel->setText("MQTT Broker Disconnected.");
+    _statusMessageLabel->setText("MQTT broker disconnected.");
 }
 
 void MainWindow::onMqttError(const QString &msg)
@@ -427,16 +445,13 @@ void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
                                      const std::array<bool, 17> &validMask)
 {
     bool updated = false;
-    int updatedChannels = 0;
     for (int ch = 0; ch < 17; ++ch) {
         if (validMask[ch]) {
-            _latestPwm[ch] = pwmValues[ch];
-            _latestAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, pwmValues[ch]);
+            _telemPwm[ch] = pwmValues[ch];
+            _telemAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, pwmValues[ch]);
             updated = true;
-            updatedChannels++;
 
-            // Update Telemetry table
-            double deg = _latestAngles[ch] * 180.0 / M_PI;
+            double deg = _telemAngles[ch] * 180.0 / M_PI;
             auto degItem = _telemetryTable->item(ch, 2);
             if (degItem) {
                 degItem->setText(QString::number(deg, 'f', 1));
@@ -444,17 +459,14 @@ void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
 
             auto pwmItem = _telemetryTable->item(ch, 3);
             if (pwmItem) {
-                pwmItem->setText(QString::number(_latestPwm[ch]));
+                pwmItem->setText(QString::number(_telemPwm[ch]));
             }
         }
     }
 
     if (updated && _urdfViewer) {
-        _urdfViewer->setJointAngles(_latestAngles);
-        _urdfViewer->setJointPwm(_latestPwm);
-        statusBar()->showMessage(QString("MQTT Telemetry: %1 channels updated (%2)")
-                                 .arg(updatedChannels)
-                                 .arg(QTime::currentTime().toString("hh:mm:ss.zzz")), 2000);
+        _urdfViewer->setJointAngles(_telemAngles);
+        _urdfViewer->setJointPwm(_telemPwm);
     }
 }
 
@@ -465,6 +477,7 @@ void MainWindow::onTeleopToggleClicked()
     if (_teleopActive) {
         _teleopToggleBtn->setText("Teleoperation: ACTIVE (STREAMING)");
         _teleopToggleBtn->setStyleSheet("font-weight: bold; padding: 6px 16px; background-color: #008855; color: #fff; border-radius: 4px;");
+        _mqttClient->resetPwmTxCache();
         _statusMessageLabel->setText("Teleoperation ACTIVE. Streaming motion commands to robot.");
     } else {
         _teleopToggleBtn->setText("Teleoperation: STANDBY");
@@ -475,22 +488,20 @@ void MainWindow::onTeleopToggleClicked()
 
 void MainWindow::onCenterClicked()
 {
-    const auto &cfg = TeleopConfig::instance();
-    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
-    std::string topic = "robot/robohero/" + rid + "/control";
-    _mqttClient->sendCenter(topic);
-    _mqttClient->sendCenter(rid + "/cmd");
-    statusBar()->showMessage("Sent CENTER command to robot.", 3000);
+    if (!_mqttClient->sendCenter(_mqttClient->controlTopic())) {
+        _statusMessageLabel->setText(_mqttClient->lastError());
+        return;
+    }
+    _statusMessageLabel->setText("Sent CENTER command to robot.");
 }
 
 void MainWindow::onRelaxClicked()
 {
-    const auto &cfg = TeleopConfig::instance();
-    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
-    std::string topic = "robot/robohero/" + rid + "/control";
-    _mqttClient->sendRelax(topic);
-    _mqttClient->sendRelax(rid + "/cmd");
-    statusBar()->showMessage("Sent RELAX (torque off) command to robot.", 3000);
+    if (!_mqttClient->sendRelax(_mqttClient->controlTopic())) {
+        _statusMessageLabel->setText(_mqttClient->lastError());
+        return;
+    }
+    _statusMessageLabel->setText("Sent RELAX (torque off) command to robot.");
 }
 
 void MainWindow::onStopClicked()
@@ -501,12 +512,11 @@ void MainWindow::onStopClicked()
         onTeleopToggleClicked();
     }
 
-    const auto &cfg = TeleopConfig::instance();
-    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
-    std::string topic = "robot/robohero/" + rid + "/control";
-    _mqttClient->sendStop(topic);
-    _mqttClient->sendStop(rid + "/cmd");
-    statusBar()->showMessage("EMERGENCY STOP TRIGGERED!", 5000);
+    if (!_mqttClient->sendStop(_mqttClient->controlTopic())) {
+        _statusMessageLabel->setText(_mqttClient->lastError());
+        return;
+    }
+    _statusMessageLabel->setText("EMERGENCY STOP TRIGGERED!");
 }
 
 void MainWindow::onSettingsClicked()
@@ -537,8 +547,8 @@ void MainWindow::onSettingsApplied()
     connectMqtt();
 
     statusBar()->showMessage(QString("Settings applied. Connecting to MQTT broker at %1:%2...")
-                             .arg(QString::fromStdString(cfg.mqtt.host))
-                             .arg(cfg.mqtt.port), 3000);
+                                 .arg(QString::fromStdString(cfg.mqtt.host))
+                                 .arg(cfg.mqtt.port), 3000);
 }
 
 void MainWindow::onTxTimerTimeout()
@@ -550,13 +560,12 @@ void MainWindow::onTxTimerTimeout()
     const auto &cfg = TeleopConfig::instance();
     qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (now - _lastPoseTimestamp > cfg.safety.watchdogTimeoutMs) {
-        // Watchdog timeout: person lost or occluded
         return;
     }
 
-    std::string rid = cfg.mqtt.robotId.empty() ? "robohero" : cfg.mqtt.robotId;
-    std::string topic = "robot/robohero/" + rid + "/control";
-    _mqttClient->sendPwm(_latestPwm, topic);
+    if (!_mqttClient->sendPwm(_commandPwm, _mqttClient->controlTopic())) {
+        _statusMessageLabel->setText(_mqttClient->lastError());
+    }
 }
 
 /*

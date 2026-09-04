@@ -20,6 +20,8 @@ MqttClient::MqttClient(QObject *parent)
     , _port(1883)
     , _robotId("robohero")
 {
+    _lastSentPwm.fill(0);
+    _lastSentValid.fill(false);
     mosquitto_lib_init();
     _mosq = mosquitto_new(nullptr, true, this);
     if (_mosq) {
@@ -79,12 +81,19 @@ void MqttClient::disconnectFromBroker()
         mosquitto_disconnect(_mosq);
         mosquitto_loop_stop(_mosq, true);
     }
-    _connected = false;
+    _connected.store(false);
+    resetPwmTxCache();
+}
+
+void MqttClient::resetPwmTxCache()
+{
+    _lastSentPwm.fill(0);
+    _lastSentValid.fill(false);
 }
 
 bool MqttClient::isConnected() const
 {
-    return _connected;
+    return _connected.load();
 }
 
 void MqttClient::setRobotId(const std::string &robotId)
@@ -103,51 +112,101 @@ void MqttClient::setRobotId(const std::string &robotId)
         id = id.substr(0, id.size() - 7);
     }
     _robotId = id.empty() ? "robohero" : id;
-    if (_connected) {
+    resetPwmTxCache();
+    if (_connected.load()) {
         subscribeTopics();
     }
 }
 
+std::string MqttClient::sanitizedId() const
+{
+    return _robotId.empty() ? "robohero" : _robotId;
+}
+
+std::string MqttClient::controlTopic() const
+{
+    return "robot/robohero/" + sanitizedId() + "/control";
+}
+
+std::string MqttClient::statusTopic() const
+{
+    return "robot/robohero/" + sanitizedId() + "/status";
+}
+
+QString MqttClient::lastError() const
+{
+    return _lastError;
+}
+
 bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic)
 {
-    if (!_mosq || !_connected) {
+    if (!_mosq || !_connected.load()) {
+        _lastError = "MQTT not connected";
         return false;
     }
 
-    uint8_t buffer[256];
-    int used = rh_msg_begin(buffer, sizeof(buffer), RH_MSG_SET_PWM);
-    if (used < 0) {
-        return false;
-    }
+    int published = 0;
+    int totalBytes = 0;
 
     for (uint8_t ch = 0; ch < 17; ++ch) {
-        rh_tlv_servo servo;
+        int pos = pwmValues[ch];
+        if (pos < 1) {
+            pos = 1;
+        } else if (pos > 270) {
+            pos = 270;
+        }
+
+        if (_lastSentValid[ch] && _lastSentPwm[ch] == pos) {
+            continue;
+        }
+
+        uint8_t buffer[32];
+        rh_tlv_servo servo{};
+        int16_t pos16 = static_cast<int16_t>(pos);
         servo.chan = ch;
-        servo.pos = static_cast<int16_t>(pwmValues[ch]);
-        used = rh_tlv_put(buffer, sizeof(buffer), used, RH_TLV_SERVO, &servo, sizeof(servo));
+        std::memcpy(&servo.pos, &pos16, sizeof(pos16));
+
+        int used = rh_msg_begin(buffer, sizeof(buffer), RH_MSG_SET_PWM);
         if (used < 0) {
+            _lastError = "Failed to encode SET_PWM header";
             return false;
         }
+        used = rh_tlv_put(buffer, sizeof(buffer), used, RH_TLV_SERVO, &servo,
+                          sizeof(servo));
+        if (used < 0) {
+            _lastError = "Failed to encode SET_PWM servo TLV";
+            return false;
+        }
+        used = rh_msg_finish(buffer, used);
+        if (used < 0) {
+            _lastError = "Failed to finish SET_PWM message";
+            return false;
+        }
+
+        int mid = 0;
+        int rc = mosquitto_publish(_mosq, &mid, topic.c_str(), used, buffer, 0, false);
+        if (rc != MOSQ_ERR_SUCCESS) {
+            _lastError = QString("MQTT publish failed: %1").arg(mosquitto_strerror(rc));
+            return false;
+        }
+
+        _lastSentPwm[ch] = pos;
+        _lastSentValid[ch] = true;
+        published++;
+        totalBytes += used;
     }
 
-    used = rh_msg_finish(buffer, used);
-    if (used < 0) {
-        return false;
+    _lastError.clear();
+    if (published > 0) {
+        emit messageSent(totalBytes);
     }
-
-    int mid = 0;
-    int rc = mosquitto_publish(_mosq, &mid, topic.c_str(), used, buffer, 0, false);
-    if (rc == MOSQ_ERR_SUCCESS) {
-        emit messageSent(used);
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 bool MqttClient::sendCenter(const std::string &topic)
 {
-    if (!_mosq || !_connected) {
+    if (!_mosq || !_connected.load()) {
+        _lastError = "MQTT not connected";
         return false;
     }
 
@@ -163,7 +222,8 @@ bool MqttClient::sendCenter(const std::string &topic)
 
 bool MqttClient::sendRelax(const std::string &topic)
 {
-    if (!_mosq || !_connected) {
+    if (!_mosq || !_connected.load()) {
+        _lastError = "MQTT not connected";
         return false;
     }
 
@@ -179,7 +239,8 @@ bool MqttClient::sendRelax(const std::string &topic)
 
 bool MqttClient::sendStop(const std::string &topic)
 {
-    if (!_mosq || !_connected) {
+    if (!_mosq || !_connected.load()) {
+        _lastError = "MQTT not connected";
         return false;
     }
 
@@ -195,26 +256,12 @@ bool MqttClient::sendStop(const std::string &topic)
 
 void MqttClient::subscribeTopics()
 {
-    if (!_mosq || !_connected) {
+    if (!_mosq || !_connected.load()) {
         return;
     }
 
-    std::string rid = _robotId.empty() ? "robohero" : _robotId;
-    std::string statusTopic = "robot/robohero/" + rid + "/status";
-    std::string wildcardStatus = "robot/robohero/+/status";
-    std::string wildcardAll = "robot/robohero/#";
-    std::string controlTopic = "robot/robohero/" + rid + "/control";
-    std::string cmdTopic = "robot/robohero/" + rid + "/cmd";
-    std::string shortStatus = rid + "/status";
-    std::string shortCmd = rid + "/cmd";
-
-    mosquitto_subscribe(_mosq, nullptr, statusTopic.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, wildcardStatus.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, wildcardAll.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, controlTopic.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, cmdTopic.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, shortStatus.c_str(), 0);
-    mosquitto_subscribe(_mosq, nullptr, shortCmd.c_str(), 0);
+    std::string status = statusTopic();
+    mosquitto_subscribe(_mosq, nullptr, status.c_str(), 0);
 }
 
 void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int rc)
@@ -226,11 +273,11 @@ void MqttClient::onConnectCallback(struct mosquitto *mosq, void *userdata, int r
     }
 
     if (rc == 0) {
-        self->_connected = true;
+        self->_connected.store(true);
         self->subscribeTopics();
         emit self->connected();
     } else {
-        self->_connected = false;
+        self->_connected.store(false);
         emit self->connectionError(QString("MQTT Connection failed with code: %1").arg(rc));
     }
 }
@@ -244,7 +291,7 @@ void MqttClient::onDisconnectCallback(struct mosquitto *mosq, void *userdata, in
         return;
     }
 
-    self->_connected = false;
+    self->_connected.store(false);
     emit self->disconnected();
 }
 
@@ -265,6 +312,16 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
     }
 
     std::string topicStr = msg->topic ? msg->topic : "";
+    const std::string statusSuffix = "/status";
+    if (topicStr.size() < statusSuffix.size() ||
+        topicStr.compare(topicStr.size() - statusSuffix.size(),
+                         statusSuffix.size(), statusSuffix) != 0) {
+        return;
+    }
+    if (topicStr != self->statusTopic()) {
+        return;
+    }
+
     std::array<int, 17> pwm{};
     std::array<bool, 17> valid{};
     valid.fill(false);
@@ -273,29 +330,30 @@ void MqttClient::onMessageCallback(struct mosquitto *mosq, void *userdata,
     // 1. Try binary wire protocol first
     rh_msg_view view;
     if (rh_msg_parse(msg->payload, msg->payloadlen, &view) == 0) {
-        if (view.msg_type == RH_MSG_STATUS || view.msg_type == RH_MSG_SET_PWM) {
-            int off = 0;
-            while (off < static_cast<int>(view.payload_len)) {
-                uint8_t type = 0;
-                uint8_t len = 0;
-                const uint8_t *val = nullptr;
-                int next = rh_tlv_next(view.payload, view.payload_len, off,
-                                       &type, &val, &len);
-                if (next < 0) {
-                    break;
-                }
-
-                if (type == RH_TLV_SERVO && len == sizeof(rh_tlv_servo)) {
-                    rh_tlv_servo s;
-                    std::memcpy(&s, val, sizeof(s));
-                    if (s.chan < 17) {
-                        pwm[s.chan] = s.pos;
-                        valid[s.chan] = true;
-                        validCount++;
-                    }
-                }
-                off = next;
+        if (view.msg_type != RH_MSG_STATUS) {
+            return;
+        }
+        int off = 0;
+        while (off < static_cast<int>(view.payload_len)) {
+            uint8_t type = 0;
+            uint8_t len = 0;
+            const uint8_t *val = nullptr;
+            int next = rh_tlv_next(view.payload, view.payload_len, off,
+                                   &type, &val, &len);
+            if (next < 0) {
+                break;
             }
+
+            if (type == RH_TLV_SERVO && len == sizeof(rh_tlv_servo)) {
+                rh_tlv_servo s;
+                std::memcpy(&s, val, sizeof(s));
+                if (s.chan < 17) {
+                    pwm[s.chan] = s.pos;
+                    valid[s.chan] = true;
+                    validCount++;
+                }
+            }
+            off = next;
         }
     } else {
         // 2. Fallback: Try JSON payload

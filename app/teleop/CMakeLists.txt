@@ -86,7 +86,8 @@ if(WIN32)
         endif()
     endif()
 
-    add_executable(robohero_teleop ${TELEOP_SOURCES})
+    add_executable(robohero_teleop WIN32 ${TELEOP_SOURCES})
+    target_sources(robohero_teleop PRIVATE robohero_teleop.rc)
 
     target_include_directories(robohero_teleop PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src

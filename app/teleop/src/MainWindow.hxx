@@ -77,8 +77,10 @@ private:
     // State & Timers
     bool _teleopActive;
     QTimer _txTimer;
-    std::array<int, 17> _latestPwm;
-    std::array<double, 17> _latestAngles;
+    std::array<int, 17> _commandPwm;
+    std::array<double, 17> _commandAngles;
+    std::array<int, 17> _telemPwm;
+    std::array<double, 17> _telemAngles;
     bool _hasPoseData;
     qint64 _lastPoseTimestamp;
 };

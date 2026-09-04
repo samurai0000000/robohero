@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QString>
 #include <array>
+#include <atomic>
 #include <string>
 #include <memory>
 
@@ -30,10 +31,15 @@ public:
     bool isConnected() const;
     void setRobotId(const std::string &robotId);
 
+    std::string controlTopic() const;
+    std::string statusTopic() const;
+
     bool sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic);
     bool sendCenter(const std::string &topic);
     bool sendRelax(const std::string &topic);
     bool sendStop(const std::string &topic);
+    QString lastError() const;
+    void resetPwmTxCache();
 
 signals:
     void connected();
@@ -45,12 +51,16 @@ signals:
 
 private:
     struct mosquitto *_mosq;
-    bool _connected;
+    std::atomic<bool> _connected;
     std::string _host;
     int _port;
     std::string _robotId;
+    QString _lastError;
+    std::array<int, 17> _lastSentPwm;
+    std::array<bool, 17> _lastSentValid;
 
     void subscribeTopics();
+    std::string sanitizedId() const;
 
     static void onConnectCallback(struct mosquitto *mosq, void *userdata, int rc);
     static void onDisconnectCallback(struct mosquitto *mosq, void *userdata, int rc);

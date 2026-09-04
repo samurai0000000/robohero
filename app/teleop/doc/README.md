@@ -149,22 +149,10 @@ app/teleop/
 
 ## Build Instructions
 
-### Windows (MSVC 2022)
-1. Install **Visual Studio 2022 Community** (or standalone Build Tools for Visual Studio 2022) with the *"Desktop development with C++"* workload (Free, no purchase required).
-2. Bootstrap `vcpkg`:
-   ```powershell
-   git submodule update --init --recursive
-   cd third_party\vcpkg
-   .\bootstrap-vcpkg.bat
-   cd ..\..
-   ```
-3. Configure and build:
-   ```powershell
-   cd app\teleop
-   cmake --preset windows-msvc
-   cmake --build build\windows-msvc --config Release
-   windeployqt6.exe build\windows-msvc\Release\robohero_teleop.exe
-   ```
+### Windows
+
+See [Compile-on-Windows.md](Compile-on-Windows.md) for prerequisites and
+first-time source build steps (VS 2026, official Qt/OpenCV prebuilts).
 
 ### Linux (Ubuntu/Debian)
 ```bash
