@@ -84,16 +84,52 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
     rawAngles.fill(0.0);
 
     // 1. Head Yaw (Channel 16)
-    if (kpts[PoseEstimator::NOSE].conf > 0.3f &&
-        kpts[PoseEstimator::LEFT_EAR].conf > 0.3f &&
-        kpts[PoseEstimator::RIGHT_EAR].conf > 0.3f) {
+    bool haveEyes = (kpts[PoseEstimator::NOSE].conf > 0.3f &&
+                     kpts[PoseEstimator::LEFT_EYE].conf > 0.3f &&
+                     kpts[PoseEstimator::RIGHT_EYE].conf > 0.3f);
+    bool haveEars = (kpts[PoseEstimator::NOSE].conf > 0.3f &&
+                     kpts[PoseEstimator::LEFT_EAR].conf > 0.25f &&
+                     kpts[PoseEstimator::RIGHT_EAR].conf > 0.25f);
+
+    float faceOffset = 0.0f;
+    bool haveHeadPose = false;
+
+    if (haveEyes && haveEars) {
+        float eyeMidX = (kpts[PoseEstimator::LEFT_EYE].x + kpts[PoseEstimator::RIGHT_EYE].x) * 0.5f;
+        float eyeDist = std::abs(kpts[PoseEstimator::RIGHT_EYE].x - kpts[PoseEstimator::LEFT_EYE].x) + 1e-4f;
+        float eyeOffset = (kpts[PoseEstimator::NOSE].x - eyeMidX) / eyeDist;
+
         float earMidX = (kpts[PoseEstimator::LEFT_EAR].x + kpts[PoseEstimator::RIGHT_EAR].x) * 0.5f;
-        float earDist = std::abs(kpts[PoseEstimator::LEFT_EAR].x - kpts[PoseEstimator::RIGHT_EAR].x) + 1e-4f;
-        float noseOffset = (kpts[PoseEstimator::NOSE].x - earMidX) / earDist;
-        if (!mirrorMode) {
-            noseOffset = -noseOffset;
+        float earDist = std::abs(kpts[PoseEstimator::RIGHT_EAR].x - kpts[PoseEstimator::LEFT_EAR].x) + 1e-4f;
+        float earOffset = (kpts[PoseEstimator::NOSE].x - earMidX) / (earDist * 0.5f);
+
+        faceOffset = 0.6f * eyeOffset + 0.4f * earOffset;
+        haveHeadPose = true;
+    } else if (haveEyes) {
+        float eyeMidX = (kpts[PoseEstimator::LEFT_EYE].x + kpts[PoseEstimator::RIGHT_EYE].x) * 0.5f;
+        float eyeDist = std::abs(kpts[PoseEstimator::RIGHT_EYE].x - kpts[PoseEstimator::LEFT_EYE].x) + 1e-4f;
+        faceOffset = (kpts[PoseEstimator::NOSE].x - eyeMidX) / eyeDist;
+        haveHeadPose = true;
+    } else if (haveEars) {
+        float earMidX = (kpts[PoseEstimator::LEFT_EAR].x + kpts[PoseEstimator::RIGHT_EAR].x) * 0.5f;
+        float earDist = std::abs(kpts[PoseEstimator::RIGHT_EAR].x - kpts[PoseEstimator::LEFT_EAR].x) + 1e-4f;
+        faceOffset = (kpts[PoseEstimator::NOSE].x - earMidX) / (earDist * 0.5f);
+        haveHeadPose = true;
+    } else if (kpts[PoseEstimator::NOSE].conf > 0.3f) {
+        // Asymmetric visibility fallback when head is turned strongly
+        if (kpts[PoseEstimator::LEFT_EYE].conf > 0.35f && kpts[PoseEstimator::RIGHT_EYE].conf < 0.2f) {
+            faceOffset = -0.6f;
+            haveHeadPose = true;
+        } else if (kpts[PoseEstimator::RIGHT_EYE].conf > 0.35f && kpts[PoseEstimator::LEFT_EYE].conf < 0.2f) {
+            faceOffset = 0.6f;
+            haveHeadPose = true;
         }
-        rawAngles[16] = -noseOffset * 1.2; // Scale factor for head yaw
+    }
+
+    if (haveHeadPose) {
+        float dir = mirrorMode ? -1.0f : 1.0f;
+        double yaw = dir * faceOffset * 2.8;
+        rawAngles[16] = std::clamp(yaw, -0.9756, 0.9233);
     }
 
     // 2. Left Arm: Shoulder Pitch (5), Shoulder Roll (6), Elbow (7)
@@ -105,13 +141,19 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
         float hx = kpts[kptLHip].x;
         float hy = kpts[kptLHip].y;
 
-        // Shoulder Roll: angle between torso vector (S -> H) and arm vector (S -> E)
+        // Shoulder Roll (Ch 6): angle between torso vector (S -> H) and arm vector (S -> E)
         if (kpts[kptLHip].conf > 0.3f) {
             double rollAngle = computeAngle2D(hx, hy, sx, sy, ex, ey);
             rawAngles[6] = rollAngle;
+        } else {
+            double rollAngle = computeAngle2D(sx, sy + 100.0f, sx, sy, ex, ey);
+            rawAngles[6] = rollAngle;
         }
 
-        // Left Elbow: angle at elbow (S - E - W)
+        // Left Shoulder Pitch (Ch 5): neutral in coronal 2D tracking
+        rawAngles[5] = 0.0;
+
+        // Left Elbow (Ch 7): angle at elbow (S - E - W)
         if (kpts[kptLWrist].conf > 0.35f) {
             float wx = kpts[kptLWrist].x;
             float wy = kpts[kptLWrist].y;
@@ -119,10 +161,6 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
             // Inverted so 0 rad is arm extended (180 deg)
             rawAngles[7] = (M_PI - elbowAngle);
         }
-
-        // Left Shoulder Pitch: vertical elevation
-        double armElevation = std::atan2(ey - sy, ex - sx);
-        rawAngles[5] = armElevation - M_PI_2;
     }
 
     // 3. Right Arm: Shoulder Roll (9), Shoulder Pitch (10), Elbow (8)
@@ -134,23 +172,25 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
         float hx = kpts[kptRHip].x;
         float hy = kpts[kptRHip].y;
 
-        // Shoulder Roll: angle between torso vector (S -> H) and arm vector (S -> E)
+        // Shoulder Roll (Ch 9): angle between torso vector (S -> H) and arm vector (S -> E)
         if (kpts[kptRHip].conf > 0.3f) {
             double rollAngle = computeAngle2D(hx, hy, sx, sy, ex, ey);
             rawAngles[9] = -rollAngle;
+        } else {
+            double rollAngle = computeAngle2D(sx, sy + 100.0f, sx, sy, ex, ey);
+            rawAngles[9] = -rollAngle;
         }
 
-        // Right Elbow: angle at elbow (S - E - W)
+        // Right Shoulder Pitch (Ch 10): neutral in coronal 2D tracking
+        rawAngles[10] = 0.0;
+
+        // Right Elbow (Ch 8): angle at elbow (S - E - W)
         if (kpts[kptRWrist].conf > 0.35f) {
             float wx = kpts[kptRWrist].x;
             float wy = kpts[kptRWrist].y;
             double elbowAngle = computeAngle2D(sx, sy, ex, ey, wx, wy);
             rawAngles[8] = -(M_PI - elbowAngle);
         }
-
-        // Right Shoulder Pitch
-        double armElevation = std::atan2(ey - sy, sx - ex);
-        rawAngles[10] = armElevation - M_PI_2;
     }
 
     // 4. Legs (Channels 2, 3: Left Knee/Hip, 12, 13: Right Knee/Hip)
