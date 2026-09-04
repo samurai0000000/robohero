@@ -6,6 +6,10 @@
 
 #include "PoseEstimator.hxx"
 #include <onnxruntime_cxx_api.h>
+#if defined(_WIN32) && __has_include(<dml_provider_factory.h>)
+#include <dml_provider_factory.h>
+#define ROBOHERO_HAS_DML 1
+#endif
 #include <opencv2/imgproc.hpp>
 #include <QFile>
 #include <QByteArray>
@@ -69,12 +73,15 @@ bool PoseEstimator::init(const std::string &modelPath,
 
         if (tryGpu) {
 #if defined(_WIN32)
-            // On Windows, try DirectML first
             if (std::find(avail.begin(), avail.end(), "DmlExecutionProvider") != avail.end()) {
-                // DirectML execution provider
                 try {
-                    // OrtSessionOptionsAppendExecutionProvider_DML(_impl->_sessionOptions, 0);
+#ifdef ROBOHERO_HAS_DML
+                    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(
+                        _impl->_sessionOptions, 0));
                     chosenProvider = "DirectML";
+#else
+                    chosenProvider = "CPU";
+#endif
                 } catch (...) {
                     chosenProvider = "CPU";
                 }

@@ -1,18 +1,43 @@
+# Build trees
 build/
 firmware/build/
+app/teleop/build/
+
+# ESP-IDF local config
 sdkconfig
 sdkconfig.old
 firmware/sdkconfig
 firmware/sdkconfig.old
 local.config.mk
+
+# Machine-local Cursor / agent state (shared via symlink, not git)
 .agents
 .cursor
+AGENTS.md
+
+# Editor / OS
 .*.swp
 *.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / CMake local
+.vs/
+*.user
+CMakeUserPresets.json
+compile_commands.json
+
+# Secrets
 *.jks
 *.keystore
 keystore.properties
-app/teleop/build/
+
+# Downloaded third-party binaries (not source)
 third_party/onnxruntime/
 third_party/pugixml/
 third_party/opencv/
+
+# Teleop configure/download logs (aqtinstall writes this in cwd)
+aqtinstall.log

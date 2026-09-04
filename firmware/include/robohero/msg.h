@@ -17,6 +17,13 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#define RH_PACKED
+#else
+#define RH_PACKED __attribute__((packed))
+#endif
+
 #define RH_SERVO_COUNT 17
 
 #define RH_MSG_MAGIC 0x31424852u /* 'RHB1' LE */
@@ -35,18 +42,18 @@ extern "C" {
 #define RH_TLV_SERVO   3u /* len=3, rh_tlv_servo */
 #define RH_TLV_PROG    4u /* len=2, int16 program id */
 
-typedef struct __attribute__((packed)) {
+typedef struct RH_PACKED {
     uint32_t magic;
     uint8_t msg_type;
     uint8_t payload_len;
 } rh_msg_hdr;
 
-typedef struct __attribute__((packed)) {
+typedef struct RH_PACKED {
     uint8_t type;
     uint8_t len;
 } rh_tlv;
 
-typedef struct __attribute__((packed)) {
+typedef struct RH_PACKED {
     uint8_t chan;
     int16_t pos;
 } rh_tlv_servo;
@@ -175,6 +182,10 @@ static inline int rh_tlv_next(const uint8_t *payload,
     *val = payload + off + 2;
     return off + 2 + (int) n;
 }
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 #ifdef __cplusplus
 static_assert(sizeof(rh_msg_hdr) == 6, "rh_msg_hdr");

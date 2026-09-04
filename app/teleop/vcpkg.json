@@ -2,13 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "robohero-teleop",
   "version-string": "0.1.0",
-  "description": "RoboHero Humanoid Teleoperation Desktop Application",
+  "description": "RoboHero Humanoid Teleoperation Desktop Application. vcpkg is only for small libs; Qt/OpenCV/ONNX Runtime are official prebuilts, never vcpkg ports.",
   "dependencies": [
-    "qt6-base",
-    "qt6-openglwidgets",
-    "opencv",
     "mosquitto",
     "libconfig",
-    "onnxruntime"
+    "pugixml"
   ]
 }

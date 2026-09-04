@@ -9,6 +9,7 @@
 #include <QElapsedTimer>
 #include <iostream>
 #include <chrono>
+#include <cstdio>
 
 CameraThread::CameraThread(std::shared_ptr<PoseEstimator> estimator, QObject *parent)
     : QThread(parent)
@@ -90,7 +91,11 @@ void CameraThread::run()
     }
 
     cv::VideoCapture cap;
+#ifdef _WIN32
+    bool capOpened = cap.open(devIdx, cv::CAP_DSHOW);
+#else
     bool capOpened = cap.open(devIdx);
+#endif
     if (capOpened) {
         cap.set(cv::CAP_PROP_FRAME_WIDTH, reqW);
         cap.set(cv::CAP_PROP_FRAME_HEIGHT, reqH);
