@@ -51,11 +51,13 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
     bool mirrorMode,
     float smoothingAlpha,
     float deadbandDeg,
-    float safetyMarginDeg)
+    float safetyMarginDeg,
+    const std::string &mode)
 {
     RetargetResult res;
     res.valid = false;
     res.jointAnglesRad.fill(0.0);
+    res.activeMask.fill(false);
     for (int i = 0; i < 17; ++i) {
         res.servoPwm[i] = UrdfLimits::instance().getCalibration(i).center;
     }
@@ -130,6 +132,7 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
         float dir = mirrorMode ? -1.0f : 1.0f;
         double yaw = dir * faceOffset * 2.8;
         rawAngles[16] = std::clamp(yaw, -0.9756, 0.9233);
+        res.activeMask[16] = true;
     }
 
     // 2. Left Arm: Shoulder Pitch (5), Shoulder Roll (6), Elbow (7)
@@ -145,9 +148,11 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
         if (kpts[kptLHip].conf > 0.3f) {
             double rollAngle = computeAngle2D(hx, hy, sx, sy, ex, ey);
             rawAngles[6] = rollAngle;
+            res.activeMask[6] = true;
         } else {
             double rollAngle = computeAngle2D(sx, sy + 100.0f, sx, sy, ex, ey);
             rawAngles[6] = rollAngle;
+            res.activeMask[6] = true;
         }
 
         // Left Shoulder Pitch (Ch 5): Inferred from limb foreshortening when reaching forward
@@ -165,9 +170,11 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
                 } else {
                     rawAngles[5] = 0.0;
                 }
+                res.activeMask[5] = true;
             }
         } else {
             rawAngles[5] = 0.0;
+            res.activeMask[5] = true;
         }
 
         // Left Elbow (Ch 7): angle at elbow (S - E - W) with 2D cross-product bend direction
@@ -178,6 +185,7 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
             double flexion = M_PI - elbowAngle;
             float cross = (ex - sx) * (wy - ey) - (ey - sy) * (wx - ex);
             rawAngles[7] = (cross < 0.0f) ? -flexion : flexion;
+            res.activeMask[7] = true;
         }
     }
 
@@ -194,9 +202,11 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
         if (kpts[kptRHip].conf > 0.3f) {
             double rollAngle = computeAngle2D(hx, hy, sx, sy, ex, ey);
             rawAngles[9] = -rollAngle;
+            res.activeMask[9] = true;
         } else {
             double rollAngle = computeAngle2D(sx, sy + 100.0f, sx, sy, ex, ey);
             rawAngles[9] = -rollAngle;
+            res.activeMask[9] = true;
         }
 
         // Right Shoulder Pitch (Ch 10): Inferred from limb foreshortening when reaching forward
@@ -214,9 +224,11 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
                 } else {
                     rawAngles[10] = 0.0;
                 }
+                res.activeMask[10] = true;
             }
         } else {
             rawAngles[10] = 0.0;
+            res.activeMask[10] = true;
         }
 
         // Right Elbow (Ch 8): angle at elbow (S - E - W) with 2D cross-product bend direction
@@ -227,25 +239,30 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
             double flexion = M_PI - elbowAngle;
             float cross = (ex - sx) * (wy - ey) - (ey - sy) * (wx - ex);
             rawAngles[8] = (cross > 0.0f) ? flexion : -flexion;
+            res.activeMask[8] = true;
         }
     }
 
-    // 4. Legs (Channels 2, 3: Left Knee/Hip, 12, 13: Right Knee/Hip)
-    if (kpts[kptLHip].conf > 0.4f && kpts[kptLKnee].conf > 0.4f) {
-        if (kpts[kptLAnkle].conf > 0.4f) {
-            double kneeAngle = computeAngle2D(kpts[kptLHip].x, kpts[kptLHip].y,
-                                              kpts[kptLKnee].x, kpts[kptLKnee].y,
-                                              kpts[kptLAnkle].x, kpts[kptLAnkle].y);
-            rawAngles[2] = M_PI - kneeAngle;
+    // 4. Legs (Channels 2, 3: Left Knee/Hip, 12, 13: Right Knee/Hip) - only in full_body mode
+    if (mode == "full_body") {
+        if (kpts[kptLHip].conf > 0.4f && kpts[kptLKnee].conf > 0.4f) {
+            if (kpts[kptLAnkle].conf > 0.4f) {
+                double kneeAngle = computeAngle2D(kpts[kptLHip].x, kpts[kptLHip].y,
+                                                  kpts[kptLKnee].x, kpts[kptLKnee].y,
+                                                  kpts[kptLAnkle].x, kpts[kptLAnkle].y);
+                rawAngles[2] = M_PI - kneeAngle;
+                res.activeMask[2] = true;
+            }
         }
-    }
 
-    if (kpts[kptRHip].conf > 0.4f && kpts[kptRKnee].conf > 0.4f) {
-        if (kpts[kptRAnkle].conf > 0.4f) {
-            double kneeAngle = computeAngle2D(kpts[kptRHip].x, kpts[kptRHip].y,
-                                              kpts[kptRKnee].x, kpts[kptRKnee].y,
-                                              kpts[kptRAnkle].x, kpts[kptRAnkle].y);
-            rawAngles[13] = M_PI - kneeAngle;
+        if (kpts[kptRHip].conf > 0.4f && kpts[kptRKnee].conf > 0.4f) {
+            if (kpts[kptRAnkle].conf > 0.4f) {
+                double kneeAngle = computeAngle2D(kpts[kptRHip].x, kpts[kptRHip].y,
+                                                  kpts[kptRKnee].x, kpts[kptRKnee].y,
+                                                  kpts[kptRAnkle].x, kpts[kptRAnkle].y);
+                rawAngles[13] = M_PI - kneeAngle;
+                res.activeMask[13] = true;
+            }
         }
     }
 
@@ -254,6 +271,12 @@ PoseRetargeter::RetargetResult PoseRetargeter::process(
     const auto &urdf = UrdfLimits::instance();
 
     for (int ch = 0; ch < 17; ++ch) {
+        if (!res.activeMask[ch]) {
+            res.jointAnglesRad[ch] = 0.0;
+            res.servoPwm[ch] = urdf.getCalibration(ch).center;
+            continue;
+        }
+
         double target = rawAngles[ch];
 
         if (_hasPrevPose) {

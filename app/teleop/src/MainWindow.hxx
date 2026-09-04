@@ -79,6 +79,7 @@ private:
     QTimer _txTimer;
     std::array<int, 17> _commandPwm;
     std::array<double, 17> _commandAngles;
+    std::array<bool, 17> _commandMask;
     std::array<int, 17> _telemPwm;
     std::array<double, 17> _telemAngles;
     bool _hasPoseData;

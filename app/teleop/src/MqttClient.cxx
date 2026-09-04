@@ -138,7 +138,8 @@ QString MqttClient::lastError() const
     return _lastError;
 }
 
-bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic)
+bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic,
+                         const std::array<bool, 17> *activeMask)
 {
     if (!_mosq || !_connected.load()) {
         _lastError = "MQTT not connected";
@@ -158,6 +159,10 @@ bool MqttClient::sendPwm(const std::array<int, 17> &pwmValues, const std::string
     changed.fill(false);
 
     for (uint8_t ch = 0; ch < 17; ++ch) {
+        if (activeMask && !(*activeMask)[ch]) {
+            continue;
+        }
+
         int pos = pwmValues[ch];
         if (pos < 1) {
             pos = 1;

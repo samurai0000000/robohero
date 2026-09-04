@@ -17,6 +17,7 @@ public:
     {
         std::array<double, 17> jointAnglesRad;
         std::array<int, 17> servoPwm;
+        std::array<bool, 17> activeMask;
         bool valid = false;
     };
 
@@ -29,7 +30,8 @@ public:
                            bool mirrorMode,
                            float smoothingAlpha,
                            float deadbandDeg,
-                           float safetyMarginDeg);
+                           float safetyMarginDeg,
+                           const std::string &mode = "upper_body");
 
 private:
     std::array<double, 17> _prevAngles;

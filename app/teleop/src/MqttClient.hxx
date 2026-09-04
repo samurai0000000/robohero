@@ -34,7 +34,8 @@ public:
     std::string controlTopic() const;
     std::string statusTopic() const;
 
-    bool sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic);
+    bool sendPwm(const std::array<int, 17> &pwmValues, const std::string &topic,
+                 const std::array<bool, 17> *activeMask = nullptr);
     bool sendCenter(const std::string &topic);
     bool sendRelax(const std::string &topic);
     bool sendStop(const std::string &topic);

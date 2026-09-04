@@ -47,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
         double angle = UrdfLimits::instance().pwmToAngle(ch, center);
         _commandPwm[ch] = center;
         _commandAngles[ch] = angle;
+        _commandMask[ch] = false;
         _telemPwm[ch] = center;
         _telemAngles[ch] = angle;
     }
@@ -400,11 +401,13 @@ void MainWindow::onFrameReady(const QImage &image, const PoseEstimator::PersonPo
         auto result = _retargeter->process(pose, cfg.camera.mirrorVideo,
                                            cfg.retarget.smoothingAlpha,
                                            cfg.retarget.deadbandDeg,
-                                           cfg.safety.safetyMarginDeg);
+                                           cfg.safety.safetyMarginDeg,
+                                           cfg.retarget.mode);
 
         if (result.valid) {
             _commandAngles = result.jointAnglesRad;
             _commandPwm = result.servoPwm;
+            _commandMask = result.activeMask;
             _hasPoseData = true;
             _lastPoseTimestamp = QDateTime::currentMSecsSinceEpoch();
         }
@@ -563,7 +566,7 @@ void MainWindow::onTxTimerTimeout()
         return;
     }
 
-    if (!_mqttClient->sendPwm(_commandPwm, _mqttClient->controlTopic())) {
+    if (!_mqttClient->sendPwm(_commandPwm, _mqttClient->controlTopic(), &_commandMask)) {
         _statusMessageLabel->setText(_mqttClient->lastError());
     }
 }
