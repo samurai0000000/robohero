@@ -25,7 +25,7 @@
   </xacro:macro>
 
   <!-- Include Core URDF Definition -->
-  <xacro:include filename="$(find robohero)/urdf/robohero.urdf"/>
+  <xacro:include filename="$(find robohero)/model/robohero.urdf"/>
 
   <!-- ==================== Hardware Transmissions ==================== -->
   <!-- Head -->

@@ -26,17 +26,17 @@ A cross-platform desktop application (Windows primary, Linux portable) for real-
                                       |  - Geometric Direct Angular Mapping|
                                       |  - Exponential Smoothing (alpha)   |
                                       |  - Velocity / Slew Rate Limiting   |
-                                      +-----------------+------------------+
+                                      +------------------------------------+
                                                         |
                                             Raw Joint Angles (radians)
                                                         |
                                                         v
-                                      +------------------------------------+
-                                      |     UrdfLimits (pugiXML Parser)    |
-                                      |  - Compiled-in :/urdf/robohero.urdf|
-                                      |  - Hard stop safety clamp [min,max]|
-                                      |  - PWM mapping (SERVOMIN..SERVOMAX)|
-                                      +--------+------------------+--------+
+                                       +------------------------------------+
+                                       |     UrdfLimits (JSON & URDF)       |
+                                       |  - Compiled-in :/model/* resources |
+                                       |  - Hard stop safety clamp [min,max]|
+                                       |  - PWM mapping (SERVOMIN..SERVOMAX)|
+                                       +--------+------------------+--------+
                                                |                  |
                        Safety-Clamped Angles   |                  | PCA9685 PWM Commands
                                                v                  v
@@ -57,7 +57,7 @@ A cross-platform desktop application (Windows primary, Linux portable) for real-
 ## Key Design Decisions & Architectural Specifications
 
 ### 1. Embedded Assets (Zero-Disk Dependency)
-- **Robot Kinematics (`urdf/robohero.urdf`)**: Compiled directly into the binary via Qt's Resource System (`:/urdf/robohero.urdf`). Non-selectable in UI to prevent kinematic desynchronization.
+- **Robot Kinematics & Limits (`model/robohero.urdf`, `model/calibration.json`)**: Compiled directly into the binary via Qt's Resource System (`:/model/robohero.urdf`, `:/model/calibration.json`). Non-selectable in UI to prevent kinematic desynchronization.
 - **YOLOv8 Pose Model (`assets/yolov8n-pose.onnx`)**: Compiled directly into the binary (`:/models/yolov8n-pose.onnx`). Loaded directly from memory into `Ort::Session` using raw byte pointers without creating temporary files on disk.
 
 ### 2. Runtime Platform & Hardware Acceleration Detection

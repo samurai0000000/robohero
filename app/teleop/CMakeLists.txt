@@ -39,6 +39,11 @@ set(TELEOP_SOURCES
     teleop_resources.qrc
 )
 
+set_property(SOURCE teleop_resources.qrc PROPERTY OBJECT_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../model/robohero.urdf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../model/calibration.json"
+)
+
 if(WIN32)
     find_package(OpenCV REQUIRED)
     find_package(unofficial-mosquitto CONFIG REQUIRED)

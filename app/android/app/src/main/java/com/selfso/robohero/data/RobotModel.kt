@@ -1,5 +1,8 @@
 package com.selfso.robohero.data
 
+import android.content.Context
+import org.json.JSONObject
+
 enum class ConnectionStatus {
     DISCONNECTED,
     SEARCHING,
@@ -23,8 +26,68 @@ data class MotionCommand(
     val label: String
 )
 
+data class JointCalibration(
+    val channel: Int,
+    val name: String,
+    val label: String,
+    val group: String,
+    val center: Int,
+    val sign: Double,
+    val radPerPwm: Double,
+    val lowerLimit: Double,
+    val upperLimit: Double,
+    val recommendedTrim: Int
+)
+
 object TrimDefinitions {
-    fun defaultTrims(): List<TrimItem> = listOf(
+
+    fun loadFromAssets(context: Context): List<TrimItem> {
+        val list = mutableListOf<TrimItem>()
+        try {
+            val assetNames = listOf("model/calibration.json", "calibration.json")
+            var jsonStr: String? = null
+            for (name in assetNames) {
+                try {
+                    context.assets.open(name).use { stream ->
+                        jsonStr = stream.bufferedReader().use { it.readText() }
+                    }
+                    if (jsonStr != null) break
+                } catch (_: Exception) {}
+            }
+
+            if (jsonStr != null) {
+                val root = JSONObject(jsonStr)
+                if (root.has("trims")) {
+                    val trimsObj = root.getJSONObject("trims")
+                    val keys = trimsObj.keys().asSequence().mapNotNull { it.toIntOrNull() }.sorted().toList()
+                    for (k in keys) {
+                        val itemObj = trimsObj.getJSONObject(k.toString())
+                        val id = itemObj.optInt("id", k)
+                        val name = itemObj.optString("name", "Trim $id")
+                        val category = itemObj.optString("category", "General")
+                        val min = itemObj.optInt("min", -125)
+                        val max = itemObj.optInt("max", 125)
+                        val def = itemObj.optInt("default", 0)
+                        list.add(TrimItem(id, name, category, min, max, def))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return if (list.isNotEmpty()) list else fallbackTrims()
+    }
+
+    fun defaultTrims(context: Context? = null): List<TrimItem> {
+        return if (context != null) {
+            loadFromAssets(context)
+        } else {
+            fallbackTrims()
+        }
+    }
+
+    private fun fallbackTrims(): List<TrimItem> = listOf(
         // Right Leg
         TrimItem(0, "Servo 0 - R Ankle Roll", "Right Leg"),
         TrimItem(1, "Servo 1 - R Ankle Pitch", "Right Leg"),

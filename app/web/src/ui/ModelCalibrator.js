@@ -569,7 +569,7 @@ export class ModelCalibrator {
 
   generateUrdfXml() {
     const lines = [
-      '<!-- RoboHero Calibrated Joint Limits for urdf/robohero.urdf -->',
+      '<!-- RoboHero Calibrated Joint Limits for model/robohero.urdf -->',
       '<!-- Replace the corresponding <limit ... /> tag in each joint definition -->',
       '',
     ];

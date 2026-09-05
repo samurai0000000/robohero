@@ -63,7 +63,7 @@ class RoboHeroApp {
 
     // 6. Load URDF Model
     try {
-      await this.robotModel.load('./urdf/robohero.urdf');
+      await this.robotModel.load('./model/robohero.urdf');
       this.limbControls.setAllValues(this.robotModel.getAllPwm());
       this.modelCalibrator.setAllPwmValues(this.robotModel.getAllPwm());
       if (this.loadingOverlay) {
@@ -591,13 +591,13 @@ class RoboHeroApp {
     btnJson?.classList.toggle('active', tab === 'json');
 
     if (tab === 'urdf') {
-      if (desc) desc.innerHTML = 'Copy and replace the corresponding <code>&lt;limit ... /&gt;</code> tags in <code>urdf/robohero.urdf</code>:';
+      if (desc) desc.innerHTML = 'Copy and replace the corresponding <code>&lt;limit ... /&gt;</code> tags in <code>model/robohero.urdf</code>:';
       if (code) code.textContent = this.modelCalibrator.generateUrdfXml();
     } else if (tab === 'js') {
       if (desc) desc.innerHTML = 'Replace <code>export const CHANNEL_MAP = ...</code> in <code>app/web/src/viewer/RobotModel.js</code>:';
       if (code) code.textContent = this.modelCalibrator.generateChannelMapJs();
     } else if (tab === 'json') {
-      if (desc) desc.innerHTML = 'Complete machine-readable calibration dataset (can be saved to <code>doc/joint_calibration_results.json</code>):';
+      if (desc) desc.innerHTML = 'Complete machine-readable calibration dataset (can be saved to <code>model/calibration.json</code>):';
       if (code) code.textContent = this.modelCalibrator.generateCalibrationJson();
     }
   }

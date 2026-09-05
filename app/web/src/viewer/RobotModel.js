@@ -8,28 +8,23 @@
 
 import * as THREE from 'three';
 import URDFLoader from 'urdf-loader';
+import modelCalibration from '../../public/model/calibration.json';
 
-// Mapping from RoboHero hardware channel (0..16) to URDF Joint Name & conversion properties
-// Centers match the physical calibrated Standby baseline so 0 rad = upright balanced stance.
-export const CHANNEL_MAP = {
-  0:  { name: 'left_ankle_roll_joint',      group: 'left_leg',  label: 'Ankle Roll',      center: 160, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.4363, upper: 1.3090 },
-  1:  { name: 'left_ankle_pitch_joint',     group: 'left_leg',  label: 'Ankle Pitch',     center: 161, sign: -1.0, radPerPwm: (Math.PI / 180), lower: -0.7854, upper: 1.5708 },
-  2:  { name: 'left_knee_pitch_joint',      group: 'left_leg',  label: 'Knee Pitch',      center: 141, sign: -1.0, radPerPwm: (Math.PI / 180), lower: -0.6981, upper: 1.5708 },
-  3:  { name: 'left_hip_pitch_joint',       group: 'left_leg',  label: 'Hip Pitch',       center: 168, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.6981, upper: 1.5708 },
-  4:  { name: 'left_hip_roll_joint',        group: 'left_leg',  label: 'Hip Roll',        center: 158, sign: -1.0, radPerPwm: (Math.PI / 180), lower: -0.3491, upper: 1.6057 },
-  5 : { name: 'left_shoulder_pitch_joint',  group: 'left_arm',  label: 'Shoulder Pitch',  center: 158, sign:  1.0, radPerPwm: (0.01823869),    lower: -1.8117, upper: 1.3055 },
-  6 : { name: 'left_shoulder_roll_joint',   group: 'left_arm',  label: 'Shoulder Roll',   center: 252, sign: -1.0, radPerPwm: (0.01649336),    lower:  0.0000, upper: 4.7298 },
-  7:  { name: 'left_elbow_joint',           group: 'left_arm',  label: 'Elbow',           center: 159, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -1.3090, upper: 1.4835 },
-  8:  { name: 'right_elbow_joint',          group: 'right_arm', label: 'Elbow',           center: 163, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -1.4835, upper: 0.9599 },
-  9 : { name: 'right_shoulder_roll_joint',  group: 'right_arm', label: 'Shoulder Roll',   center:  69, sign: -1.0, radPerPwm: (0.01692969),    lower: -4.3284, upper: 0.0000 },
-  10: { name: 'right_shoulder_pitch_joint', group: 'right_arm', label: 'Shoulder Pitch',  center: 163, sign: -1.0, radPerPwm: (0.02068215),    lower: -2.4906, upper: 2.0054 },
-  11: { name: 'right_hip_roll_joint',       group: 'right_leg', label: 'Hip Roll',        center: 161, sign: -1.0, radPerPwm: (Math.PI / 180), lower: -1.7453, upper: 0.3491 },
-  12: { name: 'right_hip_pitch_joint',      group: 'right_leg', label: 'Hip Pitch',       center: 129, sign: -1.0, radPerPwm: (Math.PI / 180), lower: -0.6981, upper: 1.5708 },
-  13: { name: 'right_knee_pitch_joint',     group: 'right_leg', label: 'Knee Pitch',      center: 150, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.6981, upper: 1.5708 },
-  14: { name: 'right_ankle_pitch_joint',    group: 'right_leg', label: 'Ankle Pitch',     center: 165, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.8727, upper: 1.5708 },
-  15: { name: 'right_ankle_roll_joint',     group: 'right_leg', label: 'Ankle Roll',      center: 162, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.4363, upper: 1.2217 },
-  16: { name: 'head_yaw_joint',             group: 'head',      label: 'Head Yaw',        center:  90, sign:  1.0, radPerPwm: (0.02827433),    lower: -0.9756, upper: 0.9233 },
-};
+// Construct CHANNEL_MAP dynamically from single source of truth (model/calibration.json)
+export const CHANNEL_MAP = {};
+for (const [ch, info] of Object.entries(modelCalibration.channels)) {
+  const c = parseInt(ch, 10);
+  CHANNEL_MAP[c] = {
+    name: info.name,
+    group: info.group,
+    label: info.label,
+    center: info.center,
+    sign: info.sign,
+    radPerPwm: info.rad_per_pwm,
+    lower: info.urdf_limits.lower,
+    upper: info.urdf_limits.upper,
+  };
+}
 
 const STORAGE_KEY = 'robohero_model_calibration_v1';
 
@@ -211,7 +206,7 @@ export class RobotModel {
     return this.calibration;
   }
 
-  async load(urdfUrl = './urdf/robohero.urdf') {
+  async load(urdfUrl = './model/robohero.urdf') {
     return new Promise((resolve, reject) => {
       const loader = new URDFLoader();
       loader.load(

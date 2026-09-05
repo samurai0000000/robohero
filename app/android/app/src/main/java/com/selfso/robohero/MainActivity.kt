@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,7 +80,8 @@ class MainActivity : ComponentActivity() {
                 connectionStatus == ConnectionStatus.CONNECTED_MQTT
 
         var toastText by remember { mutableStateOf<String?>(null) }
-        val trimsState = remember { mutableStateListOf<TrimItem>().apply { addAll(TrimDefinitions.defaultTrims()) } }
+        val context = LocalContext.current
+        val trimsState = remember { mutableStateListOf<TrimItem>().apply { addAll(TrimDefinitions.defaultTrims(context)) } }
 
         fun showToast(msg: String) {
             toastText = msg

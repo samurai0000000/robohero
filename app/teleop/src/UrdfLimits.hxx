@@ -35,7 +35,8 @@ public:
 
     static UrdfLimits &instance();
 
-    bool init(const std::string &urdfResourcePath = ":/urdf/robohero.urdf");
+    bool init(const std::string &urdfResourcePath = ":/model/robohero.urdf",
+              const std::string &calibrationResourcePath = ":/model/calibration.json");
 
     bool hasLimit(int channel) const;
     JointLimit getLimit(int channel) const;
@@ -43,6 +44,7 @@ public:
 
     bool hasCalibration(int channel) const;
     ChannelCalibration getCalibration(int channel) const;
+    const std::map<int, ChannelCalibration> &getAllCalibrations() const;
 
     double clamp(int channel, double angleRad, double safetyMarginDeg = 0.0) const;
     int angleToPwm(int channel, double angleRad, double safetyMarginDeg = 0.0) const;
@@ -60,9 +62,11 @@ private:
     UrdfLimits &operator=(const UrdfLimits &) = delete;
 
     void populateFallbackLimits();
+    bool loadCalibrationJson(const std::string &calibrationResourcePath);
 
     static UrdfLimits _self;
     std::map<int, JointLimit> _limits;
+    std::map<int, ChannelCalibration> _calibrations;
     bool _initialized;
 };
 

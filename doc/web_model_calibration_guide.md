@@ -153,16 +153,15 @@ Produces a timestamped machine-readable JSON dataset containing all calibrated p
 
 ## 6. How to Apply Extracted Parameters to the Source Code
 
-### 1. Update URDF Model (`urdf/robohero.urdf`)
-1. Open [urdf/robohero.urdf](../urdf/robohero.urdf).
+### 1. Update URDF Model (`model/robohero.urdf`)
+1. Open [model/robohero.urdf](../model/robohero.urdf).
 2. Copy the XML snippet from **Tab 1 (URDF XML)** in the extract modal.
 3. Locate each joint definition by name (e.g. `<joint name="left_shoulder_pitch_joint" ...>`).
 4. Replace the existing `<limit lower="..." upper="..."/>` line with the new calibrated values.
 
-### 2. Update Web Viewer Kinematics (`app/web/src/viewer/RobotModel.js`)
-1. Open [app/web/src/viewer/RobotModel.js](../app/web/src/viewer/RobotModel.js).
-2. Copy the JavaScript snippet from **Tab 2 (RobotModel.js)** in the extract modal.
-3. Replace the `export const CHANNEL_MAP = { ... };` block (around lines 15..32).
+### 2. Update Calibration Dataset (`model/calibration.json`)
+1. Open [model/calibration.json](../model/calibration.json).
+2. Save or update the corresponding channel bounds and scale properties. All applications automatically derive parameters from this file during build.
 
 ---
 

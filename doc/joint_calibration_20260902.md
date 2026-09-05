@@ -5,7 +5,7 @@
 **Host Controller Version**: `v2.1.7`  
 **Project Version**: `v2.1.11`  
 
-All 17 revolute joints on RoboHero have been physically measured using a protractor, calibrated for true angular scale ($\text{radPerPwm}$), and encoded into [urdf/robohero.urdf](../urdf/robohero.urdf) and [RobotModel.js](../app/web/src/viewer/RobotModel.js).
+All 17 revolute joints on RoboHero have been physically measured using a protractor, calibrated for true angular scale ($\text{radPerPwm}$), and encoded into [model/robohero.urdf](../model/robohero.urdf) and [model/calibration.json](../model/calibration.json).
 
 ---
 

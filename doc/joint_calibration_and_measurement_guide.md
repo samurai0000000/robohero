@@ -108,7 +108,7 @@ To ensure high statistical confidence across all 16 body servos (which share ide
 
 ## 6. Model Updating & Verification
 
-1. **Update URDF**: In [robohero.urdf](../urdf/robohero.urdf), edit the `<limit>` tag for each joint.
+1. **Update URDF & Calibration**: In [robohero.urdf](../model/robohero.urdf) and [calibration.json](../model/calibration.json), edit the `<limit>` tag and calibration properties for each joint.
 2. **Update Web Viewer**: In [RobotModel.js](../app/web/src/viewer/RobotModel.js), set the calibrated `radPerPwm` and joint limits.
 3. **Validate**:
    ```bash

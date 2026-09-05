@@ -39,8 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     , _hasPoseData(false)
     , _lastPoseTimestamp(0)
 {
-    // 1. Initialize Robot URDF Limits from embedded resource
-    UrdfLimits::instance().init(":/urdf/robohero.urdf");
+    // 1. Initialize Robot URDF Limits and Calibration from embedded resources
+    UrdfLimits::instance().init(":/model/robohero.urdf", ":/model/calibration.json");
 
     for (int ch = 0; ch < 17; ++ch) {
         int center = UrdfLimits::instance().getCalibration(ch).center;

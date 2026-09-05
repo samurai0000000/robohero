@@ -1,7 +1,7 @@
 # RoboHero
 
-<!-- robohero-version: 2.1.21 -->
-**Version: 2.1.21**
+<!-- robohero-version: 2.1.22 -->
+**Version: 2.1.22**
 
 FreeRTOS firmware for the 17-servo TT Robotix RoboHero, along with companion host CLI, Android mobile app, and Web interface.
 

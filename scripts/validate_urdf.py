@@ -4,34 +4,15 @@
 #
 # Copyright (C) 2026, Charles Chiou
 #
-# Validate RoboHero URDF model, check kinematic tree, masses, and joint channels.
+# Validate RoboHero URDF model, check kinematic tree, masses, joint channels,
+# and cross-validate against canonical model/calibration.json.
 #
 
+import json
 import math
 import pathlib
 import sys
 import xml.etree.ElementTree as ET
-
-# Hardware channel to joint name mapping for RoboHero
-EXPECTED_JOINTS = {
-    0: ("left_ankle_roll_joint", "Left Ankle Roll"),
-    1: ("left_ankle_pitch_joint", "Left Ankle Pitch"),
-    2: ("left_knee_pitch_joint", "Left Knee Pitch"),
-    3: ("left_hip_pitch_joint", "Left Hip Pitch"),
-    4: ("left_hip_roll_joint", "Left Hip Roll"),
-    5: ("left_shoulder_pitch_joint", "Left Shoulder Pitch"),
-    6: ("left_shoulder_roll_joint", "Left Shoulder Roll"),
-    7: ("left_elbow_joint", "Left Elbow"),
-    8: ("right_elbow_joint", "Right Elbow"),
-    9: ("right_shoulder_roll_joint", "Right Shoulder Roll"),
-    10: ("right_shoulder_pitch_joint", "Right Shoulder Pitch"),
-    11: ("right_hip_roll_joint", "Right Hip Roll"),
-    12: ("right_hip_pitch_joint", "Right Hip Pitch"),
-    13: ("right_knee_pitch_joint", "Right Knee Pitch"),
-    14: ("right_ankle_pitch_joint", "Right Ankle Pitch"),
-    15: ("right_ankle_roll_joint", "Right Ankle Roll"),
-    16: ("head_yaw_joint", "Head Yaw (GPIO12)"),
-}
 
 
 def print_tree(tree, link, prefix="", is_last=True):
@@ -41,19 +22,27 @@ def print_tree(tree, link, prefix="", is_last=True):
     new_prefix = prefix + ("    " if is_last else "│   ")
     for i, (child_link, joint_name, axis) in enumerate(children):
         is_child_last = i == len(children) - 1
-        joint_info = f" [{joint_name}, axis={axis}]"
-        print(f"{new_prefix}  ({joint_name})")
+        print(f"{new_prefix}  ({joint_name}) [axis={axis}]")
         print_tree(tree, child_link, new_prefix, is_child_last)
 
 
 def main():
     root_dir = pathlib.Path(__file__).resolve().parent.parent
-    urdf_path = root_dir / "urdf" / "robohero.urdf"
+    urdf_path = root_dir / "model" / "robohero.urdf"
+    calib_path = root_dir / "model" / "calibration.json"
 
     if not urdf_path.exists():
         sys.exit(f"Error: URDF file not found at {urdf_path}")
+    if not calib_path.exists():
+        sys.exit(f"Error: Calibration file not found at {calib_path}")
 
     print(f"Validating URDF: {urdf_path}")
+    print(f"Validating Calibration: {calib_path}")
+
+    try:
+        calib_data = json.loads(calib_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        sys.exit(f"Error parsing JSON in {calib_path}: {e}")
 
     try:
         tree = ET.parse(urdf_path)
@@ -94,16 +83,20 @@ def main():
         axis = axis_elem.attrib.get("xyz", "1 0 0") if axis_elem is not None else "1 0 0"
         limit = joint.find("limit")
         limits_str = ""
+        lower_val = 0.0
+        upper_val = 0.0
         if limit is not None:
-            lower = float(limit.attrib.get("lower", 0.0))
-            upper = float(limit.attrib.get("upper", 0.0))
-            limits_str = f"[{math.degrees(lower):.1f}°, {math.degrees(upper):.1f}°]"
+            lower_val = float(limit.attrib.get("lower", 0.0))
+            upper_val = float(limit.attrib.get("upper", 0.0))
+            limits_str = f"[{math.degrees(lower_val):.1f}°, {math.degrees(upper_val):.1f}°]"
 
         joints[name] = {
             "type": jtype,
             "parent": parent,
             "child": child,
             "axis": axis,
+            "lower": lower_val,
+            "upper": upper_val,
             "limits": limits_str,
         }
         parent_map[child] = (parent, name)
@@ -125,30 +118,61 @@ def main():
     print(f"Total Joints: {len(joints)}")
     print(f"Total Model Mass: {total_mass * 1000.0:.1f} g ({total_mass:.3f} kg)")
 
-    # Verify Hardware Channels
-    print("\n--- Hardware Channel Verification ---")
+    # Verify Hardware Channels against calibration.json
+    print("\n--- Hardware Channel & Calibration Verification ---")
+    channels = calib_data.get("channels", {})
+    if len(channels) != 17:
+        sys.exit(f"Error: Expected 17 channels in calibration.json, found {len(channels)}")
+
     found_joint_names = set(joints.keys())
     missing_joints = []
+    limit_mismatches = []
+
     for ch in range(17):
-        expected_name, desc = EXPECTED_JOINTS[ch]
+        ch_key = str(ch)
+        if ch_key not in channels:
+            missing_joints.append((ch, f"ch_{ch}", "Missing in calibration.json"))
+            continue
+
+        ch_info = channels[ch_key]
+        expected_name = ch_info["name"]
+        desc = ch_info.get("label", expected_name)
+
         if expected_name in found_joint_names:
             j_info = joints[expected_name]
+            cal_limits = ch_info.get("urdf_limits", {})
+            cal_lower = cal_limits.get("lower", 0.0)
+            cal_upper = cal_limits.get("upper", 0.0)
+
+            # Check if URDF limit matches calibration.json limits
+            if abs(j_info["lower"] - cal_lower) > 0.001 or abs(j_info["upper"] - cal_upper) > 0.001:
+                limit_mismatches.append((
+                    ch, expected_name,
+                    (j_info["lower"], j_info["upper"]),
+                    (cal_lower, cal_upper)
+                ))
+
             print(f"  [Ch {ch:2d}] {desc:<24} -> {expected_name:<28} (axis={j_info['axis']}, limits={j_info['limits']})")
         else:
             missing_joints.append((ch, expected_name, desc))
 
     if missing_joints:
-        print("\nERROR: Missing hardware joints:")
+        print("\nERROR: Missing hardware joints in URDF:")
         for ch, name, desc in missing_joints:
             print(f"  - Ch {ch}: {name} ({desc})")
         sys.exit(1)
 
-    print("\nAll 17 hardware channels successfully mapped!")
+    if limit_mismatches:
+        print("\nWARNING: Limit discrepancies between URDF and calibration.json:")
+        for ch, name, urdf_lim, cal_lim in limit_mismatches:
+            print(f"  - Ch {ch} ({name}): URDF={urdf_lim} vs Calib={cal_lim}")
+
+    print("\nAll 17 hardware channels successfully mapped and verified!")
 
     # Print Kinematic Tree
     print("\n--- Kinematic Tree ---")
     print_tree(kin_tree, root_link)
-    print("\nURDF Validation PASSED.")
+    print("\nURDF and Calibration Validation PASSED.")
 
 
 if __name__ == "__main__":

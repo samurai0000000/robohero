@@ -1,4 +1,5 @@
 node_modules/
 dist/
+public/model/
 .DS_Store
 local.deploy.mk

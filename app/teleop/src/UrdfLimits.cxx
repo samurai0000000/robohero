@@ -7,32 +7,15 @@
 #include "UrdfLimits.hxx"
 #include <QFile>
 #include <QByteArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <pugixml.hpp>
 #include <cmath>
 #include <algorithm>
 #include <iostream>
 
 UrdfLimits UrdfLimits::_self;
-
-static const UrdfLimits::ChannelCalibration CHANNEL_MAP[17] = {
-    {"left_ankle_roll_joint",      0,  160,  1.0, (M_PI / 180.0), -0.4363,  1.3090},
-    {"left_ankle_pitch_joint",     1,  161, -1.0, (M_PI / 180.0), -0.7854,  1.5708},
-    {"left_knee_pitch_joint",      2,  141, -1.0, (M_PI / 180.0), -0.6981,  1.5708},
-    {"left_hip_pitch_joint",       3,  168,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
-    {"left_hip_roll_joint",        4,  158, -1.0, (M_PI / 180.0), -0.3491,  1.6057},
-    {"left_shoulder_pitch_joint",  5,  158,  1.0, 0.01823869,     -1.8117,  1.3055},
-    {"left_shoulder_roll_joint",   6,  252, -1.0, 0.01649336,      0.0000,  4.7298},
-    {"left_elbow_joint",           7,  159,  1.0, (M_PI / 180.0), -1.3090,  1.4835},
-    {"right_elbow_joint",          8,  163,  1.0, (M_PI / 180.0), -1.4835,  0.9599},
-    {"right_shoulder_roll_joint",  9,   69, -1.0, 0.01692969,     -4.3284,  0.0000},
-    {"right_shoulder_pitch_joint", 10, 163, -1.0, 0.02068215,     -2.4906,  2.0054},
-    {"right_hip_roll_joint",       11, 161, -1.0, (M_PI / 180.0), -1.7453,  0.3491},
-    {"right_hip_pitch_joint",      12, 129, -1.0, (M_PI / 180.0), -0.6981,  1.5708},
-    {"right_knee_pitch_joint",     13, 150,  1.0, (M_PI / 180.0), -0.6981,  1.5708},
-    {"right_ankle_pitch_joint",    14, 165,  1.0, (M_PI / 180.0), -0.8727,  1.5708},
-    {"right_ankle_roll_joint",     15, 162,  1.0, (M_PI / 180.0), -0.4363,  1.2217},
-    {"head_yaw_joint",             16,  90,  1.0, 0.02827433,     -0.9756,  0.9233},
-};
 
 UrdfLimits &UrdfLimits::instance()
 {
@@ -47,22 +30,112 @@ UrdfLimits::UrdfLimits()
 
 void UrdfLimits::populateFallbackLimits()
 {
+    _calibrations.clear();
+    _limits.clear();
     for (int i = 0; i < TOTAL_SERVOS; ++i) {
-        _limits[i] = {CHANNEL_MAP[i].name, CHANNEL_MAP[i].channel,
-                      CHANNEL_MAP[i].lower, CHANNEL_MAP[i].upper, 0.0};
+        ChannelCalibration cal = {
+            "joint_" + std::to_string(i),
+            i,
+            135,
+            1.0,
+            (M_PI / 180.0),
+            -M_PI,
+            M_PI
+        };
+        _calibrations[i] = cal;
+        _limits[i] = {cal.name, i, cal.lower, cal.upper, 0.0};
     }
 }
 
-bool UrdfLimits::init(const std::string &urdfResourcePath)
+bool UrdfLimits::loadCalibrationJson(const std::string &calibrationResourcePath)
+{
+    QFile file(QString::fromStdString(calibrationResourcePath));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QFile fallbackFile(":/model/calibration.json");
+        if (!fallbackFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            std::cerr << "UrdfLimits: could not open calibration JSON: "
+                      << calibrationResourcePath << std::endl;
+            return false;
+        }
+        file.setFileName(":/model/calibration.json");
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return false;
+        }
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (doc.isNull() || !doc.isObject()) {
+        std::cerr << "UrdfLimits: JSON parse error in " << calibrationResourcePath
+                  << ": " << parseError.errorString().toStdString() << std::endl;
+        return false;
+    }
+
+    QJsonObject root = doc.object();
+    QJsonObject channels = root.value("channels").toObject();
+    if (channels.isEmpty()) {
+        std::cerr << "UrdfLimits: missing 'channels' in " << calibrationResourcePath << std::endl;
+        return false;
+    }
+
+    for (int i = 0; i < TOTAL_SERVOS; ++i) {
+        QString key = QString::number(i);
+        if (!channels.contains(key)) {
+            continue;
+        }
+
+        QJsonObject chObj = channels.value(key).toObject();
+        std::string name = chObj.value("name").toString().toStdString();
+        int center = chObj.value("center").toInt(135);
+        double sign = chObj.value("sign").toDouble(1.0);
+        double radPerPwm = chObj.value("rad_per_pwm").toDouble(M_PI / 180.0);
+
+        QJsonObject urdfLimits = chObj.value("urdf_limits").toObject();
+        double lower = urdfLimits.value("lower").toDouble(-M_PI);
+        double upper = urdfLimits.value("upper").toDouble(M_PI);
+
+        ChannelCalibration cal = {
+            name,
+            i,
+            center,
+            sign,
+            radPerPwm,
+            lower,
+            upper
+        };
+        _calibrations[i] = cal;
+        _limits[i] = {name, i, lower, upper, 0.0};
+    }
+
+    return true;
+}
+
+bool UrdfLimits::init(const std::string &urdfResourcePath,
+                      const std::string &calibrationResourcePath)
 {
     populateFallbackLimits();
 
+    // 1. Load canonical calibration parameters from model/calibration.json
+    bool calibOk = loadCalibrationJson(calibrationResourcePath);
+    if (!calibOk) {
+        std::cerr << "UrdfLimits: warning, using fallback calibration." << std::endl;
+    }
+
+    // 2. Parse URDF XML to verify or override exact URDF limits
     QFile file(QString::fromStdString(urdfResourcePath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        std::cerr << "UrdfLimits: could not open " << urdfResourcePath
-                  << ", using fallback limits." << std::endl;
-        _initialized = true;
-        return true;
+        file.setFileName(":/model/robohero.urdf");
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            file.setFileName(":/urdf/robohero.urdf");
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                std::cerr << "UrdfLimits: could not open URDF: " << urdfResourcePath << std::endl;
+                _initialized = true;
+                return calibOk;
+            }
+        }
     }
 
     QByteArray xmlData = file.readAll();
@@ -73,53 +146,21 @@ bool UrdfLimits::init(const std::string &urdfResourcePath)
     if (!result) {
         std::cerr << "UrdfLimits: XML parse failed: " << result.description() << std::endl;
         _initialized = true;
-        return false;
+        return calibOk;
     }
 
     pugi::xml_node robot = doc.child("robot");
     if (!robot) {
         std::cerr << "UrdfLimits: missing <robot> tag in URDF." << std::endl;
         _initialized = true;
-        return false;
+        return calibOk;
     }
 
-    // Map joint names to PCA9685 servo channels
-    const std::map<std::string, int> nameToChannel = {
-        {"left_ankle_roll_joint", 0},
-        {"left_ankle_roll", 0},
-        {"left_ankle_pitch_joint", 1},
-        {"left_ankle_pitch", 1},
-        {"left_knee_pitch_joint", 2},
-        {"left_knee_pitch", 2},
-        {"left_hip_pitch_joint", 3},
-        {"left_hip_pitch", 3},
-        {"left_hip_roll_joint", 4},
-        {"left_hip_roll", 4},
-        {"left_shoulder_pitch_joint", 5},
-        {"left_shoulder_pitch", 5},
-        {"left_shoulder_roll_joint", 6},
-        {"left_shoulder_roll", 6},
-        {"left_elbow_joint", 7},
-        {"left_elbow", 7},
-        {"right_elbow_joint", 8},
-        {"right_elbow", 8},
-        {"right_shoulder_roll_joint", 9},
-        {"right_shoulder_roll", 9},
-        {"right_shoulder_pitch_joint", 10},
-        {"right_shoulder_pitch", 10},
-        {"right_hip_roll_joint", 11},
-        {"right_hip_roll", 11},
-        {"right_hip_pitch_joint", 12},
-        {"right_hip_pitch", 12},
-        {"right_knee_pitch_joint", 13},
-        {"right_knee_pitch", 13},
-        {"right_ankle_pitch_joint", 14},
-        {"right_ankle_pitch", 14},
-        {"right_ankle_roll_joint", 15},
-        {"right_ankle_roll", 15},
-        {"head_yaw_joint", 16},
-        {"head_yaw", 16}
-    };
+    // Map joint names to channels from loaded calibrations
+    std::map<std::string, int> nameToChannel;
+    for (const auto &pair : _calibrations) {
+        nameToChannel[pair.second.name] = pair.first;
+    }
 
     for (pugi::xml_node joint = robot.child("joint"); joint; joint = joint.next_sibling("joint")) {
         std::string jName = joint.attribute("name").as_string();
@@ -131,6 +172,8 @@ bool UrdfLimits::init(const std::string &urdfResourcePath)
                 double lower = limitNode.attribute("lower").as_double(_limits[ch].lower);
                 double upper = limitNode.attribute("upper").as_double(_limits[ch].upper);
                 _limits[ch] = {jName, ch, lower, upper, 0.0};
+                _calibrations[ch].lower = lower;
+                _calibrations[ch].upper = upper;
             }
         }
     }
@@ -150,10 +193,6 @@ UrdfLimits::JointLimit UrdfLimits::getLimit(int channel) const
     if (it != _limits.end()) {
         return it->second;
     }
-    if (channel >= 0 && channel < TOTAL_SERVOS) {
-        const auto &cal = CHANNEL_MAP[channel];
-        return {cal.name, channel, cal.lower, cal.upper, 0.0};
-    }
     return {"unknown", channel, -M_PI, M_PI, 0.0};
 }
 
@@ -164,15 +203,21 @@ const std::map<int, UrdfLimits::JointLimit> &UrdfLimits::getAllLimits() const
 
 bool UrdfLimits::hasCalibration(int channel) const
 {
-    return channel >= 0 && channel < TOTAL_SERVOS;
+    return _calibrations.find(channel) != _calibrations.end();
 }
 
 UrdfLimits::ChannelCalibration UrdfLimits::getCalibration(int channel) const
 {
-    if (channel >= 0 && channel < TOTAL_SERVOS) {
-        return CHANNEL_MAP[channel];
+    auto it = _calibrations.find(channel);
+    if (it != _calibrations.end()) {
+        return it->second;
     }
     return {"unknown", channel, 135, 1.0, (M_PI / 180.0), -M_PI, M_PI};
+}
+
+const std::map<int, UrdfLimits::ChannelCalibration> &UrdfLimits::getAllCalibrations() const
+{
+    return _calibrations;
 }
 
 double UrdfLimits::clamp(int channel, double angleRad, double safetyMarginDeg) const
@@ -181,7 +226,7 @@ double UrdfLimits::clamp(int channel, double angleRad, double safetyMarginDeg) c
         return angleRad;
     }
 
-    const auto &cal = CHANNEL_MAP[channel];
+    const auto cal = getCalibration(channel);
     double marginRad = (safetyMarginDeg * M_PI) / 180.0;
     double minLim = std::min(cal.lower, cal.upper) + marginRad;
     double maxLim = std::max(cal.lower, cal.upper) - marginRad;
@@ -200,7 +245,7 @@ int UrdfLimits::angleToPwm(int channel, double angleRad, double safetyMarginDeg)
         return 135;
     }
 
-    const auto &cal = CHANNEL_MAP[channel];
+    const auto cal = getCalibration(channel);
     double marginRad = (safetyMarginDeg * M_PI) / 180.0;
     double minLim = std::min(cal.lower, cal.upper) + marginRad;
     double maxLim = std::max(cal.lower, cal.upper) - marginRad;
@@ -220,7 +265,7 @@ double UrdfLimits::pwmToAngle(int channel, int pwm) const
         return 0.0;
     }
 
-    const auto &cal = CHANNEL_MAP[channel];
+    const auto cal = getCalibration(channel);
     double rad = (static_cast<double>(pwm) - cal.center) * cal.radPerPwm * cal.sign;
     double minLim = std::min(cal.lower, cal.upper);
     double maxLim = std::max(cal.lower, cal.upper);
