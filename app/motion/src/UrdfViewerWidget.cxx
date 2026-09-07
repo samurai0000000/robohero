@@ -52,6 +52,8 @@ UrdfViewerWidget::UrdfViewerWidget(QWidget *parent)
     _telemetryAngles.fill(0.0);
     _telemetryPwm.fill(135);
     _telemetryValid.fill(false);
+
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 UrdfViewerWidget::~UrdfViewerWidget()

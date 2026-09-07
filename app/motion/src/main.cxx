@@ -5,6 +5,7 @@
  */
 
 #include <QApplication>
+#include <QSurfaceFormat>
 #include <QIcon>
 #include <QFileInfo>
 #include <QDir>
@@ -107,6 +108,16 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+#endif
+
+#ifdef _WIN32
+    QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
+    QSurfaceFormat glFormat;
+    glFormat.setRenderableType(QSurfaceFormat::OpenGL);
+    glFormat.setProfile(QSurfaceFormat::CompatibilityProfile);
+    glFormat.setVersion(2, 1);
+    glFormat.setDepthBufferSize(24);
+    QSurfaceFormat::setDefaultFormat(glFormat);
 #endif
 
     QApplication app(argc, argv);

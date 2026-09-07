@@ -132,9 +132,11 @@ void MainWindow::setupUi()
     mainVLayout->setSpacing(2);
     auto *mainLabel = new QLabel("<b>Planned Trajectory (Virtual Twin)</b>", mainContainer);
     mainLabel->setStyleSheet("color: #00ADB5; padding: 2px 6px;");
+    mainLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     _viewerMain = new UrdfViewerWidget(mainContainer);
+    _viewerMain->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     mainVLayout->addWidget(mainLabel);
-    mainVLayout->addWidget(_viewerMain);
+    mainVLayout->addWidget(_viewerMain, 1);
     vpLayout->addWidget(mainContainer, 1);
 
     // Telemetry Echo Viewport (for Side-by-Side Split View)
@@ -144,9 +146,11 @@ void MainWindow::setupUi()
     telemVLayout->setSpacing(2);
     auto *telemLabel = new QLabel("<b>Physical Robot Telemetry</b>", _telemContainer);
     telemLabel->setStyleSheet("color: #00ff88; padding: 2px 6px;");
+    telemLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     _viewerTelem = new UrdfViewerWidget(_telemContainer);
+    _viewerTelem->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     telemVLayout->addWidget(telemLabel);
-    telemVLayout->addWidget(_viewerTelem);
+    telemVLayout->addWidget(_viewerTelem, 1);
     _telemContainer->setVisible(false); // Initially hidden in single viewport mode
     vpLayout->addWidget(_telemContainer, 1);
 
@@ -457,8 +461,8 @@ void MainWindow::applyTheme()
         "QPushButton:hover { background-color: #3d3d4a; border-color: #00ADB5; }"
         "QPushButton:pressed { background-color: #222228; }"
         "QCheckBox { color: #e0e0e0; }"
-        "QGroupBox { color: #e0e0e0; border: 1px solid #444; margin-top: 8px; font-weight: bold; }"
-        "QGroupBox::title { color: #00ADB5; }"
+        "QGroupBox { color: #e0e0e0; border: 1px solid #444; border-radius: 4px; margin-top: 14px; padding-top: 10px; font-weight: bold; }"
+        "QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 4px; color: #00ADB5; }"
         "QTabWidget::pane { border: 1px solid #444; background-color: #1e1e24; }"
         "QTabBar::tab { color: #e0e0e0; background-color: #26262e; padding: 6px 12px; border: 1px solid #444; }"
         "QTabBar::tab:selected { color: #ffffff; background-color: #383842; }"

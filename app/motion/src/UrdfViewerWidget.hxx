@@ -38,6 +38,8 @@ public:
                          const std::string &meshMode, double fov);
     void resetCamera();
     void setViewPreset(const QString &preset); // "persp", "front", "side", "top"
+    QSize sizeHint() const override { return QSize(480, 360); }
+    QSize minimumSizeHint() const override { return QSize(200, 150); }
 
 signals:
     void cameraChanged(float yaw, float pitch, float distance, float panX, float panY);
