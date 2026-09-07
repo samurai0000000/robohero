@@ -37,35 +37,6 @@ def read_version(root: pathlib.Path):
     return int(major), int(minor), int(patch)
 
 
-def sync_web_package(root: pathlib.Path, version_str: str):
-    pkg_json_path = root / "app" / "web" / "package.json"
-    if pkg_json_path.exists():
-        data = json.loads(pkg_json_path.read_text(encoding="utf-8"))
-        if data.get("version") != version_str:
-            data["version"] = version_str
-            pkg_json_path.write_text(
-                json.dumps(data, indent=2) + "\n", encoding="utf-8"
-            )
-            print(f"Updated {pkg_json_path.relative_to(root)} -> {version_str}")
-
-    pkg_lock_path = root / "app" / "web" / "package-lock.json"
-    if pkg_lock_path.exists():
-        data = json.loads(pkg_lock_path.read_text(encoding="utf-8"))
-        changed = False
-        if data.get("version") != version_str:
-            data["version"] = version_str
-            changed = True
-        if "packages" in data and "" in data["packages"]:
-            if data["packages"][""].get("version") != version_str:
-                data["packages"][""]["version"] = version_str
-                changed = True
-        if changed:
-            pkg_lock_path.write_text(
-                json.dumps(data, indent=2) + "\n", encoding="utf-8"
-            )
-            print(f"Updated {pkg_lock_path.relative_to(root)} -> {version_str}")
-
-
 def write_version(root: pathlib.Path, new_version: str):
     readme_path = root / "README.md"
     content = readme_path.read_text(encoding="utf-8")
@@ -83,7 +54,6 @@ def write_version(root: pathlib.Path, new_version: str):
     )
     readme_path.write_text(content, encoding="utf-8")
     print(f"Updated {readme_path.name} -> {new_version}")
-    sync_web_package(root, new_version)
 
 
 def main():
@@ -103,8 +73,7 @@ def main():
     elif cmd == "get-patch":
         print(patch)
     elif cmd == "sync":
-        sync_web_package(root, version_str)
-        print(f"Synchronized version {version_str}")
+        print(f"README.md is the single source of truth for version: {version_str}")
     elif cmd == "bump":
         part = args[1] if len(args) > 1 else "patch"
         if part == "major":
