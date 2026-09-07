@@ -41,6 +41,17 @@ void MotionSequence::clear()
 int MotionSequence::addKeyframe(int timeMs, const std::array<int, 17> &pwm,
                                 const std::string &easing)
 {
+    for (size_t i = 0; i < _keyframes.size(); ++i) {
+        if (_keyframes[i].timeMs == timeMs) {
+            _keyframes[i].easing = easing;
+            _keyframes[i].pwm = pwm;
+            for (int ch = 0; ch < 17; ++ch) {
+                _keyframes[i].angles[ch] = UrdfLimits::instance().pwmToAngle(ch, pwm[ch]);
+            }
+            return static_cast<int>(i);
+        }
+    }
+
     Keyframe kf;
     kf.timeMs = timeMs;
     kf.easing = easing;
@@ -53,12 +64,28 @@ int MotionSequence::addKeyframe(int timeMs, const std::array<int, 17> &pwm,
     if (timeMs > _durationMs) {
         _durationMs = timeMs;
     }
+    for (size_t i = 0; i < _keyframes.size(); ++i) {
+        if (_keyframes[i].timeMs == timeMs) {
+            return static_cast<int>(i);
+        }
+    }
     return static_cast<int>(_keyframes.size()) - 1;
 }
 
 int MotionSequence::addKeyframe(int timeMs, const std::array<double, 17> &angles,
                                 const std::string &easing)
 {
+    for (size_t i = 0; i < _keyframes.size(); ++i) {
+        if (_keyframes[i].timeMs == timeMs) {
+            _keyframes[i].easing = easing;
+            _keyframes[i].angles = angles;
+            for (int ch = 0; ch < 17; ++ch) {
+                _keyframes[i].pwm[ch] = UrdfLimits::instance().angleToPwm(ch, angles[ch]);
+            }
+            return static_cast<int>(i);
+        }
+    }
+
     Keyframe kf;
     kf.timeMs = timeMs;
     kf.easing = easing;
@@ -70,6 +97,11 @@ int MotionSequence::addKeyframe(int timeMs, const std::array<double, 17> &angles
     sortKeyframes();
     if (timeMs > _durationMs) {
         _durationMs = timeMs;
+    }
+    for (size_t i = 0; i < _keyframes.size(); ++i) {
+        if (_keyframes[i].timeMs == timeMs) {
+            return static_cast<int>(i);
+        }
     }
     return static_cast<int>(_keyframes.size()) - 1;
 }

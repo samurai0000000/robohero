@@ -40,7 +40,7 @@ void MotionPlayer::setMqttClient(MqttClient *client)
     _mqttClient = client;
 }
 
-void MotionPlayer::setMotion(const MotionSequence &sequence)
+void MotionPlayer::setMotion(const MotionSequence &sequence, bool resetTime)
 {
     bool wasPlaying = _isPlaying;
     if (_isPlaying) {
@@ -49,7 +49,11 @@ void MotionPlayer::setMotion(const MotionSequence &sequence)
 
     _sequence = sequence;
     _loop = sequence.isLoop();
-    _currentTimeMs = 0;
+    if (resetTime) {
+        _currentTimeMs = 0;
+    } else {
+        _currentTimeMs = std::max(0, std::min(_currentTimeMs, _sequence.durationMs()));
+    }
     evaluateCurrentTime();
 
     if (wasPlaying) {
@@ -100,6 +104,21 @@ void MotionPlayer::seek(int timeMs, bool syncRobot)
     if (syncRobot || _syncToRobot) {
         transmitPose();
     }
+}
+
+void MotionPlayer::setCurrentJointAngle(int channel, double angle, int pwm)
+{
+    if (channel >= 0 && channel < 17) {
+        _currentAngles[channel] = angle;
+        _currentPwm[channel] = pwm;
+    }
+}
+
+void MotionPlayer::setCurrentPose(const std::array<double, 17> &angles,
+                                  const std::array<int, 17> &pwm)
+{
+    _currentAngles = angles;
+    _currentPwm = pwm;
 }
 
 void MotionPlayer::evaluateCurrentTime()

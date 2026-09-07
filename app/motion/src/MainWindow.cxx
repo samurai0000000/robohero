@@ -558,15 +558,20 @@ void MainWindow::onAddKeyframeRequested(int timeMs)
     int idx = _currentSequence.addKeyframe(timeMs, _player->currentAngles(), "cubic_in_out");
     _timelineWidget->setKeyframes(_currentSequence.keyframes());
     _timelineWidget->setDuration(_currentSequence.durationMs());
-    _player->setMotion(_currentSequence);
+    _player->setMotion(_currentSequence, false);
+    _player->seek(timeMs, _timelineWidget->isSyncToRobot());
+    _timelineWidget->setTime(timeMs);
     _statusMessageLabel->setText(QString("Added keyframe at %1 ms (index %2)").arg(timeMs).arg(idx));
 }
 
 void MainWindow::onDeleteKeyframeRequested(int index)
 {
+    int currentTime = _timelineWidget->currentTime();
     _currentSequence.removeKeyframe(index);
     _timelineWidget->setKeyframes(_currentSequence.keyframes());
-    _player->setMotion(_currentSequence);
+    _player->setMotion(_currentSequence, false);
+    _player->seek(currentTime, _timelineWidget->isSyncToRobot());
+    _timelineWidget->setTime(currentTime);
     _statusMessageLabel->setText(QString("Deleted keyframe at index %1").arg(index));
 }
 
@@ -688,19 +693,16 @@ void MainWindow::onSliderValueChanged(int channel, int value)
 
     _jointControls[channel].valLabel->setText(QString::number(deg, 'f', 1) + "°");
 
-    auto angles = _player->currentAngles();
-    angles[channel] = rad;
     int pwm = UrdfLimits::instance().angleToPwm(channel, rad);
-    auto pwms = _player->currentPwm();
-    pwms[channel] = pwm;
+    _player->setCurrentJointAngle(channel, rad, pwm);
 
     if (_viewerMain) {
-        _viewerMain->setJointAngles(angles);
-        _viewerMain->setJointPwm(pwms);
+        _viewerMain->setJointAngles(_player->currentAngles());
+        _viewerMain->setJointPwm(_player->currentPwm());
     }
 
     if (_timelineWidget->isSyncToRobot() && _mqttClient && _mqttClient->isConnected()) {
-        _mqttClient->sendPwm(pwms, _mqttClient->controlTopic());
+        _mqttClient->sendPwm(_player->currentPwm(), _mqttClient->controlTopic());
     }
 }
 

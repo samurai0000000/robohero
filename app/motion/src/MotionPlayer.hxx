@@ -22,7 +22,7 @@ public:
     ~MotionPlayer() override;
 
     void setMqttClient(MqttClient *client);
-    void setMotion(const MotionSequence &sequence);
+    void setMotion(const MotionSequence &sequence, bool resetTime = true);
     const MotionSequence &motion() const { return _sequence; }
 
     void play();
@@ -43,6 +43,9 @@ public:
     const std::array<double, 17> &currentAngles() const { return _currentAngles; }
     const std::array<int, 17> &currentPwm() const { return _currentPwm; }
     const std::array<double, 17> &standbyAngles() const { return _standbyAngles; }
+
+    void setCurrentJointAngle(int channel, double angle, int pwm);
+    void setCurrentPose(const std::array<double, 17> &angles, const std::array<int, 17> &pwm);
 
 signals:
     void playheadChanged(int timeMs);
