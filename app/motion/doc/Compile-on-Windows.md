@@ -9,8 +9,9 @@ vcpkg is only used for small libraries: `mosquitto`, `libconfig`, `pugixml`.
 
 ## Prerequisites
 
-- **Visual Studio 2022** (Community, Professional, or Build Tools) with the
-  *Desktop development with C++* workload.
+- **Visual Studio 2026** (Community or Build Tools) with the
+  *Desktop development with C++* workload. The `windows-msvc` preset
+  uses the `Visual Studio 18 2026` generator.
 - **CMake 3.20+** on `PATH` (`cmake --version`).
 - **Python 3** on `PATH`. The first configure uses it to install `aqtinstall`
   and download official Qt binaries.

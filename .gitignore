@@ -26,6 +26,7 @@ desktop.ini
 
 # IDE / CMake local
 .vs/
+.vscode/
 *.user
 CMakeUserPresets.json
 compile_commands.json

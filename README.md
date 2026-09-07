@@ -1,7 +1,7 @@
 # RoboHero
 
-<!-- robohero-version: 2.1.23 -->
-**Version: 2.1.23**
+<!-- robohero-version: 2.1.24 -->
+**Version: 2.1.24**
 
 <p align="center">
   <img src="app/teleop/assets/robohero_icon.png" alt="RoboHero" width="160" />
