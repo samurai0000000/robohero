@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="model/robohero.urdf">../../model/robohero.urdf</file>
+        <file alias="model/calibration.json">../../model/calibration.json</file>
+        <file alias="urdf/robohero.urdf">../../model/robohero.urdf</file>
+        <file alias="icons/robohero_icon.png">assets/robohero_icon.png</file>
+        <file alias="icons/robohero_head.png">assets/robohero_head.png</file>
+        <file alias="motions/walk_forward.rhm.json">motions/walk_forward.rhm.json</file>
+        <file alias="motions/walk_turn_left.rhm.json">motions/walk_turn_left.rhm.json</file>
+        <file alias="motions/bow.rhm.json">motions/bow.rhm.json</file>
+        <file alias="motions/wave.rhm.json">motions/wave.rhm.json</file>
+    </qresource>
+</RCC>

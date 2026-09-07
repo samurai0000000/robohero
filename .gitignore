@@ -2,6 +2,7 @@
 build/
 firmware/build/
 app/teleop/build/
+app/motion/build/
 
 # ESP-IDF local config
 sdkconfig

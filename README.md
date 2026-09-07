@@ -22,6 +22,9 @@ I purchased this TTRobotix toy in 2017 and gave it to my wife's nephew. It becam
 * **Desktop Teleoperation (`app/teleop`)**
   * [app/teleop/doc/README.md](app/teleop/doc/README.md): Real-time AI pose-tracking desktop application, geometric mapping pipeline, and MQTT teleoperation overview.
   * [app/teleop/doc/Compile-on-Windows.md](app/teleop/doc/Compile-on-Windows.md): Windows MSVC and CMake compilation guide with pre-built dependency setup.
+* **Motion & Gait Studio (`app/motion`)**
+  * [app/motion/doc/README.md](app/motion/doc/README.md): Standalone Qt/OpenGL biped gait generator, multi-track keyframe choreographer, dual 3D URDF visualizer, and MQTT robot execution studio.
+  * [app/motion/doc/Compile-on-Windows.md](app/motion/doc/Compile-on-Windows.md): Windows MSVC and CMake compilation guide with prebuilt Qt dependencies.
 * **Home Assistant**
   * [home_assistant/README.md](home_assistant/README.md): Home Assistant MQTT auto-discovery, entity mappings, action triggers, and Lovelace dashboard setup.
 

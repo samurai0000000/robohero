@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "robohero-motion",
+  "version-string": "1.0.0",
+  "description": "RoboHero Humanoid Motion and Gait Studio. vcpkg is used for mosquitto, libconfig, and pugixml.",
+  "dependencies": [
+    "mosquitto",
+    "libconfig",
+    "pugixml"
+  ]
+}
