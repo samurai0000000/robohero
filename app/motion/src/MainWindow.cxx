@@ -75,6 +75,9 @@ MainWindow::MainWindow(QWidget *parent)
     _currentSequence = MotionSequence::createDefaultStandby();
     _player->setMotion(_currentSequence);
 
+    _viewerMain->setStandbyAngles(_player->standbyAngles());
+    _viewerTelem->setStandbyAngles(_player->standbyAngles());
+
     // Auto-connect MQTT if enabled in settings
     _settingsDialog = new SettingsDialog(this);
     connect(_settingsDialog, &SettingsDialog::settingsApplied, this, &MainWindow::onSettingsApplied);
@@ -226,6 +229,17 @@ void MainWindow::setupToolbar()
     _splitViewBtn->setToolTip("Toggle between Single Viewport (with Ghost Overlay) and Side-by-Side Split View");
     connect(_splitViewBtn, &QPushButton::clicked, this, &MainWindow::onSplitViewToggled);
     toolBar->addWidget(_splitViewBtn);
+
+    _ghostCheckBox = new QCheckBox("👻 Ghost View", this);
+    _ghostCheckBox->setChecked(true);
+    _ghostCheckBox->setToolTip("Toggle semi-transparent ghost overlay (neutral standby stance when offline, live telemetry when online)");
+    connect(_ghostCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (!_splitViewMode) {
+            _viewerMain->setShowGhost(checked);
+        }
+        _statusMessageLabel->setText(checked ? "Ghost View enabled." : "Ghost View disabled.");
+    });
+    toolBar->addWidget(_ghostCheckBox);
 
     toolBar->addSeparator();
 
@@ -711,16 +725,16 @@ void MainWindow::onSplitViewToggled()
     _telemContainer->setVisible(_splitViewMode);
 
     if (_splitViewMode) {
-        _splitViewBtn->setText("▣ Single View (Ghost)");
+        _splitViewBtn->setText("▣ Single View");
         // In split mode, main viewer only shows solid planned model
         _viewerMain->setShowGhost(false);
-        // Telemetry viewer shows live telemetry
+        _ghostCheckBox->setEnabled(false);
         _statusMessageLabel->setText("Split View active: Planned Trajectory (Left) | Robot Telemetry (Right)");
     } else {
         _splitViewBtn->setText("◫ Split View");
-        // In single mode, enable translucent ghost overlay on main viewer
-        _viewerMain->setShowGhost(true);
-        _statusMessageLabel->setText("Single View active: Solid (Planned) with Translucent Cyan Ghost (Live Telemetry)");
+        _ghostCheckBox->setEnabled(true);
+        _viewerMain->setShowGhost(_ghostCheckBox->isChecked());
+        _statusMessageLabel->setText("Single View active: Solid (Planned) with Ghost Overlay");
     }
 }
 

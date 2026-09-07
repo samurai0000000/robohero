@@ -42,6 +42,7 @@ public:
 
     const std::array<double, 17> &currentAngles() const { return _currentAngles; }
     const std::array<int, 17> &currentPwm() const { return _currentPwm; }
+    const std::array<double, 17> &standbyAngles() const { return _standbyAngles; }
 
 signals:
     void playheadChanged(int timeMs);

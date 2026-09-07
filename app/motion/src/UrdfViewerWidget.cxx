@@ -52,6 +52,7 @@ UrdfViewerWidget::UrdfViewerWidget(QWidget *parent)
     _telemetryAngles.fill(0.0);
     _telemetryPwm.fill(135);
     _telemetryValid.fill(false);
+    _standbyAngles.fill(0.0);
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
@@ -86,6 +87,12 @@ void UrdfViewerWidget::setTelemetryJointPwm(const std::array<int, 17> &pwm,
     _telemetryPwm = pwm;
     _telemetryValid = validMask;
     _hasTelemetry = true;
+    update();
+}
+
+void UrdfViewerWidget::setStandbyAngles(const std::array<double, 17> &angles)
+{
+    _standbyAngles = angles;
     update();
 }
 
@@ -238,11 +245,17 @@ void UrdfViewerWidget::paintGL()
     // 1. Draw Target Planned Robot (Solid)
     drawRobot(_jointAngles, false);
 
-    // 2. Draw Telemetry Echo Robot (Ghost Overlay)
-    if (_showGhost && _hasTelemetry) {
+    // 2. Draw Ghost Overlay (Telemetry Echo if online, or Neutral Standby Reference if offline)
+    if (_showGhost) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        drawRobot(_telemetryAngles, true);
+        glDepthMask(GL_FALSE);
+        if (_hasTelemetry) {
+            drawRobot(_telemetryAngles, true);
+        } else {
+            drawRobot(_standbyAngles, true);
+        }
+        glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
     }
 

@@ -10,6 +10,7 @@
 #include <QMainWindow>
 #include <QLabel>
 #include <QPushButton>
+#include <QCheckBox>
 #include <QSlider>
 #include <QDoubleSpinBox>
 #include <QSpinBox>
@@ -100,6 +101,7 @@ private:
     bool _splitViewMode;
     QWidget *_telemContainer;
     QPushButton *_splitViewBtn;
+    QCheckBox *_ghostCheckBox;
 
     // Joint Sliders
     struct JointControl

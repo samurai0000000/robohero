@@ -29,6 +29,8 @@ public:
     void setTelemetryJointPwm(const std::array<int, 17> &pwm,
                               const std::array<bool, 17> &validMask);
 
+    void setStandbyAngles(const std::array<double, 17> &angles);
+
     void setShowGhost(bool show);
     void setShowCoM(bool show);
     void setShowSupportPolygon(bool show);
@@ -64,6 +66,8 @@ private:
     std::array<int, 17> _telemetryPwm;
     std::array<bool, 17> _telemetryValid;
     bool _hasTelemetry;
+
+    std::array<double, 17> _standbyAngles;
 
     bool _showGhost;
     bool _showCoM;
