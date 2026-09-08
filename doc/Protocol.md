@@ -115,31 +115,90 @@ When processing incoming packets on `robot/robohero/<robot_id>/control`:
 
 ---
 
-## 5. Servo Channel Mapping Reference
+## 5. Servo Channel Mapping & Calibration Reference
 
-| Channel | Joint Name | Minimum | Neutral | Maximum | Controller |
-| :---: | :--- | :---: | :---: | :---: | :---: |
-| 0 | `left_ankle_roll` | 1 | 135 | 270 | PCA9685 Ch 0 |
-| 1 | `left_ankle_pitch` | 1 | 135 | 270 | PCA9685 Ch 1 |
-| 2 | `left_knee_pitch` | 1 | 135 | 270 | PCA9685 Ch 2 |
-| 3 | `left_hip_pitch` | 1 | 135 | 270 | PCA9685 Ch 3 |
-| 4 | `left_hip_roll` | 1 | 135 | 270 | PCA9685 Ch 4 |
-| 5 | `left_shoulder_pitch`| 1 | 135 | 270 | PCA9685 Ch 5 |
-| 6 | `left_shoulder_roll` | 1 | 135 | 270 | PCA9685 Ch 6 |
-| 7 | `left_elbow` | 1 | 135 | 270 | PCA9685 Ch 7 |
-| 8 | `right_elbow` | 1 | 135 | 270 | PCA9685 Ch 8 |
-| 9 | `right_shoulder_roll`| 1 | 135 | 270 | PCA9685 Ch 9 |
-| 10 | `right_shoulder_pitch`| 1 | 135 | 270 | PCA9685 Ch 10 |
-| 11 | `right_hip_roll` | 1 | 135 | 270 | PCA9685 Ch 11 |
-| 12 | `right_hip_pitch` | 1 | 135 | 270 | PCA9685 Ch 12 |
-| 13 | `right_knee_pitch` | 1 | 135 | 270 | PCA9685 Ch 13 |
-| 14 | `right_ankle_pitch`| 1 | 135 | 270 | PCA9685 Ch 14 |
-| 15 | `right_ankle_roll` | 1 | 135 | 270 | PCA9685 Ch 15 |
-| 16 | `head_yaw` | 0 | 90 | 180 | ESP8266 GPIO12 |
+The following table lists the 17 servo channels, their mapping to physical hardware controllers, calibrated standby centers, and physical operating ranges. The authoritative Single Source of Truth is `model/calibration.json`.
+
+| Channel | URDF Joint Name | Label | Group | Center PWM | PWM Range | Hardware Controller |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: |
+| **0** | `left_ankle_roll_joint` | Ankle Roll | Left Leg | 160 | [80, 180] | PCA9685 Ch 0 |
+| **1** | `left_ankle_pitch_joint` | Ankle Pitch | Left Leg | 161 | [115, 245] | PCA9685 Ch 1 |
+| **2** | `left_knee_pitch_joint` | Knee Pitch | Left Leg | 141 | [38, 180] | PCA9685 Ch 2 |
+| **3** | `left_hip_pitch_joint` | Hip Pitch | Left Leg | 168 | [65, 200] | PCA9685 Ch 3 |
+| **4** | `left_hip_roll_joint` | Hip Roll | Left Leg | 158 | [60, 178] | PCA9685 Ch 4 |
+| **5** | `left_shoulder_pitch_joint` | Shoulder Pitch | Left Arm | 158 | [5, 245] | PCA9685 Ch 5 |
+| **6** | `left_shoulder_roll_joint` | Shoulder Roll | Left Arm | 252 | [70, 252] | PCA9685 Ch 6 |
+| **7** | `left_elbow_joint` | Elbow | Left Arm | 159 | [85, 245] | PCA9685 Ch 7 |
+| **8** | `right_elbow_joint` | Elbow | Right Arm | 163 | [75, 215] | PCA9685 Ch 8 |
+| **9** | `right_shoulder_roll_joint` | Shoulder Roll | Right Arm | 69 | [69, 250] | PCA9685 Ch 9 |
+| **10**| `right_shoulder_pitch_joint`| Shoulder Pitch | Right Arm | 163 | [70, 270] | PCA9685 Ch 10 |
+| **11**| `right_hip_roll_joint` | Hip Roll | Right Leg | 161 | [141, 259] | PCA9685 Ch 11 |
+| **12**| `right_hip_pitch_joint` | Hip Pitch | Right Leg | 129 | [89, 230] | PCA9685 Ch 12 |
+| **13**| `right_knee_pitch_joint` | Knee Pitch | Right Leg | 150 | [110, 240] | PCA9685 Ch 13 |
+| **14**| `right_ankle_pitch_joint`| Ankle Pitch | Right Leg | 165 | [65, 210] | PCA9685 Ch 14 |
+| **15**| `right_ankle_roll_joint` | Ankle Roll | Right Leg | 162 | [142, 220] | PCA9685 Ch 15 |
+| **16**| `head_yaw_joint` | Head Yaw | Head | 90 | [40, 140] | ESP8266 GPIO12 |
 
 ---
 
-## 6. ASCII / Home Assistant Command Protocol
+## 6. Client Telemetry Ingestion & Threading Contract
+
+Companion applications (`app/teleop`, `app/motion`, web apps) consuming robot telemetry must implement the following state management and threading patterns:
+
+### 6.1 Sparse / Delta Telemetry Contract
+`RH_MSG_STATUS` packets may carry updates for an arbitrary subset of channels (1 to 17 servos) rather than full-state sweeps. The client MQTT parser yields:
+- `pwmValues`: Array of 17 integer PWM values.
+- `validMask`: Array of 17 boolean flags indicating which channels were present in the received packet.
+
+#### Persistent State Invariant
+Clients **must maintain persistent joint state buffers** initialized to standby center angles. When processing a telemetry packet:
+1. Only mutate channels where `validMask[ch] == true`.
+2. Leave all unmasked channels untouched at their previous known positions.
+
+```cpp
+// Correct Client Telemetry Handler (Persistent Array Pattern)
+void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
+                                     const std::array<bool, 17> &validMask)
+{
+    bool updated = false;
+    const auto &limits = UrdfLimits::instance();
+    for (int ch = 0; ch < 17; ++ch) {
+        if (validMask[ch]) {
+            _telemPwm[ch] = pwmValues[ch];
+            _telemAngles[ch] = limits.pwmToAngle(ch, pwmValues[ch]);
+            updated = true;
+        }
+    }
+
+    if (updated) {
+        _urdfViewer->setJointAngles(_telemAngles);
+        _urdfViewer->setJointPwm(_telemPwm);
+    }
+}
+```
+
+> [!CAUTION]
+> **Anti-Pattern Warning**: Do NOT create a temporary angle array and compute `pwmToAngle(i, pwmValues[i])` for all 17 channels without checking `validMask[i]`. Inactive channels have `pwmValues[i] == 0`, which maps to $(0 - \text{center}) \times \dots = -160^\circ$. This slams un-updated joints to extreme mechanical limits and severely distorts 3D ghost visualization.
+
+### 6.2 Threading & Qt Meta-Type Registration Contract
+Client MQTT implementations (such as `MqttClient` based on `libmosquitto`) run network I/O and message ingestion on a background worker thread. When passing telemetry data across threads to the Qt GUI event loop:
+
+1. **Meta-Type Registration**: Qt requires non-primitive parameter types passed via signals across threads to be registered at startup. In `main.cxx`, before `app.exec()`:
+   ```cpp
+   qRegisterMetaType<std::array<int, 17>>("std::array<int, 17>");
+   qRegisterMetaType<std::array<bool, 17>>("std::array<bool, 17>");
+   qRegisterMetaType<std::array<double, 17>>("std::array<double, 17>");
+   ```
+2. **Queued Connection**: Cross-thread connections must be queued so slot invocations execute safely on the GUI thread:
+   ```cpp
+   connect(_mqttClient, &MqttClient::telemetryReceived,
+           this, &MainWindow::onTelemetryReceived,
+           Qt::QueuedConnection);
+   ```
+
+---
+
+## 7. ASCII / Home Assistant Command Protocol
 
 For Home Assistant and text-based tools, RoboHero accepts plain ASCII strings on `robot/robohero/<robot_id>/cmd`:
 

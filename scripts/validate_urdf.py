@@ -127,6 +127,9 @@ def main():
     found_joint_names = set(joints.keys())
     missing_joints = []
     limit_mismatches = []
+    deg_range_mismatches = []
+    scale_mismatches = []
+    sign_errors = []
 
     for ch in range(17):
         ch_key = str(ch)
@@ -144,7 +147,7 @@ def main():
             cal_lower = cal_limits.get("lower", 0.0)
             cal_upper = cal_limits.get("upper", 0.0)
 
-            # Check if URDF limit matches calibration.json limits
+            # 1. Check if URDF XML limit matches calibration.json limits
             if abs(j_info["lower"] - cal_lower) > 0.001 or abs(j_info["upper"] - cal_upper) > 0.001:
                 limit_mismatches.append((
                     ch, expected_name,
@@ -152,7 +155,29 @@ def main():
                     (cal_lower, cal_upper)
                 ))
 
-            print(f"  [Ch {ch:2d}] {desc:<24} -> {expected_name:<28} (axis={j_info['axis']}, limits={j_info['limits']})")
+            # 2. Check if degree_range in JSON matches urdf_limits (radians to degrees)
+            deg_range = ch_info.get("degree_range", [])
+            if len(deg_range) == 2:
+                exp_deg_lower = round(math.degrees(cal_lower), 1)
+                exp_deg_upper = round(math.degrees(cal_upper), 1)
+                if abs(deg_range[0] - exp_deg_lower) > 0.2 or abs(deg_range[1] - exp_deg_upper) > 0.2:
+                    deg_range_mismatches.append((
+                        ch, expected_name, deg_range, [exp_deg_lower, exp_deg_upper]
+                    ))
+
+            # 3. Check rad_per_pwm and deg_per_pwm consistency
+            rad_per_pwm = ch_info.get("rad_per_pwm", 0.0)
+            deg_per_pwm = ch_info.get("deg_per_pwm", 0.0)
+            expected_deg_scale = rad_per_pwm * (180.0 / math.pi)
+            if abs(deg_per_pwm - expected_deg_scale) > 0.01:
+                scale_mismatches.append((ch, expected_name, deg_per_pwm, expected_deg_scale))
+
+            # 4. Check sign validity (+1.0 or -1.0)
+            sign = ch_info.get("sign", 0.0)
+            if sign not in (1.0, -1.0):
+                sign_errors.append((ch, expected_name, sign))
+
+            print(f"  [Ch {ch:2d}] {desc:<24} -> {expected_name:<28} (axis={j_info['axis']}, limits={j_info['limits']}, sign={sign:+3.1f})")
         else:
             missing_joints.append((ch, expected_name, desc))
 
@@ -163,9 +188,28 @@ def main():
         sys.exit(1)
 
     if limit_mismatches:
-        print("\nWARNING: Limit discrepancies between URDF and calibration.json:")
+        print("\nERROR: Limit discrepancies between URDF XML and calibration.json:")
         for ch, name, urdf_lim, cal_lim in limit_mismatches:
-            print(f"  - Ch {ch} ({name}): URDF={urdf_lim} vs Calib={cal_lim}")
+            print(f"  - Ch {ch} ({name}): URDF XML={urdf_lim} vs Calib={cal_lim}")
+        sys.exit(1)
+
+    if deg_range_mismatches:
+        print("\nERROR: degree_range mismatch against urdf_limits in calibration.json:")
+        for ch, name, actual_deg, expected_deg in deg_range_mismatches:
+            print(f"  - Ch {ch} ({name}): degree_range={actual_deg} vs expected={expected_deg}")
+        sys.exit(1)
+
+    if scale_mismatches:
+        print("\nERROR: Scale factor discrepancy (deg_per_pwm vs rad_per_pwm):")
+        for ch, name, act_deg, exp_deg in scale_mismatches:
+            print(f"  - Ch {ch} ({name}): deg_per_pwm={act_deg} vs expected={exp_deg:.4f}")
+        sys.exit(1)
+
+    if sign_errors:
+        print("\nERROR: Invalid kinematic sign multiplier (must be +1.0 or -1.0):")
+        for ch, name, sign in sign_errors:
+            print(f"  - Ch {ch} ({name}): sign={sign}")
+        sys.exit(1)
 
     print("\nAll 17 hardware channels successfully mapped and verified!")
 
