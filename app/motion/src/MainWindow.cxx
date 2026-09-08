@@ -11,6 +11,7 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QToolBar>
@@ -165,15 +166,17 @@ void MainWindow::setupUi()
 
     // Right Panel: 17 Joint Angle Sliders Inspector
     auto *sliderContainer = new QWidget(hSplitter);
-    sliderContainer->setMinimumWidth(260);
-    sliderContainer->setMaximumWidth(340);
+    sliderContainer->setObjectName("jointSliderPanel");
+    sliderContainer->setMinimumWidth(380);
+    sliderContainer->setMaximumWidth(560);
     setupJointSliders(sliderContainer);
     hSplitter->addWidget(sliderContainer);
 
-    // Set horizontal splitter initial stretch factors: [300px, 700px, 300px]
+    // Set horizontal splitter initial stretch factors & sizes: [Library ~260, 3D Viewport ~680, Inspector ~460]
     hSplitter->setStretchFactor(0, 0);
     hSplitter->setStretchFactor(1, 1);
     hSplitter->setStretchFactor(2, 0);
+    hSplitter->setSizes({260, 680, 460});
 
     vSplitter->addWidget(hSplitter);
 
@@ -310,30 +313,55 @@ void MainWindow::setupJointSliders(QWidget *parent)
     auto *scrollArea = new QScrollArea(parent);
     scrollArea->setWidgetResizable(true);
     scrollArea->setStyleSheet("QScrollArea { border: none; background: transparent; }");
+    scrollArea->viewport()->setStyleSheet("background: transparent;");
 
     auto *scrollContent = new QWidget(scrollArea);
-    auto *contentLayout = new QVBoxLayout(scrollContent);
-    contentLayout->setContentsMargins(4, 4, 4, 4);
-    contentLayout->setSpacing(6);
+    scrollContent->setStyleSheet("background: transparent;");
 
     const auto &limits = UrdfLimits::instance();
 
-    auto createGroup = [&](const QString &title, const std::vector<int> &channels) {
+    auto createGroup = [&](const QString &title, const std::vector<int> &channels) -> QGroupBox * {
         auto *grp = new QGroupBox(title, scrollContent);
         auto *grpLayout = new QVBoxLayout(grp);
-        grpLayout->setContentsMargins(6, 6, 6, 6);
+        grpLayout->setContentsMargins(6, 12, 6, 6);
         grpLayout->setSpacing(4);
 
         for (int ch : channels) {
             auto lim = limits.getLimit(ch);
             auto cal = limits.getCalibration(ch);
 
+            // Clean friendly label from calibration name
+            QString rawName = QString::fromStdString(cal.name);
+            rawName.remove("left_").remove("right_").remove("_joint");
+            QStringList parts = rawName.split('_', Qt::SkipEmptyParts);
+            for (auto &part : parts) {
+                if (!part.isEmpty()) {
+                    part[0] = part[0].toUpper();
+                }
+            }
+            QString friendlyName = parts.join(' ');
+
             auto *rowLayout = new QHBoxLayout();
-            auto *nameLbl = new QLabel(QString("Ch %1: %2").arg(ch).arg(QString::fromStdString(cal.name)), grp);
-            nameLbl->setStyleSheet("font-size: 11px; font-weight: bold;");
+            rowLayout->setSpacing(4);
+
+            auto *nameLbl = new QLabel(grp);
+            nameLbl->setText(QString("<span style='color: #00ADB5; font-size: 10px; font-weight: bold;'>CH%1</span> "
+                                     "<span style='color: #f0f0f5; font-size: 11px; font-weight: bold;'>%2</span>")
+                             .arg(ch)
+                             .arg(friendlyName));
+            nameLbl->setToolTip(QString("Channel %1: %2\nRange: %3° to %4°")
+                                .arg(ch)
+                                .arg(QString::fromStdString(cal.name))
+                                .arg(lim.lower * 180.0 / M_PI, 0, 'f', 1)
+                                .arg(lim.upper * 180.0 / M_PI, 0, 'f', 1));
+
             auto *valLbl = new QLabel("0.0°", grp);
-            valLbl->setStyleSheet("font-size: 11px; color: #00ADB5;");
-            valLbl->setFixedWidth(50);
+            valLbl->setStyleSheet(
+                "font-size: 11px; font-weight: bold; color: #00e5ff; "
+                "background-color: #16161e; border: 1px solid #363648; "
+                "border-radius: 3px; padding: 1px 4px;"
+            );
+            valLbl->setFixedWidth(52);
             valLbl->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
             rowLayout->addWidget(nameLbl);
@@ -348,9 +376,10 @@ void MainWindow::setupJointSliders(QWidget *parent)
             slider->setRange(minVal, maxVal);
             slider->setValue(0);
             slider->setStyleSheet(
-                "QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }"
+                "QSlider::groove:horizontal { height: 4px; background: #32323e; border-radius: 2px; }"
                 "QSlider::sub-page:horizontal { background: #00ADB5; border-radius: 2px; }"
-                "QSlider::handle:horizontal { background: #e0e0e0; width: 12px; margin: -4px 0; border-radius: 6px; }"
+                "QSlider::handle:horizontal { background: #ffffff; border: 2px solid #00ADB5; width: 14px; margin: -5px 0; border-radius: 7px; }"
+                "QSlider::handle:horizontal:hover { background: #00e5ff; border-color: #ffffff; }"
             );
 
             connect(slider, &QSlider::valueChanged, this, [this, ch](int val) {
@@ -364,16 +393,32 @@ void MainWindow::setupJointSliders(QWidget *parent)
             _jointControls[ch].slider = slider;
         }
 
-        contentLayout->addWidget(grp);
+        return grp;
     };
 
-    createGroup("Head", {16});
-    createGroup("Left Arm", {5, 6, 7});
-    createGroup("Right Arm", {8, 9, 10});
-    createGroup("Left Leg", {0, 1, 2, 3, 4});
-    createGroup("Right Leg", {11, 12, 13, 14, 15});
+    auto *headGroup = createGroup("Head", {16});
+    auto *rightArmGroup = createGroup("Right Arm", {10, 9, 8});
+    auto *leftArmGroup = createGroup("Left Arm", {5, 6, 7});
+    auto *rightLegGroup = createGroup("Right Leg", {11, 12, 13, 14, 15});
+    auto *leftLegGroup = createGroup("Left Leg", {4, 3, 2, 1, 0});
 
-    contentLayout->addStretch();
+    auto *gridLayout = new QGridLayout(scrollContent);
+    gridLayout->setContentsMargins(4, 4, 4, 4);
+    gridLayout->setSpacing(8);
+
+    // Row 0: Head (Centered across columns 0 and 1)
+    gridLayout->addWidget(headGroup, 0, 0, 1, 2);
+
+    // Row 1: Arms (Col 0: Right Arm, Col 1: Left Arm)
+    gridLayout->addWidget(rightArmGroup, 1, 0);
+    gridLayout->addWidget(leftArmGroup, 1, 1);
+
+    // Row 2: Legs (Col 0: Right Leg, Col 1: Left Leg)
+    gridLayout->addWidget(rightLegGroup, 2, 0);
+    gridLayout->addWidget(leftLegGroup, 2, 1);
+
+    gridLayout->setRowStretch(3, 1);
+
     scrollArea->setWidget(scrollContent);
     layout->addWidget(scrollArea);
 }
@@ -462,28 +507,43 @@ void MainWindow::setupGeneratorTab(QWidget *parent)
 
 void MainWindow::applyTheme()
 {
+    QPalette pal = palette();
+    pal.setColor(QPalette::Window, QColor("#1e1e24"));
+    pal.setColor(QPalette::WindowText, QColor("#f0f0f5"));
+    pal.setColor(QPalette::Base, QColor("#16161a"));
+    pal.setColor(QPalette::AlternateBase, QColor("#22222a"));
+    pal.setColor(QPalette::ToolTipBase, QColor("#26262e"));
+    pal.setColor(QPalette::ToolTipText, QColor("#ffffff"));
+    pal.setColor(QPalette::Text, QColor("#f0f0f5"));
+    pal.setColor(QPalette::Button, QColor("#2a2a34"));
+    pal.setColor(QPalette::ButtonText, QColor("#ffffff"));
+    setPalette(pal);
+
     setStyleSheet(
-        "QMainWindow { background-color: #1e1e24; color: #e0e0e0; }"
-        "QWidget { color: #e0e0e0; }"
-        "QLabel { color: #e0e0e0; }"
-        "QToolBar { background-color: #26262e; color: #e0e0e0; border-bottom: 1px solid #333; spacing: 8px; padding: 4px; }"
-        "QMenuBar { background-color: #26262e; color: #e0e0e0; border-bottom: 1px solid #333; }"
-        "QMenu { background-color: #26262e; color: #e0e0e0; border: 1px solid #444; }"
+        "QMainWindow { background-color: #1e1e24; color: #f0f0f5; }"
+        "QWidget { color: #f0f0f5; }"
+        "QLabel { color: #f0f0f5; }"
+        "QWidget#jointSliderPanel { background-color: #1a1a22; border-left: 1px solid #2e2e3a; }"
+        "QScrollArea { background-color: transparent; border: none; }"
+        "QScrollArea > QWidget > QWidget { background-color: transparent; }"
+        "QToolBar { background-color: #26262e; color: #f0f0f5; border-bottom: 1px solid #333; spacing: 8px; padding: 4px; }"
+        "QMenuBar { background-color: #26262e; color: #f0f0f5; border-bottom: 1px solid #333; }"
+        "QMenu { background-color: #26262e; color: #f0f0f5; border: 1px solid #444; }"
         "QMenu::item:selected { background-color: #00ADB5; color: #ffffff; }"
-        "QStatusBar { background-color: #1a1a1e; color: #e0e0e0; }"
+        "QStatusBar { background-color: #1a1a1e; color: #f0f0f5; }"
         "QPushButton { background-color: #33333d; color: #fff; border: 1px solid #4a4a55; border-radius: 4px; padding: 5px 12px; }"
         "QPushButton:hover { background-color: #3d3d4a; border-color: #00ADB5; }"
         "QPushButton:pressed { background-color: #222228; }"
-        "QCheckBox { color: #e0e0e0; }"
-        "QGroupBox { color: #e0e0e0; border: 1px solid #444; border-radius: 4px; margin-top: 14px; padding-top: 10px; font-weight: bold; }"
-        "QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 4px; color: #00ADB5; }"
+        "QCheckBox { color: #f0f0f5; }"
+        "QGroupBox { background-color: #23232c; color: #f0f0f5; border: 1px solid #363645; border-radius: 6px; margin-top: 14px; padding-top: 12px; padding-bottom: 6px; padding-left: 6px; padding-right: 6px; font-weight: bold; }"
+        "QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 8px; padding: 1px 6px; color: #00ADB5; background-color: #2a2a36; border: 1px solid #363645; border-radius: 3px; font-size: 11px; }"
         "QTabWidget::pane { border: 1px solid #444; background-color: #1e1e24; }"
-        "QTabBar::tab { color: #e0e0e0; background-color: #26262e; padding: 6px 12px; border: 1px solid #444; }"
+        "QTabBar::tab { color: #f0f0f5; background-color: #26262e; padding: 6px 12px; border: 1px solid #444; }"
         "QTabBar::tab:selected { color: #ffffff; background-color: #383842; }"
-        "QLineEdit { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; padding: 3px; }"
-        "QSpinBox, QDoubleSpinBox { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; padding: 2px; }"
-        "QComboBox { color: #e0e0e0; background-color: #16161a; border: 1px solid #444; padding: 2px; }"
-        "QComboBox QAbstractItemView { color: #e0e0e0; background-color: #26262e; }"
+        "QLineEdit { color: #f0f0f5; background-color: #16161a; border: 1px solid #444; padding: 3px; }"
+        "QSpinBox, QDoubleSpinBox { color: #f0f0f5; background-color: #16161a; border: 1px solid #444; padding: 2px; }"
+        "QComboBox { color: #f0f0f5; background-color: #16161a; border: 1px solid #444; padding: 2px; }"
+        "QComboBox QAbstractItemView { color: #f0f0f5; background-color: #26262e; }"
         "QSplitter::handle { background-color: #333; }"
     );
 }
