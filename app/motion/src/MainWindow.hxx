@@ -17,6 +17,7 @@
 #include <QComboBox>
 #include <QSplitter>
 #include <QTabWidget>
+#include <QTimer>
 #include <array>
 #include <memory>
 
@@ -62,6 +63,7 @@ private slots:
 
     // Sliders
     void onSliderValueChanged(int channel, int value);
+    void onSliderTxThrottleTimeout();
 
     // Viewport & Mode
     void onSplitViewToggled();
@@ -113,6 +115,8 @@ private:
     };
     std::array<JointControl, 17> _jointControls;
     bool _updatingSlidersFromEngine;
+    QTimer _sliderTxThrottleTimer;
+    bool _sliderTxPending;
 
     // Gait Generator Controls
     QComboBox *_gaitModeCombo;

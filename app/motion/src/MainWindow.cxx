@@ -50,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     , _statusMessageLabel(nullptr)
     , _mqttStatusBadge(nullptr)
     , _comStabilityBadge(nullptr)
+    , _sliderTxPending(false)
 {
     for (int ch = 0; ch < 17; ++ch) {
         int center = UrdfLimits::instance().getCalibration(ch).center;
@@ -89,9 +90,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Auto-connect MQTT if enabled in settings
     _settingsDialog = new SettingsDialog(this);
     connect(_settingsDialog, &SettingsDialog::settingsApplied, this, &MainWindow::onSettingsApplied);
+    _player->setTxRateHz(_settingsDialog->txRateHz());
     if (_settingsDialog->mqttAutoConnect()) {
         connectMqtt();
     }
+
+    _sliderTxThrottleTimer.setSingleShot(true);
+    connect(&_sliderTxThrottleTimer, &QTimer::timeout, this, &MainWindow::onSliderTxThrottleTimeout);
 }
 
 MainWindow::~MainWindow()
@@ -779,7 +784,26 @@ void MainWindow::onSliderValueChanged(int channel, int value)
     }
 
     if (_timelineWidget->isSyncToRobot() && _mqttClient && _mqttClient->isConnected()) {
+        int minIntervalMs = 1000 / _player->txRateHz();
+        if (!_sliderTxThrottleTimer.isActive()) {
+            _mqttClient->sendPwm(_player->currentPwm(), _mqttClient->controlTopic());
+            _sliderTxThrottleTimer.start(minIntervalMs);
+            _sliderTxPending = false;
+        } else {
+            _sliderTxPending = true;
+        }
+    }
+}
+
+void MainWindow::onSliderTxThrottleTimeout()
+{
+    if (_sliderTxPending && _timelineWidget->isSyncToRobot() && _mqttClient && _mqttClient->isConnected()) {
         _mqttClient->sendPwm(_player->currentPwm(), _mqttClient->controlTopic());
+        _sliderTxPending = false;
+        int minIntervalMs = 1000 / _player->txRateHz();
+        _sliderTxThrottleTimer.start(minIntervalMs);
+    } else {
+        _sliderTxPending = false;
     }
 }
 
@@ -905,6 +929,7 @@ void MainWindow::onSettingsClicked()
 
 void MainWindow::onSettingsApplied()
 {
+    _player->setTxRateHz(_settingsDialog->txRateHz());
     connectMqtt();
     if (!_settingsDialog->workspaceDirectory().isEmpty()) {
         MotionLibrary::instance().setCustomWorkspaceDir(_settingsDialog->workspaceDirectory());

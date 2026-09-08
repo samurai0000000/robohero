@@ -15,6 +15,7 @@ MotionPlayer::MotionPlayer(QObject *parent)
     , _loop(true)
     , _syncToRobot(false)
     , _currentTimeMs(0)
+    , _txRateHz(20)
     , _blendingToStandby(false)
     , _blendStep(0)
     , _totalBlendSteps(15) // 300 ms at 50 Hz
@@ -67,7 +68,8 @@ void MotionPlayer::play()
 
     _blendingToStandby = false;
     _isPlaying = true;
-    _timer.start(20); // 50 Hz
+    _txElapsed.start();
+    _timer.start(20); // 50 Hz UI evaluation
     emit playbackStarted();
 }
 
@@ -140,6 +142,7 @@ void MotionPlayer::transmitPose()
 {
     if (_mqttClient && _mqttClient->isConnected()) {
         _mqttClient->sendPwm(_currentPwm, _mqttClient->controlTopic());
+        _txElapsed.restart();
     }
 }
 
@@ -174,7 +177,10 @@ void MotionPlayer::onTick()
 
         emit poseUpdated(_currentAngles, _currentPwm);
         if (_syncToRobot) {
-            transmitPose();
+            int minIntervalMs = 1000 / _txRateHz;
+            if (!_txElapsed.isValid() || _txElapsed.elapsed() >= minIntervalMs) {
+                transmitPose();
+            }
         }
 
         if (_blendStep >= _totalBlendSteps) {
@@ -217,7 +223,10 @@ void MotionPlayer::onTick()
     emit playheadChanged(_currentTimeMs);
 
     if (_syncToRobot) {
-        transmitPose();
+        int minIntervalMs = 1000 / _txRateHz;
+        if (!_txElapsed.isValid() || _txElapsed.elapsed() >= minIntervalMs) {
+            transmitPose();
+        }
     }
 }
 

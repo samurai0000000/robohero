@@ -206,4 +206,13 @@ When creating new host tools, simulations (e.g. Gazebo, Isaac Sim, Webots), or c
    - For ROS/ROS2 nodes: Reference `$(find robohero)/model/robohero.urdf` or `$(find robohero)/model/robohero.xacro`.
 3. **Always Run URDF & Calibration Validation**:
    - Execute `python3 scripts/validate_urdf.py` before committing any model or calibration changes.
+4. **Network Transmission Rate Budgeting & Flow Control**:
+   - **Recommended Client Rate**: Limit transmission of `RH_MSG_SET_PWM` packets to **15 Hz – 25 Hz** (default **20 Hz / 50 ms**).
+   - **Decouple UI from Network**: Run high-frequency local 3D rendering (e.g. OpenGL/Three.js viewports) at 50–60 Hz for fluid screen display, but throttle network transmissions to $\le 25\text{ Hz}$.
+   - **Hardware Constraints**:
+     - The PCA9685 PWM refresh frequency is **54 Hz** ($\approx 18.5\text{ ms}$ pulse cycle). Analog hobby servos (ES08MDII) have an electromechanical response time constant of $\approx 20\text{--}30\text{ ms}$; transmitting updates above 25 Hz yields zero physical improvement.
+     - The ESP8266 drives the PCA9685 via software bit-banged I2C (GPIO 4/5), requiring $16 \times 5 = 80\text{ bytes}$ per multi-servo packet. At 50 Hz, bit-banging I2C consumes 10–15% of the single-core CPU in critical locks.
+     - The robot firmware automatically echos every servo change back as an `RH_MSG_STATUS` telemetry packet. Transmitting commands at 50 Hz forces the ESP8266 to handle 50 incoming TCP packets/sec AND 50 outgoing TCP packets/sec, saturating LwIP frame buffers.
+     - When TCP buffers overflow, TCP zero-window backoff and retransmissions cause noticeable **"pause-and-go" stuttering** on the real robot.
+   - **Mandatory UI Throttling**: Interactive UI controls (sliders, joysticks, webcam tracking) must never transmit directly on raw event callbacks (which fire at 100–300+ Hz). Always enforce a rate-limiting timer (e.g. 50 ms) with trailing-edge delivery to ensure the final position is always received.
 

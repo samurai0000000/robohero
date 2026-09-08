@@ -9,6 +9,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <array>
 #include "MotionSequence.hxx"
 #include "MqttClient.hxx"
@@ -40,6 +41,9 @@ public:
     bool isSyncToRobot() const { return _syncToRobot; }
     void setSyncToRobot(bool sync) { _syncToRobot = sync; }
 
+    int txRateHz() const { return _txRateHz; }
+    void setTxRateHz(int hz) { _txRateHz = std::max(5, std::min(hz, 50)); }
+
     const std::array<double, 17> &currentAngles() const { return _currentAngles; }
     const std::array<int, 17> &currentPwm() const { return _currentPwm; }
     const std::array<double, 17> &standbyAngles() const { return _standbyAngles; }
@@ -70,6 +74,8 @@ private:
     bool _loop;
     bool _syncToRobot;
     int _currentTimeMs;
+    int _txRateHz;
+    QElapsedTimer _txElapsed;
 
     std::array<double, 17> _currentAngles;
     std::array<int, 17> _currentPwm;

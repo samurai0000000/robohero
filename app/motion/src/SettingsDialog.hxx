@@ -10,6 +10,8 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QSlider>
+#include <QLabel>
 #include <QCheckBox>
 #include <QPushButton>
 
@@ -32,6 +34,8 @@ public:
     int mqttKeepalive() const;
     bool mqttAutoConnect() const;
 
+    int txRateHz() const;
+
     QString workspaceDirectory() const;
     bool darkTheme() const;
 
@@ -40,6 +44,7 @@ signals:
 
 private slots:
     void onBrowseWorkspaceClicked();
+    void onTxRateSliderChanged(int value);
     void onApplyClicked();
     void onOkClicked();
     void onCancelClicked();
@@ -55,6 +60,10 @@ private:
     QLineEdit *_mqttRobotIdEdit;
     QSpinBox *_mqttKeepaliveSpin;
     QCheckBox *_mqttAutoConnectCheck;
+
+    // Transmission
+    QSlider *_txRateSlider;
+    QLabel *_txRateLabel;
 
     // Workspace & View
     QLineEdit *_workspaceDirEdit;

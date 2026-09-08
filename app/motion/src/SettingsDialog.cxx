@@ -21,6 +21,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     , _mqttRobotIdEdit(nullptr)
     , _mqttKeepaliveSpin(nullptr)
     , _mqttAutoConnectCheck(nullptr)
+    , _txRateSlider(nullptr)
+    , _txRateLabel(nullptr)
     , _workspaceDirEdit(nullptr)
     , _browseDirBtn(nullptr)
     , _darkThemeCheck(nullptr)
@@ -79,6 +81,25 @@ void SettingsDialog::setupUi()
     _mqttAutoConnectCheck = new QCheckBox("Auto-connect to MQTT on startup", mqttGroup);
     _mqttAutoConnectCheck->setChecked(true);
     mqttLayout->addRow("", _mqttAutoConnectCheck);
+
+    // Transmission rate
+    auto *txRateRow = new QHBoxLayout();
+    _txRateSlider = new QSlider(Qt::Horizontal, mqttGroup);
+    _txRateSlider->setRange(5, 50);
+    _txRateSlider->setValue(20);
+    _txRateSlider->setTickPosition(QSlider::TicksBelow);
+    _txRateSlider->setTickInterval(5);
+    _txRateSlider->setToolTip("Robot servo position transmission rate (recommended: 15-25 Hz to prevent overwhelming ESP8266 controller)");
+    txRateRow->addWidget(_txRateSlider, 1);
+
+    _txRateLabel = new QLabel("20 Hz (50 ms)", mqttGroup);
+    _txRateLabel->setFixedWidth(95);
+    _txRateLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    _txRateLabel->setStyleSheet("color: #00ADB5; font-weight: bold;");
+    txRateRow->addWidget(_txRateLabel);
+
+    connect(_txRateSlider, &QSlider::valueChanged, this, &SettingsDialog::onTxRateSliderChanged);
+    mqttLayout->addRow("Transmission Rate:", txRateRow);
 
     mainLayout->addWidget(mqttGroup);
 
@@ -142,6 +163,12 @@ void SettingsDialog::loadSettings()
 
     _workspaceDirEdit->setText(settings.value("workspace/directory", "").toString());
     _darkThemeCheck->setChecked(settings.value("view/dark_theme", true).toBool());
+
+    int txRate = settings.value("tx/rate_hz", 20).toInt();
+    if (txRate < 5) txRate = 5;
+    if (txRate > 50) txRate = 50;
+    _txRateSlider->setValue(txRate);
+    onTxRateSliderChanged(txRate);
 }
 
 void SettingsDialog::saveSettings()
@@ -155,6 +182,7 @@ void SettingsDialog::saveSettings()
     settings.setValue("mqtt/password", _mqttPassEdit->text());
     settings.setValue("mqtt/keepalive", _mqttKeepaliveSpin->value());
     settings.setValue("mqtt/autoconnect", _mqttAutoConnectCheck->isChecked());
+    settings.setValue("tx/rate_hz", _txRateSlider->value());
 
     settings.setValue("workspace/directory", _workspaceDirEdit->text().trimmed());
     settings.setValue("view/dark_theme", _darkThemeCheck->isChecked());
@@ -193,6 +221,19 @@ int SettingsDialog::mqttKeepalive() const
 bool SettingsDialog::mqttAutoConnect() const
 {
     return _mqttAutoConnectCheck->isChecked();
+}
+
+int SettingsDialog::txRateHz() const
+{
+    return _txRateSlider ? _txRateSlider->value() : 20;
+}
+
+void SettingsDialog::onTxRateSliderChanged(int value)
+{
+    int periodMs = (value > 0) ? (1000 / value) : 0;
+    if (_txRateLabel) {
+        _txRateLabel->setText(QString("%1 Hz (%2 ms)").arg(value).arg(periodMs));
+    }
 }
 
 QString SettingsDialog::workspaceDirectory() const

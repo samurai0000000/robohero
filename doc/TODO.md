@@ -58,3 +58,8 @@ libs/
 
 4. **Application Bootstrap Helper (`AppInit`)**:
    - Standard function `RoboHero::initApplication(QApplication &app)` to register all required Qt meta-types (`std::array<int, 17>`, `std::array<bool, 17>`, `std::array<double, 17>`) and configure default OpenGL surface formats.
+
+5. **Rate-Limited Transmission Engine (`PoseBroadcaster`)**:
+   - Built-in transmission throttling to decouple high-frequency UI/kinematics loops (50–60 Hz) from network transmission ($\le 25\text{ Hz}$).
+   - Configurable transmit rate (default 20 Hz / 50 ms) to prevent saturating the robot's ESP8266 controller.
+   - Built-in trailing-edge debouncer for interactive controls (sliders, joysticks, sensors) to prevent event flood.

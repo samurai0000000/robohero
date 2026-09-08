@@ -113,6 +113,25 @@ When processing incoming packets on `robot/robohero/<robot_id>/control`:
 - All `RH_TLV_SERVO` items inside `RH_MSG_SET_PWM` (or `RH_MSG_STATUS`) are applied to the PCA9685 / GPIO12 controllers.
 - Telemetry TLVs such as `RH_TLV_VOLTAGE` or `RH_TLV_TIME` are ignored cleanly without interrupting the parsing loop.
 
+### 4.4 Transmission Rate Budgeting & Flow Control
+To guarantee responsive robot performance without packet loss or jitter, clients MUST adhere to the following transmission rate constraints:
+
+1. **Recommended Publish Rate**: **15 Hz – 25 Hz** (default **20 Hz / 50 ms**).
+2. **Maximum Safe Burst Rate**: $\le 30\text{ Hz}$. Clients transmitting above 30 Hz risk overwhelming the ESP8266 LwIP socket buffers.
+3. **The "Pause-and-Go" Phenomenon**:
+   - The robot controller outputs servo pulses via PCA9685 at **54 Hz**.
+   - The ESP8266 drives the PCA9685 over software bit-banged I2C and automatically transmits `RH_MSG_STATUS` telemetry whenever a servo position changes.
+   - When clients flood incoming commands at 50–100+ Hz, bidirectional TCP traffic exhausts the ESP8266's small packet pool. LwIP triggers TCP zero-window flow control and retransmissions, creating periodic stalls ("pauses") followed by burst flushes ("go").
+4. **Decouple UI Evaluation from Network Transmission**:
+   - Local 3D rendering engines (Three.js, Qt OpenGL) should evaluate kinematics at 50–60 Hz for fluid user experience.
+   - Network transmission should run on an independent timer/throttle capped at $\le 25\text{ Hz}$.
+5. **Interactive UI Throttling (Trailing-Edge Pattern)**:
+   - Interactive UI sliders, joysticks, or gesture trackers must never publish unthrottled on raw event callbacks.
+   - Clients must implement a single-shot trailing-edge throttle timer:
+     - On first event: transmit immediately and arm timer for $T = 1000 / \text{rate\_hz}$ ms.
+     - On subsequent events while timer is active: mark update as pending.
+     - On timer timeout: if an update is pending, transmit the latest pose and re-arm timer.
+
 ---
 
 ## 5. Servo Channel Mapping & Calibration Reference
