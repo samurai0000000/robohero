@@ -12,6 +12,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <array>
 #include "MainWindow.hxx"
 #include "UrdfLimits.hxx"
 #include "MotionLibrary.hxx"
@@ -121,6 +122,10 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
+
+    qRegisterMetaType<std::array<int, 17>>("std::array<int, 17>");
+    qRegisterMetaType<std::array<bool, 17>>("std::array<bool, 17>");
+    qRegisterMetaType<std::array<double, 17>>("std::array<double, 17>");
 
     QCoreApplication::setOrganizationName("RoboHero");
     QCoreApplication::setApplicationName("RoboHeroMotion");

@@ -134,6 +134,10 @@ private:
     // Current Motion Data
     MotionSequence _currentSequence;
     QString _currentFilePath;
+
+    // Telemetry state
+    std::array<int, 17> _telemPwm;
+    std::array<double, 17> _telemAngles;
 };
 
 #endif

@@ -51,6 +51,12 @@ MainWindow::MainWindow(QWidget *parent)
     , _mqttStatusBadge(nullptr)
     , _comStabilityBadge(nullptr)
 {
+    for (int ch = 0; ch < 17; ++ch) {
+        int center = UrdfLimits::instance().getCalibration(ch).center;
+        _telemPwm[ch] = center;
+        _telemAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, center);
+    }
+
     setWindowTitle("RoboHero Motion & Gait Studio");
     setWindowIcon(QIcon(":/icons/robohero_icon.png"));
     resize(1400, 900);
@@ -60,7 +66,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_mqttClient, &MqttClient::connected, this, &MainWindow::onMqttConnected);
     connect(_mqttClient, &MqttClient::disconnected, this, &MainWindow::onMqttDisconnected);
     connect(_mqttClient, &MqttClient::connectionError, this, &MainWindow::onMqttError);
-    connect(_mqttClient, &MqttClient::telemetryReceived, this, &MainWindow::onTelemetryReceived);
+    connect(_mqttClient, &MqttClient::telemetryReceived, this, &MainWindow::onTelemetryReceived,
+            Qt::QueuedConnection);
 
     _player = new MotionPlayer(this);
     _player->setMqttClient(_mqttClient);
@@ -830,19 +837,25 @@ void MainWindow::onMqttError(const QString &msg)
 void MainWindow::onTelemetryReceived(const std::array<int, 17> &pwmValues,
                                      const std::array<bool, 17> &validMask)
 {
-    std::array<double, 17> telemAngles;
+    bool updated = false;
     const auto &limits = UrdfLimits::instance();
-    for (int i = 0; i < 17; ++i) {
-        telemAngles[i] = limits.pwmToAngle(i, pwmValues[i]);
+    for (int ch = 0; ch < 17; ++ch) {
+        if (validMask[ch]) {
+            _telemPwm[ch] = pwmValues[ch];
+            _telemAngles[ch] = limits.pwmToAngle(ch, pwmValues[ch]);
+            updated = true;
+        }
     }
 
-    if (_viewerMain) {
-        _viewerMain->setTelemetryJointAngles(telemAngles, validMask);
-        _viewerMain->setTelemetryJointPwm(pwmValues, validMask);
-    }
-    if (_viewerTelem) {
-        _viewerTelem->setJointAngles(telemAngles);
-        _viewerTelem->setJointPwm(pwmValues);
+    if (updated) {
+        if (_viewerMain) {
+            _viewerMain->setTelemetryJointAngles(_telemAngles, validMask);
+            _viewerMain->setTelemetryJointPwm(_telemPwm, validMask);
+        }
+        if (_viewerTelem) {
+            _viewerTelem->setJointAngles(_telemAngles);
+            _viewerTelem->setJointPwm(_telemPwm);
+        }
     }
 }
 

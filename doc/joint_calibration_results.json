@@ -16,10 +16,10 @@
       "group": "left_leg",
       "axis": [1, 0, 0],
       "center_pwm": 160,
-      "sign": 1.0,
+      "sign": -1.0,
       "pwm_range": [80, 180],
-      "degree_range": [-25.0, 75.0],
-      "urdf_limits": { "lower": -0.4363, "upper": 1.3090 },
+      "degree_range": [-25.0, 80.0],
+      "urdf_limits": { "lower": -0.4363, "upper": 1.3963 },
       "baseline_trim": 0,
       "recommended_trim": -5
     },
