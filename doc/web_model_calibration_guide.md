@@ -139,7 +139,7 @@ Generates `<limit lower="..." upper="..." effort="1.2" velocity="3.14"/>` XML ta
 Generates the complete JavaScript dictionary for `CHANNEL_MAP`:
 ```javascript
 export const CHANNEL_MAP = {
-  0 : { name: 'left_ankle_roll_joint', group: 'left_leg', label: 'Ankle Roll', center: 160, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -0.4363, upper: 1.3090 },
+  0 : { name: 'left_ankle_roll_joint', group: 'left_leg', label: 'Ankle Roll', center: 160, sign:  1.0, radPerPwm: (Math.PI / 180), lower: -1.3963, upper: 0.4363 },
   ...
 };
 ```

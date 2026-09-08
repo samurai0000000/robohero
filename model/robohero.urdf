@@ -440,7 +440,7 @@
     <parent link="left_ankle_pitch_link"/>
     <child link="left_foot_link"/>
     <axis xyz="1 0 0"/>
-    <limit lower="-0.4363" upper="1.3963" effort="1.5" velocity="3.14"/>
+    <limit lower="-1.3963" upper="0.4363" effort="1.5" velocity="3.14"/>
   </joint>
 
   <link name="left_foot_link">

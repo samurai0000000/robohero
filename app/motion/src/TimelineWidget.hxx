@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QDoubleSpinBox>
 #include <vector>
 #include "MotionSequence.hxx"
 
@@ -43,6 +44,7 @@ public:
 
 signals:
     void timeChanged(int timeMs);
+    void durationChanged(int durationMs);
     void playToggled(bool playing);
     void stopClicked();
     void loopToggled(bool loop);
@@ -60,6 +62,7 @@ private slots:
     void onAddKeyframeBtnClicked();
     void onDeleteKeyframeBtnClicked();
     void onTrackKeyframeClicked(int keyframeIndex, int timeMs);
+    void onDurationSpinChanged(double val);
 
 private:
     void setupUi();
@@ -77,6 +80,7 @@ private:
     QCheckBox *_syncCheck;
     QPushButton *_addKfBtn;
     QPushButton *_delKfBtn;
+    QDoubleSpinBox *_durationSpin;
     QLabel *_timeLabel;
     QSlider *_slider;
     TimelineTrackWidget *_trackWidget;

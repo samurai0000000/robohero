@@ -23,7 +23,7 @@ The true physical angular scaling factor was calibrated using differential angle
 
 | Ch | Joint Name | Standby Center | Measured PWM Range | Measured Degree Range | Calibrated URDF Limits (`lower`, `upper`) | Mechanical Stop / Clearance Notes |
 |:---:|:---|:---:|:---:|:---:|:---|:---|
-| **0** | `left_ankle_roll_joint` | 160 | `[80, 180]` | `[-25.0°, +75.0°]` | `lower="-0.4363" upper="1.3090"` | $+75^\circ$ inward tilt / $-25^\circ$ outward tilt |
+| **0** | `left_ankle_roll_joint` | 160 | `[80, 180]` | `[-80.0°, +25.0°]` | `lower="-1.3963" upper="0.4363"` | $-80^\circ$ inward tilt / $+25^\circ$ outward tilt |
 | **1** | `left_ankle_pitch_joint` | 161 | `[115, 245]` | `[-45.0°, +90.0°]` | `lower="-0.7854" upper="1.5708"` | $+90^\circ$ toes up / $-45^\circ$ toes down |
 | **2** | `left_knee_pitch_joint` | 141 | `[38, 180]` | `[-40.0°, +90.0°]` | `lower="-0.6981" upper="1.5708"` | $+90^\circ$ backward flexion / $-40^\circ$ forward kick |
 | **3** | `left_hip_pitch_joint` | 168 | `[65, 200]` | `[-40.0°, +90.0°]` | `lower="-0.6981" upper="1.5708"` | $+90^\circ$ forward kick / $-40^\circ$ backward extension |

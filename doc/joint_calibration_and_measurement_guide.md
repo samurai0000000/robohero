@@ -80,12 +80,20 @@ To ensure high statistical confidence across all 16 body servos (which share ide
 | **CH 12**: `right_hip_pitch_joint` | Sagittal ($Z-X$) | Torso vertical side line | Thigh swings Forward | Thigh swings Backward |
 | **CH 13**: `right_knee_pitch_joint` | Sagittal ($Z-X$) | Thigh longitudinal axis | Shin bends Backward (flexion) | Shin extends Forward (kick) |
 | **CH 14**: `right_ankle_pitch_joint` | Sagittal ($Z-X$) | Shin vertical axis ($90^\circ$ to sole) | Foot pitches Toes Down | Foot pitches Toes Up |
-| **CH 15**: `right_ankle_roll_joint` | Frontal ($Z-Y$) | Foot sole ground plane | Outer edge Down (eversion) | Outer edge Up (inversion) |
+| **CH 15**: `right_ankle_roll_joint` | Frontal ($Z-Y$) | Foot sole ground plane | Inward tilt / Inversion ($+70^\circ$) | Outward tilt / Eversion ($-25^\circ$) |
 | **CH 4**: `left_hip_roll_joint` | Frontal ($Z-Y$) | Pelvis vertical midline | Leg swings Inward | Leg swings Outward |
 | **CH 3**: `left_hip_pitch_joint` | Sagittal ($Z-X$) | Torso vertical side line | Thigh swings Backward | Thigh swings Forward |
 | **CH 2**: `left_knee_pitch_joint` | Sagittal ($Z-X$) | Thigh longitudinal axis | Shin extends Forward (kick) | Shin bends Backward (flexion) |
 | **CH 1**: `left_ankle_pitch_joint` | Sagittal ($Z-X$) | Shin vertical axis ($90^\circ$ to sole) | Foot pitches Toes Up | Foot pitches Toes Down |
-| **CH 0**: `left_ankle_roll_joint` | Frontal ($Z-Y$) | Foot sole ground plane | Outer edge Up (inversion) | Outer edge Down (eversion) |
+| **CH 0**: `left_ankle_roll_joint` | Frontal ($Z-Y$) | Foot sole ground plane | Outward tilt / Eversion ($+25^\circ$) | Inward tilt / Inversion ($-80^\circ$) |
+
+> [!NOTE]
+> **Bilateral Ankle Roll Coordinate Convention & Symmetry**:
+> Both `left_ankle_roll_joint` (CH 0) and `right_ankle_roll_joint` (CH 15) define their URDF rotation axis as $+X = [1, 0, 0]$ (pointing forward).
+> - Because both roll joints share the same forward $+X$ axis vector, a roll rotation produces **opposite anatomical effects** across the bilateral midline:
+>   - For the **Right Ankle (CH 15)**: Positive rotation ($+\theta$) tilts the foot sole inward (inversion), allowing up to $+70^\circ$ bracket clearance before collision; negative rotation ($-\theta$) tilts outward (eversion) with only $-25^\circ$ clearance $\rightarrow$ calibrated range: **`[-25.0°, +70.0°]`** (`lower="-0.4363" upper="1.2217"`).
+>   - For the **Left Ankle (CH 0)**: Positive rotation ($+\theta$) tilts the foot sole outward (eversion) with only $+25^\circ$ clearance; negative rotation ($-\theta$) tilts inward (inversion) with large $-80^\circ$ clearance $\rightarrow$ calibrated range: **`[-80.0°, +25.0°]`** (`lower="-1.3963" upper="0.4363"`).
+> - Servo sign for both channels is **`+1.0`** (increasing PWM commands positive rotation).
 
 ---
 

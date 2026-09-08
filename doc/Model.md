@@ -76,16 +76,37 @@ All companion applications derive their models and kinematics parameters from `m
 - **Runtime Derivation**:
   - `app/web/src/viewer/RobotModel.js` imports `model/calibration.json` dynamically to construct its `CHANNEL_MAP` and loads `./model/robohero.urdf` into Three.js with `urdf-loader`.
 
-### 2.2 Desktop Teleoperation (`app/teleop`) & Motion Studio (`app/motion`)
-- **Build Mechanism**: Qt Resource system (`teleop_resources.qrc` and `motion_resources.qrc`) packages `../../model/robohero.urdf` as `:/model/robohero.urdf` and `../../model/calibration.json` as `:/model/calibration.json`.
+### 2.2 Desktop Teleoperation (`app/teleop`)
+- **Build Mechanism**: Qt Resource system (`teleop_resources.qrc`) packages `../../model/robohero.urdf` as `:/model/robohero.urdf` and `../../model/calibration.json` as `:/model/calibration.json`.
 - **CMake Dependency**: `CMakeLists.txt` declares `OBJECT_DEPENDS` on `model/*` so modifying model files automatically triggers `rcc` re-compilation.
 - **Runtime Derivation**:
   - `UrdfLimits::instance().init(":/model/robohero.urdf", ":/model/calibration.json")` parses `calibration.json` via Qt's `QJsonDocument` and verifies XML joint limits dynamically.
+  - **Vision Retargeting Scope**: The MediaPipe vision pipeline retargets arm pitch/roll, elbow bends, hip/knee pitch, and head yaw from the operator's webcam stream. Lower extremity roll joints (`left_ankle_roll_joint` / CH 0 and `right_ankle_roll_joint` / CH 15) are **not tracked** and remain stationary at neutral standby ($0.0\text{ rad}$ / $PWM_0$).
 
-### 2.3 Android Mobile App (`app/android`)
+### 2.3 Motion Studio (`app/motion`)
+- **Build Mechanism**: Qt Resource system (`motion_resources.qrc`) packages `../../model/robohero.urdf` and `../../model/calibration.json`.
+- **Runtime Derivation**:
+  - Exposes degree sliders strictly bounded to `[degree_range[0], degree_range[1]]` derived from `calibration.json` / `urdf_limits`.
+  - Converts user slider angles to PWM counts in real time. Because it is the first companion tool to enforce kinematics limits directly on GUI sliders, any mismatch in `urdf_limits` or `sign` immediately manifests here.
+
+### 2.4 Android Mobile App (`app/android`)
 - **Build Mechanism**: `app/android/app/build.gradle.kts` adds `../../model` to `sourceSets["main"].assets.srcDirs`.
 - **Runtime Derivation**:
-  - `TrimDefinitions.defaultTrims(context)` parses `model/calibration.json` via Android's `AssetManager` and `org.json.JSONObject`.
+  - `TrimDefinitions.defaultTrims(context)` parses `model/calibration.json` via Android's `AssetManager` and `org.json.JSONObject` solely for the `"trims"` dictionary (`[-125, +125]` EEPROM offsets). It does not compute joint kinematics or limit bounds.
+
+### 2.5 Command Line Interface (`app/cli`)
+- **Runtime Operation**: Sends raw PWM command strings (`pwm <ch> <val>`) directly to the controller via serial or TCP/UDP socket without kinematics constraints or limit checks.
+
+### 2.6 Control Paradigms: Raw PWM vs. Degree-Bounded Kinematics
+Understanding why different subprojects exhibit or mask limit anomalies is fundamental:
+
+| Application | Control Input | Kinematic Limits Enforced? | Ankle Roll (CH 0) Exercised? | Behavior Under Bad `urdf_limits` |
+|---|---|:---:|:---:|---|
+| **`app/web`** | Raw PWM counts (`[1, 270]`) | ❌ No (Direct PWM) | ✅ Yes (Sliders 80..180) | Unaffected; user can move PWM freely |
+| **`app/cli`** | Raw PWM commands | ❌ No (Bypass) | ✅ Yes | Unaffected; sends raw PWM to firmware |
+| **`app/teleop`** | Webcam Pose Tracking | ✅ Yes (MediaPipe $\to$ rad) | ❌ No (Pinned at $0.0\text{ rad}$) | Unaffected; joint is not retargeted |
+| **`app/android`**| Trim Offsets (`[-125, +125]`)| ❌ No (EEPROM only) | ❌ No | Unaffected; only edits EEPROM trims |
+| **`app/motion`** | Joint Degrees ($\theta^\circ$) | ✅ **Yes** (`urdf_limits`) | ✅ **Yes** (Timeline & Keyframes) | **Fails if limits/signs are incorrect** |
 
 ---
 
@@ -104,7 +125,7 @@ $$\theta = (\text{pwm} - \text{center}) \times \text{rad\_per\_pwm} \times \text
 
 | Ch | URDF Joint Name | Group | Axis | Center | Sign | Plane | Positive Direction ($+\theta$) | Negative Direction ($-\theta$) |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **0** | `left_ankle_roll_joint` | Left Leg | `1 0 0` | 160 | **-1.0** | Frontal | Outer sole up (Inversion) | Outer sole down (Eversion) |
+| **0** | `left_ankle_roll_joint` | Left Leg | `1 0 0` | 160 | **+1.0** | Frontal | Outer sole down (Eversion) | Outer sole up (Inversion) |
 | **1** | `left_ankle_pitch_joint` | Left Leg | `0 1 0` | 161 | **-1.0** | Sagittal | Toes pitch up (Dorsiflexion) | Toes pitch down (Plantarflexion) |
 | **2** | `left_knee_pitch_joint` | Left Leg | `0 1 0` | 141 | **-1.0** | Sagittal | Knee extends forward (Kick) | Knee flexes backward (Bend) |
 | **3** | `left_hip_pitch_joint` | Left Leg | `0 1 0` | 168 | **+1.0** | Sagittal | Thigh swings backward | Thigh swings forward |
@@ -121,6 +142,22 @@ $$\theta = (\text{pwm} - \text{center}) \times \text{rad\_per\_pwm} \times \text
 | **14**| `right_ankle_pitch_joint`| Right Leg | `0 1 0` | 165 | **+1.0** | Sagittal | Toes pitch down (Plantarflexion)| Toes pitch up (Dorsiflexion) |
 | **15**| `right_ankle_roll_joint` | Right Leg | `1 0 0` | 162 | **+1.0** | Frontal | Outer sole down (Eversion) | Outer sole up (Inversion) |
 | **16**| `head_yaw_joint` | Head | `0 0 1` | 90 | **+1.0** | Transverse| Head pans left | Head pans right |
+
+### 3.1 Bilateral Roll Symmetry & Ankle Coordinate Convention
+
+Both `left_ankle_roll_joint` (CH 0) and `right_ankle_roll_joint` (CH 15) define their URDF rotation axis as $+X = [1, 0, 0]$ (pointing forward).
+
+Because both roll joints share the same forward axis vector $+X$, a positive rotation ($+\theta$) tilts the $+Y$ link upward and $-Y$ link downward. However, because the feet sit on opposite sides of the sagittal midline, this produces **opposite anatomical effects**:
+- **Right Foot (CH 15, on $-Y$ side of pelvis)**:
+  - Positive rotation ($+\theta$): Tilts the sole inward (Inversion), reaching up to $+70.0^\circ$ bracket clearance before collision.
+  - Negative rotation ($-\theta$): Tilts the sole outward (Eversion), with only $-25.0^\circ$ clearance.
+  - Calibrated range: **`[-25.0°, +70.0°]`** (`lower="-0.4363" upper="1.2217"`).
+- **Left Foot (CH 0, on $+Y$ side of pelvis)**:
+  - Positive rotation ($+\theta$): Tilts the sole outward (Eversion), with only $+25.0^\circ$ clearance.
+  - Negative rotation ($-\theta$): Tilts the sole inward (Inversion), reaching up to $-80.0^\circ$ bracket clearance before collision.
+  - Calibrated range: **`[-80.0°, +25.0°]`** (`lower="-1.3963" upper="0.4363"`).
+- **Common Servo Sign**:
+  Both channels use `sign: +1.0`, meaning higher PWM commands positive rotation ($+\theta$) and lower PWM commands negative rotation ($-\theta$).
 
 ---
 
@@ -141,8 +178,15 @@ For every joint channel:
 1. Transforming the physical PWM operating bounds $[\text{pwm}_{\min}, \text{pwm}_{\max}]$ through the kinematic conversion formula MUST span the URDF angular limits without clipping:
    $$\min(\theta(\text{pwm}_{\min}), \theta(\text{pwm}_{\max})) \approx \text{urdf\_limits.lower}$$
    $$\max(\theta(\text{pwm}_{\min}), \theta(\text{pwm}_{\max})) \approx \text{urdf\_limits.upper}$$
-2. **Pitfall Alert (Sign Inversion Bug)**:
-   If `sign` is incorrectly inverted (e.g., set to `+1.0` instead of `-1.0` on Channel 0), $\text{pwm}_{\min}$ produces a negative angle that falls far below `urdf_limits.lower`. Clamping at `lower` will discard all PWM values between $\text{pwm}_{\min}$ and the center offset, severely crippling slider travel and preventing the robot from achieving its calibrated range of motion.
+
+2. **Pitfall Alert (Sign Inversion & Asymmetric Bounds Bug)**:
+   Never invert the kinematic `sign` (e.g. changing `+1.0` to `-1.0`) to force-fit asymmetric limit bounds:
+   - On `left_ankle_roll_joint` (CH 0), the physical operating range is $PWM \in [80, 180]$ around center $160$.
+   - The large travel of $80$ counts ($PWM 80$) corresponds to $-80.0^\circ$, while the small travel of $20$ counts ($PWM 180$) corresponds to $+25.0^\circ$.
+   - An earlier misconfiguration assigned the symmetric-looking bounds `[-25.0°, +75.0°]` (copying the right ankle's positive large travel) and set `sign: -1.0` to reach $PWM 80$ at positive angles. This resulted in two critical failures:
+     1. **Reversed Physical Motion**: In the Motion Editor, moving the slider to positive angles commanded lower PWM, causing the physical servo to turn in reverse while the 3D model turned forward.
+     2. **Slider Travel Truncation**: Clamping to lower bound $-25.0^\circ$ prevented the user from commanding PWM below $135$, discarding $55^\circ$ ($55$ PWM counts) of valid physical motion.
+   - The correct configuration is `sign: +1.0`, `degree_range: [-80.0, 25.0]`, and `urdf_limits: { "lower": -1.3963, "upper": 0.4363 }`.
 
 ### 4.3 Degree Range Synchronization
 `model/calibration.json` specifies both `degree_range` (in degrees) and `urdf_limits` (in radians). Companion tools must ensure:

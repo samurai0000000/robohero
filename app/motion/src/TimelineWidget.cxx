@@ -155,6 +155,7 @@ TimelineWidget::TimelineWidget(QWidget *parent)
     , _syncCheck(nullptr)
     , _addKfBtn(nullptr)
     , _delKfBtn(nullptr)
+    , _durationSpin(nullptr)
     , _timeLabel(nullptr)
     , _slider(nullptr)
     , _trackWidget(nullptr)
@@ -211,6 +212,28 @@ void TimelineWidget::setupUi()
     connect(_delKfBtn, &QPushButton::clicked, this, &TimelineWidget::onDeleteKeyframeBtnClicked);
     controlsLayout->addWidget(_delKfBtn);
 
+    controlsLayout->addSpacing(12);
+
+    auto *durLabel = new QLabel("Duration:", this);
+    durLabel->setStyleSheet("color: #aaaaaa; font-weight: bold; font-size: 11px;");
+    controlsLayout->addWidget(durLabel);
+
+    _durationSpin = new QDoubleSpinBox(this);
+    _durationSpin->setRange(0.1, 60.0);
+    _durationSpin->setSingleStep(0.1);
+    _durationSpin->setDecimals(1);
+    _durationSpin->setSuffix(" s");
+    _durationSpin->setValue(static_cast<double>(_durationMs) / 1000.0);
+    _durationSpin->setFixedWidth(75);
+    _durationSpin->setToolTip("Total motion sequence duration in seconds (0.1s to 60.0s)");
+    _durationSpin->setStyleSheet(
+        "QDoubleSpinBox { background: #1e1e24; color: #00ADB5; border: 1px solid #33333d; border-radius: 4px; padding: 2px 4px; font-weight: bold; }"
+        "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 14px; }"
+    );
+    connect(_durationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &TimelineWidget::onDurationSpinChanged);
+    controlsLayout->addWidget(_durationSpin);
+
     controlsLayout->addStretch();
 
     _timeLabel = new QLabel("00:00.000 / 00:01.600", this);
@@ -247,6 +270,11 @@ void TimelineWidget::setupUi()
 void TimelineWidget::setDuration(int durationMs)
 {
     _durationMs = std::max(10, durationMs);
+    if (_durationSpin) {
+        _durationSpin->blockSignals(true);
+        _durationSpin->setValue(static_cast<double>(_durationMs) / 1000.0);
+        _durationSpin->blockSignals(false);
+    }
     _slider->blockSignals(true);
     _slider->setRange(0, _durationMs);
     _slider->blockSignals(false);
@@ -358,6 +386,19 @@ void TimelineWidget::onTrackKeyframeClicked(int keyframeIndex, int timeMs)
     setTime(timeMs);
     emit keyframeSelected(keyframeIndex);
     emit timeChanged(timeMs);
+}
+
+void TimelineWidget::onDurationSpinChanged(double val)
+{
+    int newDurationMs = static_cast<int>(std::round(val * 1000.0));
+    newDurationMs = std::max(100, newDurationMs);
+    _durationMs = newDurationMs;
+    _slider->blockSignals(true);
+    _slider->setRange(0, _durationMs);
+    _slider->blockSignals(false);
+    _trackWidget->setDuration(_durationMs);
+    updateTimeLabel();
+    emit durationChanged(newDurationMs);
 }
 
 void TimelineWidget::updateTimeLabel()

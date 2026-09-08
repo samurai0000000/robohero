@@ -48,6 +48,7 @@ private slots:
     void onAddKeyframeRequested(int timeMs);
     void onDeleteKeyframeRequested(int index);
     void onKeyframeSelected(int index);
+    void onTimelineDurationChanged(int durationMs);
 
     // Motion Library
     void onMotionLoadRequested(const QString &filePath);

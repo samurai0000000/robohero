@@ -197,6 +197,7 @@ void MainWindow::setupUi()
     connect(_timelineWidget, &TimelineWidget::addKeyframeRequested, this, &MainWindow::onAddKeyframeRequested);
     connect(_timelineWidget, &TimelineWidget::deleteKeyframeRequested, this, &MainWindow::onDeleteKeyframeRequested);
     connect(_timelineWidget, &TimelineWidget::keyframeSelected, this, &MainWindow::onKeyframeSelected);
+    connect(_timelineWidget, &TimelineWidget::durationChanged, this, &MainWindow::onTimelineDurationChanged);
 
     vSplitter->addWidget(_timelineWidget);
     vSplitter->setStretchFactor(0, 1);
@@ -648,6 +649,15 @@ void MainWindow::onKeyframeSelected(int index)
     if (index >= 0 && index < static_cast<int>(kfs.size())) {
         _statusMessageLabel->setText(QString("Selected keyframe %1 at %2 ms").arg(index).arg(kfs[index].timeMs));
     }
+}
+
+void MainWindow::onTimelineDurationChanged(int durationMs)
+{
+    _currentSequence.setDurationMs(durationMs);
+    _player->setMotion(_currentSequence, false);
+    _statusMessageLabel->setText(QString("Set motion sequence duration to %1 ms (%2 s)")
+                                 .arg(durationMs)
+                                 .arg(static_cast<double>(durationMs) / 1000.0, 0, 'f', 1));
 }
 
 void MainWindow::onMotionLoadRequested(const QString &filePath)
