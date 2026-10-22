@@ -26,6 +26,8 @@
 #include "MotionLibraryWidget.hxx"
 #include "MotionPlayer.hxx"
 #include "MqttClient.hxx"
+#include "SelfUpdateDialog.hxx"
+#include "Version.hxx"
 
 class SettingsDialog;
 
@@ -35,7 +37,22 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(
+        std::shared_ptr<selfupdate::SelfUpdateController> updateController,
+        QWidget *parent = nullptr);
     ~MainWindow() override;
+
+    static selfupdate::AppConfig defaultSelfUpdateConfig();
+
+    selfupdate::SelfUpdateController *selfUpdateController() const;
+    std::shared_ptr<selfupdate::SelfUpdateController> selfUpdateControllerShared() const;
+    void setSelfUpdateController(
+        std::shared_ptr<selfupdate::SelfUpdateController> controller);
+    const selfupdate::UpdateState &currentSelfUpdateState() const;
+    void checkForAppUpdates(bool isManual = false);
+
+    QString updateStatusBadgeText() const;
+    bool isUpdateStatusBadgeVisible() const;
 
 private slots:
     // Playback and timeline
@@ -80,9 +97,12 @@ private slots:
     void onStopHardwareClicked();
     void onSettingsClicked();
     void onSettingsApplied();
+    void onCheckForUpdatesClicked();
+    void onAboutClicked();
 
 private:
     void setupUi();
+    void setupMenus();
     void setupToolbar();
     void setupStatusBar();
     void setupJointSliders(QWidget *parent);
@@ -90,6 +110,8 @@ private:
     void applyTheme();
     void updateJointSliders(const std::array<double, 17> &angles, const std::array<int, 17> &pwm);
     void connectMqtt();
+    void bindSelfUpdateController();
+    void onSelfUpdateStateChanged(const selfupdate::UpdateState &state);
 
     // Core engines
     UrdfViewerWidget *_viewerMain;
@@ -135,6 +157,12 @@ private:
     QLabel *_statusMessageLabel;
     QLabel *_mqttStatusBadge;
     QLabel *_comStabilityBadge;
+    QPushButton *_updateStatusBadge;
+
+    // Self-Update Controller
+    std::shared_ptr<selfupdate::SelfUpdateController> _updateController;
+    selfupdate::UpdateState _currentUpdateState;
+    bool _startupCheckPending;
 
     // Current Motion Data
     MotionSequence _currentSequence;

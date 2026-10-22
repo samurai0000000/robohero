@@ -23,10 +23,13 @@ import com.selfso.robohero.ui.components.RoboHeroButton
 import com.selfso.robohero.ui.components.RoboHeroButtonType
 import com.selfso.robohero.ui.components.SectionCard
 import com.selfso.robohero.ui.theme.*
+import com.selfso.selfupdate.SelfUpdateController
+import com.selfso.selfupdate.UpdateState
 
 @Composable
 fun SettingsScreen(
     settings: RobotSettingsState = RobotSettingsState(),
+    updateController: SelfUpdateController? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -59,6 +62,52 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // SOFTWARE UPDATE (OTA) CARD
+        if (updateController != null) {
+            val updateState by updateController.state.collectAsState()
+            SectionCard(title = "Software Update (Selfso OTA)") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val statusText = when (val s = updateState) {
+                        is UpdateState.Idle -> "Ready to check for updates from selfso.com"
+                        is UpdateState.Checking -> "Checking for updates..."
+                        is UpdateState.UpToDate -> "Up to date (v${s.installedVersionName}, build ${s.installedVersionCode})"
+                        is UpdateState.Available -> "Update available: v${s.manifest.versionName} (installed: v${s.installedVersionName})"
+                        is UpdateState.Downloading -> "Downloading v${s.manifest.versionName}..."
+                        is UpdateState.ReadyToInstall -> "Update v${s.manifest.versionName} ready to install"
+                        is UpdateState.PermissionRequired -> "Permission required to install unknown apps"
+                        is UpdateState.Installing -> "Installing update v${s.manifest.versionName}..."
+                        is UpdateState.Error -> "Update check error: ${s.message}"
+                    }
+                    Text(
+                        text = statusText,
+                        color = TextMain,
+                        fontSize = 13.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        RoboHeroButton(
+                            text = if (updateState is UpdateState.Checking) "Checking..." else "Check for Updates",
+                            type = RoboHeroButtonType.OUTLINE,
+                            enabled = updateState !is UpdateState.Checking && updateState !is UpdateState.Downloading,
+                            modifier = Modifier.weight(1f),
+                            onClick = { updateController.checkForUpdates() }
+                        )
+                        if (updateState is UpdateState.Available) {
+                            RoboHeroButton(
+                                text = "Download & Install",
+                                type = RoboHeroButtonType.SUCCESS,
+                                enabled = true,
+                                modifier = Modifier.weight(1f),
+                                onClick = { updateController.downloadAndInstall() }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // INFO / DISABLED BANNER
         Box(
             modifier = Modifier

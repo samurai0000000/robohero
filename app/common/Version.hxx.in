@@ -1,0 +1,37 @@
+/*
+ * Version.hxx.in
+ *
+ * Copyright (C) 2026, Charles Chiou
+ */
+
+#ifndef ROBOHERO_VERSION_HXX
+#define ROBOHERO_VERSION_HXX
+
+namespace robohero {
+
+inline constexpr const char *ROBOHERO_VERSION_STRING = "@PROJECT_VERSION@";
+inline constexpr int ROBOHERO_VERSION_MAJOR = @PROJECT_VERSION_MAJOR@;
+inline constexpr int ROBOHERO_VERSION_MINOR = @PROJECT_VERSION_MINOR@;
+inline constexpr int ROBOHERO_VERSION_PATCH = @PROJECT_VERSION_PATCH@;
+inline constexpr int ROBOHERO_VERSION_CODE =
+    (@PROJECT_VERSION_MAJOR@ * 10000) + (@PROJECT_VERSION_MINOR@ * 100) + @PROJECT_VERSION_PATCH@;
+
+} // namespace robohero
+
+using robohero::ROBOHERO_VERSION_STRING;
+using robohero::ROBOHERO_VERSION_MAJOR;
+using robohero::ROBOHERO_VERSION_MINOR;
+using robohero::ROBOHERO_VERSION_PATCH;
+using robohero::ROBOHERO_VERSION_CODE;
+
+#endif // ROBOHERO_VERSION_HXX
+
+/*
+ * Local variables:
+ * mode: C++
+ * c-file-style: "BSD"
+ * c-basic-offset: 4
+ * tab-width: 4
+ * indent-tabs-mode: nil
+ * End:
+ */

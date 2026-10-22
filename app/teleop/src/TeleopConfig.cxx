@@ -33,6 +33,10 @@ TeleopConfig::TeleopConfig()
 
 std::string TeleopConfig::getDefaultConfigPath()
 {
+    const char *envPath = std::getenv("ROBOHERO_CONFIG_PATH");
+    if (envPath != nullptr && envPath[0] != '\0') {
+        return envPath;
+    }
 #ifdef _WIN32
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, path))) {

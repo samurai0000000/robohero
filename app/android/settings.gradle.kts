@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "RoboHero"
 include(":app")
+include(":selfupdate")
+project(":selfupdate").projectDir = file("../../../selfupdate/android")

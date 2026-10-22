@@ -9,6 +9,7 @@
 #include <QIcon>
 #include "TeleopConfig.hxx"
 #include "MainWindow.hxx"
+#include "Version.hxx"
 
 int main(int argc, char *argv[])
 {
@@ -23,8 +24,9 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
-    app.setApplicationName("RoboHero Teleoperation");
-    app.setApplicationVersion("1.0.0");
+    Q_INIT_RESOURCE(teleop_resources);
+    app.setApplicationName("RoboHero Teleop");
+    app.setApplicationVersion(QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING));
     app.setWindowIcon(QIcon(":/icons/robohero_head.png"));
 
     TeleopConfig::instance().load();

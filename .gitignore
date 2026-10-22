@@ -1,5 +1,6 @@
 # Build trees
 build/
+plan/
 firmware/build/
 app/teleop/build/
 app/motion/build/
@@ -43,3 +44,4 @@ third_party/opencv/
 
 # Teleop configure/download logs (aqtinstall writes this in cwd)
 aqtinstall.log
+.claude

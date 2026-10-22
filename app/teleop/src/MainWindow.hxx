@@ -18,6 +18,8 @@
 #include "CameraThread.hxx"
 #include "UrdfViewerWidget.hxx"
 #include "MqttClient.hxx"
+#include "SelfUpdateDialog.hxx"
+#include "Version.hxx"
 
 class SettingsDialog;
 
@@ -27,7 +29,22 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(
+        std::shared_ptr<selfupdate::SelfUpdateController> updateController,
+        QWidget *parent = nullptr);
     ~MainWindow() override;
+
+    static selfupdate::AppConfig defaultSelfUpdateConfig();
+
+    selfupdate::SelfUpdateController *selfUpdateController() const;
+    std::shared_ptr<selfupdate::SelfUpdateController> selfUpdateControllerShared() const;
+    void setSelfUpdateController(
+        std::shared_ptr<selfupdate::SelfUpdateController> controller);
+    const selfupdate::UpdateState &currentSelfUpdateState() const;
+    void checkForAppUpdates(bool isManual = false);
+
+    QString updateStatusBadgeText() const;
+    bool isUpdateStatusBadgeVisible() const;
 
 private slots:
     void onFrameReady(const QImage &image, const PoseEstimator::PersonPose &pose);
@@ -46,6 +63,8 @@ private slots:
     void onSettingsClicked();
     void onSettingsApplied();
     void onTxTimerTimeout();
+    void onCheckForUpdatesClicked();
+    void onAboutClicked();
 
 private:
     void setupUi();
@@ -55,6 +74,8 @@ private:
     void restartCamera();
     void connectMqtt();
     void updateAiProviderBadges();
+    void bindSelfUpdateController();
+    void onSelfUpdateStateChanged(const selfupdate::UpdateState &state);
 
     // Core components
     std::shared_ptr<PoseEstimator> _estimator;
@@ -76,8 +97,12 @@ private:
     QLabel *_aiProviderBadge;
     QLabel *_fpsLabel;
     QLabel *_statusMessageLabel;
+    QPushButton *_updateStatusBadge;
 
-    // State & Timers
+    // Self-Update Controller
+    std::shared_ptr<selfupdate::SelfUpdateController> _updateController;
+    selfupdate::UpdateState _currentUpdateState;
+    bool _startupCheckPending;
     bool _teleopActive;
     QTimer _txTimer;
     std::array<int, 17> _commandPwm;

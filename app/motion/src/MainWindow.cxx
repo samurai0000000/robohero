@@ -8,7 +8,10 @@
 #include "UrdfLimits.hxx"
 #include "ParametricGait.hxx"
 #include "SettingsDialog.hxx"
+#include <selfupdate/QtSelfUpdateBridge.hxx>
+#include <selfupdate/UpdateInstaller.hxx>
 
+#include <QCoreApplication>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -21,9 +24,17 @@
 #include <QScrollArea>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QTimer>
 #include <cmath>
 
 MainWindow::MainWindow(QWidget *parent)
+    : MainWindow(nullptr, parent)
+{
+}
+
+MainWindow::MainWindow(
+    std::shared_ptr<selfupdate::SelfUpdateController> updateController,
+    QWidget *parent)
     : QMainWindow(parent)
     , _viewerMain(nullptr)
     , _viewerTelem(nullptr)
@@ -51,6 +62,10 @@ MainWindow::MainWindow(QWidget *parent)
     , _mqttStatusBadge(nullptr)
     , _comStabilityBadge(nullptr)
     , _sliderTxPending(false)
+    , _updateStatusBadge(nullptr)
+    , _updateController(std::move(updateController))
+    , _currentUpdateState()
+    , _startupCheckPending(false)
 {
     for (int ch = 0; ch < 17; ++ch) {
         int center = UrdfLimits::instance().getCalibration(ch).center;
@@ -58,7 +73,11 @@ MainWindow::MainWindow(QWidget *parent)
         _telemAngles[ch] = UrdfLimits::instance().pwmToAngle(ch, center);
     }
 
-    setWindowTitle("RoboHero Motion & Gait Studio");
+    selfupdate::UpdateInstaller::cleanupStaleBackup();
+
+    setWindowTitle(
+        QString("RoboHero Motion & Gait Studio v%1")
+            .arg(QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING)));
     setWindowIcon(QIcon(":/icons/robohero_icon.png"));
     resize(1400, 900);
 
@@ -76,6 +95,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(_player, &MotionPlayer::poseUpdated, this, &MainWindow::onPoseUpdated);
 
     setupUi();
+    setupMenus();
     setupToolbar();
     setupStatusBar();
     applyTheme();
@@ -91,16 +111,43 @@ MainWindow::MainWindow(QWidget *parent)
     _settingsDialog = new SettingsDialog(this);
     connect(_settingsDialog, &SettingsDialog::settingsApplied, this, &MainWindow::onSettingsApplied);
     _player->setTxRateHz(_settingsDialog->txRateHz());
-    if (_settingsDialog->mqttAutoConnect()) {
+    if (_updateController == nullptr &&
+        !qEnvironmentVariableIsSet("ROBOHERO_DISABLE_AUTO_MQTT") &&
+        _settingsDialog->mqttAutoConnect()) {
         connectMqtt();
     }
 
     _sliderTxThrottleTimer.setSingleShot(true);
     connect(&_sliderTxThrottleTimer, &QTimer::timeout, this, &MainWindow::onSliderTxThrottleTimeout);
+
+    const selfupdate::AppConfig defaultCfg = defaultSelfUpdateConfig();
+    if (!_updateController) {
+        _updateController =
+            std::make_shared<selfupdate::SelfUpdateController>(defaultCfg);
+    }
+    bindSelfUpdateController();
+
+    if (defaultCfg.checkOnStartup) {
+        _startupCheckPending = true;
+        QTimer::singleShot(0, this, [this]() {
+            if (_startupCheckPending &&
+                _currentUpdateState.phase == selfupdate::UpdatePhase::Idle) {
+                _startupCheckPending = false;
+                checkForAppUpdates(false);
+            }
+        });
+    }
 }
 
 MainWindow::~MainWindow()
 {
+    if (_updateController) {
+        _updateController->setStateCallback(nullptr);
+        _updateController->setQuitCallback(nullptr);
+        _updateController->setUiDispatcher(nullptr);
+        _updateController->cancel();
+        _updateController.reset();
+    }
 }
 
 void MainWindow::setupUi()
@@ -211,6 +258,17 @@ void MainWindow::setupUi()
     mainLayout->addWidget(vSplitter);
 }
 
+void MainWindow::setupMenus()
+{
+    QMenu *helpMenu = menuBar()->addMenu("&Help");
+    QAction *checkUpdatesAct = helpMenu->addAction("Check for Updates...");
+    connect(checkUpdatesAct, &QAction::triggered, this, &MainWindow::onCheckForUpdatesClicked);
+
+    helpMenu->addSeparator();
+    QAction *aboutAct = helpMenu->addAction("About RoboHero Motion");
+    connect(aboutAct, &QAction::triggered, this, &MainWindow::onAboutClicked);
+}
+
 void MainWindow::setupToolbar()
 {
     auto *toolBar = addToolBar("Main Controls");
@@ -311,6 +369,15 @@ void MainWindow::setupStatusBar()
     _statusMessageLabel = new QLabel("RoboHero Motion & Gait Studio ready.", this);
     _statusMessageLabel->setObjectName("statusMessage");
     statusBar()->addWidget(_statusMessageLabel, 1);
+
+    _updateStatusBadge = new QPushButton(this);
+    _updateStatusBadge->setObjectName("updateStatusBadge");
+    _updateStatusBadge->setVisible(false);
+    _updateStatusBadge->setStyleSheet(
+        "background-color: #00ADB5; color: #ffffff; font-weight: bold; "
+        "padding: 2px 10px; border-radius: 3px;");
+    connect(_updateStatusBadge, &QPushButton::clicked, this, &MainWindow::onCheckForUpdatesClicked);
+    statusBar()->addPermanentWidget(_updateStatusBadge);
 
     _comStabilityBadge = new QLabel("🟢 CoM Stable", this);
     _comStabilityBadge->setStyleSheet("color: #00ff88; font-weight: bold; padding: 0 10px;");
@@ -935,6 +1002,136 @@ void MainWindow::onSettingsApplied()
         MotionLibrary::instance().setCustomWorkspaceDir(_settingsDialog->workspaceDirectory());
         _libraryWidget->refresh();
     }
+}
+
+void MainWindow::onCheckForUpdatesClicked()
+{
+    robohero::SelfUpdateDialog dlg(_updateController, "RoboHero Motion", this);
+    dlg.applyUpdateState(_currentUpdateState);
+    if (_currentUpdateState.phase == selfupdate::UpdatePhase::Idle) {
+        checkForAppUpdates(true);
+    }
+    dlg.exec();
+}
+
+void MainWindow::onAboutClicked()
+{
+    QMessageBox::about(
+        this,
+        "About RoboHero Motion",
+        QString("<b>RoboHero Motion &amp; Gait Studio</b><br>"
+                "Version %1 (Build %2)<br><br>"
+                "Copyright &copy; 2026 Charles Chiou")
+            .arg(QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING))
+            .arg(robohero::ROBOHERO_VERSION_CODE));
+}
+
+selfupdate::AppConfig MainWindow::defaultSelfUpdateConfig()
+{
+    selfupdate::AppConfig cfg;
+    cfg.applicationId = "com.selfso.robohero.motion";
+    cfg.appId = "com.selfso.robohero.motion";
+    cfg.appSlug = "robohero-motion";
+    cfg.slug = "robohero-motion";
+    cfg.displayName = "RoboHero Motion";
+    cfg.installedVersionName = robohero::ROBOHERO_VERSION_STRING;
+    cfg.currentVersion = robohero::ROBOHERO_VERSION_STRING;
+    cfg.installedVersionCode = robohero::ROBOHERO_VERSION_CODE;
+    cfg.currentVersionCode = robohero::ROBOHERO_VERSION_CODE;
+    cfg.manifestUrl = "https://www.selfso.com/software/windows/version.json";
+    cfg.checkOnStartup = true;
+    return cfg;
+}
+
+selfupdate::SelfUpdateController *MainWindow::selfUpdateController() const
+{
+    return _updateController.get();
+}
+
+std::shared_ptr<selfupdate::SelfUpdateController>
+MainWindow::selfUpdateControllerShared() const
+{
+    return _updateController;
+}
+
+void MainWindow::setSelfUpdateController(
+    std::shared_ptr<selfupdate::SelfUpdateController> controller)
+{
+    _startupCheckPending = false;
+    if (_updateController) {
+        _updateController->setStateCallback(nullptr);
+        _updateController->setQuitCallback(nullptr);
+        _updateController->setUiDispatcher(nullptr);
+        _updateController->cancel();
+    }
+    _updateController = std::move(controller);
+    if (_updateController) {
+        bindSelfUpdateController();
+    }
+}
+
+const selfupdate::UpdateState &MainWindow::currentSelfUpdateState() const
+{
+    return _currentUpdateState;
+}
+
+void MainWindow::checkForAppUpdates(bool isManual)
+{
+    _startupCheckPending = false;
+    if (_updateController) {
+        _updateController->checkForUpdates(isManual);
+    }
+}
+
+QString MainWindow::updateStatusBadgeText() const
+{
+    return _updateStatusBadge ? _updateStatusBadge->text() : QString();
+}
+
+bool MainWindow::isUpdateStatusBadgeVisible() const
+{
+    return _updateStatusBadge && !_updateStatusBadge->isHidden();
+}
+
+void MainWindow::bindSelfUpdateController()
+{
+    if (!_updateController) {
+        return;
+    }
+    selfupdate::bindQtController(
+        *_updateController,
+        this,
+        [this](const selfupdate::UpdateState &state) {
+            onSelfUpdateStateChanged(state);
+        },
+        [this]() {
+            close();
+            if (QCoreApplication::instance()) {
+                QCoreApplication::instance()->quit();
+            }
+        });
+    onSelfUpdateStateChanged(_updateController->state());
+}
+
+void MainWindow::onSelfUpdateStateChanged(const selfupdate::UpdateState &state)
+{
+    _currentUpdateState = state;
+    if (_updateStatusBadge) {
+        if (state.phase == selfupdate::UpdatePhase::Available) {
+            _updateStatusBadge->setText(
+                QString("⬆ Update Available (v%1)")
+                    .arg(QString::fromStdString(state.manifest.versionName)));
+            _updateStatusBadge->setVisible(true);
+        } else if (state.phase == selfupdate::UpdatePhase::ReadyToInstall) {
+            _updateStatusBadge->setText(
+                QString("⬆ Ready to Install (v%1)")
+                    .arg(QString::fromStdString(state.manifest.versionName)));
+            _updateStatusBadge->setVisible(true);
+        } else {
+            _updateStatusBadge->setVisible(false);
+        }
+    }
+    robohero::SelfUpdateDialog::broadcastState(_updateController.get(), state);
 }
 
 /*

@@ -8,6 +8,9 @@
 #include "SettingsDialog.hxx"
 #include "TeleopConfig.hxx"
 #include "UrdfLimits.hxx"
+#include <selfupdate/QtSelfUpdateBridge.hxx>
+#include <selfupdate/UpdateInstaller.hxx>
+#include <QCoreApplication>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -21,6 +24,13 @@
 #include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
+    : MainWindow(nullptr, parent)
+{
+}
+
+MainWindow::MainWindow(
+    std::shared_ptr<selfupdate::SelfUpdateController> updateController,
+    QWidget *parent)
     : QMainWindow(parent)
     , _cameraThread(nullptr)
     , _urdfViewer(nullptr)
@@ -33,12 +43,20 @@ MainWindow::MainWindow(QWidget *parent)
     , _relaxBtn(nullptr)
     , _stopBtn(nullptr)
     , _mqttStatusBadge(nullptr)
+    , _aiStatusBadge(nullptr)
+    , _aiProviderBadge(nullptr)
     , _fpsLabel(nullptr)
     , _statusMessageLabel(nullptr)
+    , _updateStatusBadge(nullptr)
+    , _updateController(std::move(updateController))
+    , _currentUpdateState()
+    , _startupCheckPending(false)
     , _teleopActive(false)
     , _hasPoseData(false)
     , _lastPoseTimestamp(0)
 {
+    selfupdate::UpdateInstaller::cleanupStaleBackup();
+
     // 1. Initialize Robot URDF Limits and Calibration from embedded resources
     UrdfLimits::instance().init(":/model/robohero.urdf", ":/model/calibration.json");
 
@@ -52,7 +70,9 @@ MainWindow::MainWindow(QWidget *parent)
         _telemAngles[ch] = angle;
     }
 
-    setWindowTitle("RoboHero Teleoperation Dashboard");
+    setWindowTitle(
+        QString("RoboHero Teleoperation Dashboard v%1")
+            .arg(QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING)));
     setWindowIcon(QIcon(":/icons/robohero_head.png"));
     resize(1280, 800);
 
@@ -64,7 +84,9 @@ MainWindow::MainWindow(QWidget *parent)
     std::string initModelPath = (cfg.ai.modelSource == "custom" && !cfg.ai.customModelPath.empty())
                                     ? cfg.ai.customModelPath
                                     : ":/models/yolov8n-pose.onnx";
-    _estimator->init(initModelPath, cfg.ai.provider);
+    if (!qEnvironmentVariableIsSet("ROBOHERO_DISABLE_AUTO_CAMERA")) {
+        _estimator->init(initModelPath, cfg.ai.provider);
+    }
 
     _lastAppliedAiProvider = cfg.ai.provider;
     _lastAppliedModelSource = cfg.ai.modelSource;
@@ -103,7 +125,9 @@ MainWindow::MainWindow(QWidget *parent)
     _cameraThread = new CameraThread(_estimator, this);
     connect(_cameraThread, &CameraThread::frameReady, this, &MainWindow::onFrameReady);
     connect(_cameraThread, &CameraThread::cameraError, this, &MainWindow::onCameraError);
-    restartCamera();
+    if (!qEnvironmentVariableIsSet("ROBOHERO_DISABLE_AUTO_CAMERA")) {
+        restartCamera();
+    }
 
     // 7. Transmission Rate Timer
     int intervalMs = 1000 / (cfg.safety.txRateHz > 0 ? cfg.safety.txRateHz : 30);
@@ -111,13 +135,41 @@ MainWindow::MainWindow(QWidget *parent)
     _txTimer.start(intervalMs);
 
     // 8. Auto-connect MQTT if enabled
-    if (cfg.mqtt.autoConnect) {
+    if (_updateController == nullptr &&
+        !qEnvironmentVariableIsSet("ROBOHERO_DISABLE_AUTO_MQTT") &&
+        cfg.mqtt.autoConnect) {
         connectMqtt();
+    }
+
+    // 9. Self-Update Controller
+    const selfupdate::AppConfig defaultCfg = defaultSelfUpdateConfig();
+    if (!_updateController) {
+        _updateController =
+            std::make_shared<selfupdate::SelfUpdateController>(defaultCfg);
+    }
+    bindSelfUpdateController();
+
+    if (defaultCfg.checkOnStartup) {
+        _startupCheckPending = true;
+        QTimer::singleShot(0, this, [this]() {
+            if (_startupCheckPending &&
+                _currentUpdateState.phase == selfupdate::UpdatePhase::Idle) {
+                _startupCheckPending = false;
+                checkForAppUpdates(false);
+            }
+        });
     }
 }
 
 MainWindow::~MainWindow()
 {
+    if (_updateController) {
+        _updateController->setStateCallback(nullptr);
+        _updateController->setQuitCallback(nullptr);
+        _updateController->setUiDispatcher(nullptr);
+        _updateController->cancel();
+        _updateController.reset();
+    }
     if (_cameraThread) {
         _cameraThread->stopCapture();
         _cameraThread->wait();
@@ -195,6 +247,14 @@ void MainWindow::setupUi()
     mainLayout->addWidget(vSplitter);
 
     // Status bar labels
+    _updateStatusBadge = new QPushButton(this);
+    _updateStatusBadge->setObjectName("updateStatusBadge");
+    _updateStatusBadge->setVisible(false);
+    _updateStatusBadge->setStyleSheet(
+        "background-color: #00ADB5; color: #ffffff; font-weight: bold; "
+        "padding: 2px 10px; border-radius: 3px;");
+    connect(_updateStatusBadge, &QPushButton::clicked, this, &MainWindow::onCheckForUpdatesClicked);
+
     _aiStatusBadge = new QLabel(this);
     _mqttStatusBadge = new QLabel("MQTT: Disconnected", this);
     _mqttStatusBadge->setStyleSheet("color: #ff5555; padding-right: 15px; font-weight: bold;");
@@ -202,6 +262,7 @@ void MainWindow::setupUi()
     _statusMessageLabel->setObjectName("statusMessage");
     _statusMessageLabel->setStyleSheet("color: #e0e0e0;");
 
+    statusBar()->addPermanentWidget(_updateStatusBadge);
     statusBar()->addPermanentWidget(_aiStatusBadge);
     statusBar()->addPermanentWidget(_mqttStatusBadge);
     statusBar()->addWidget(_statusMessageLabel);
@@ -228,13 +289,11 @@ void MainWindow::setupMenusAndToolbars()
     connect(stopAction, &QAction::triggered, this, &MainWindow::onStopClicked);
 
     auto *helpMenu = menuBar()->addMenu("&Help");
+    auto *checkUpdatesAction = helpMenu->addAction("Check for Updates...");
+    connect(checkUpdatesAction, &QAction::triggered, this, &MainWindow::onCheckForUpdatesClicked);
+    helpMenu->addSeparator();
     auto *aboutAction = helpMenu->addAction("&About RoboHero Teleop");
-    connect(aboutAction, &QAction::triggered, this, [this]() {
-        QMessageBox::about(this, "About RoboHero Teleop",
-                           "<h3>RoboHero Desktop Teleoperation</h3>"
-                           "<p>Real-time human pose teleoperation with YOLOv8, URDF kinematics, and MQTT control.</p>"
-                           "<p>Copyright &copy; 2026, Charles Chiou</p>");
-    });
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::onAboutClicked);
 
     // Tool Bar
     auto *toolBar = addToolBar("Controls");
@@ -705,6 +764,137 @@ void MainWindow::onTxTimerTimeout()
     if (!_mqttClient->sendPwm(_commandPwm, _mqttClient->controlTopic(), &_commandMask)) {
         _statusMessageLabel->setText(_mqttClient->lastError());
     }
+}
+
+void MainWindow::onCheckForUpdatesClicked()
+{
+    robohero::SelfUpdateDialog dlg(_updateController, "RoboHero Teleop", this);
+    dlg.applyUpdateState(_currentUpdateState);
+    if (_currentUpdateState.phase == selfupdate::UpdatePhase::Idle) {
+        checkForAppUpdates(true);
+    }
+    dlg.exec();
+}
+
+void MainWindow::onAboutClicked()
+{
+    QMessageBox::about(
+        this,
+        "About RoboHero Teleop",
+        QString("<h3>RoboHero Desktop Teleoperation</h3>"
+                "<p>Version %1 (Build %2)</p>"
+                "<p>Real-time human pose teleoperation with YOLOv8, URDF kinematics, and MQTT control.</p>"
+                "<p>Copyright &copy; 2026, Charles Chiou</p>")
+            .arg(QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING))
+            .arg(robohero::ROBOHERO_VERSION_CODE));
+}
+
+selfupdate::AppConfig MainWindow::defaultSelfUpdateConfig()
+{
+    selfupdate::AppConfig cfg;
+    cfg.applicationId = "com.selfso.robohero.teleop";
+    cfg.appId = "com.selfso.robohero.teleop";
+    cfg.appSlug = "robohero-teleop";
+    cfg.slug = "robohero-teleop";
+    cfg.displayName = "RoboHero Teleop";
+    cfg.installedVersionName = robohero::ROBOHERO_VERSION_STRING;
+    cfg.currentVersion = robohero::ROBOHERO_VERSION_STRING;
+    cfg.installedVersionCode = robohero::ROBOHERO_VERSION_CODE;
+    cfg.currentVersionCode = robohero::ROBOHERO_VERSION_CODE;
+    cfg.manifestUrl = "https://www.selfso.com/software/windows/version.json";
+    cfg.checkOnStartup = true;
+    return cfg;
+}
+
+selfupdate::SelfUpdateController *MainWindow::selfUpdateController() const
+{
+    return _updateController.get();
+}
+
+std::shared_ptr<selfupdate::SelfUpdateController>
+MainWindow::selfUpdateControllerShared() const
+{
+    return _updateController;
+}
+
+void MainWindow::setSelfUpdateController(
+    std::shared_ptr<selfupdate::SelfUpdateController> controller)
+{
+    _startupCheckPending = false;
+    if (_updateController) {
+        _updateController->setStateCallback(nullptr);
+        _updateController->setQuitCallback(nullptr);
+        _updateController->setUiDispatcher(nullptr);
+        _updateController->cancel();
+    }
+    _updateController = std::move(controller);
+    if (_updateController) {
+        bindSelfUpdateController();
+    }
+}
+
+const selfupdate::UpdateState &MainWindow::currentSelfUpdateState() const
+{
+    return _currentUpdateState;
+}
+
+void MainWindow::checkForAppUpdates(bool isManual)
+{
+    _startupCheckPending = false;
+    if (_updateController) {
+        _updateController->checkForUpdates(isManual);
+    }
+}
+
+QString MainWindow::updateStatusBadgeText() const
+{
+    return _updateStatusBadge ? _updateStatusBadge->text() : QString();
+}
+
+bool MainWindow::isUpdateStatusBadgeVisible() const
+{
+    return _updateStatusBadge && !_updateStatusBadge->isHidden();
+}
+
+void MainWindow::bindSelfUpdateController()
+{
+    if (!_updateController) {
+        return;
+    }
+    selfupdate::bindQtController(
+        *_updateController,
+        this,
+        [this](const selfupdate::UpdateState &state) {
+            onSelfUpdateStateChanged(state);
+        },
+        [this]() {
+            close();
+            if (QCoreApplication::instance()) {
+                QCoreApplication::instance()->quit();
+            }
+        });
+    onSelfUpdateStateChanged(_updateController->state());
+}
+
+void MainWindow::onSelfUpdateStateChanged(const selfupdate::UpdateState &state)
+{
+    _currentUpdateState = state;
+    if (_updateStatusBadge) {
+        if (state.phase == selfupdate::UpdatePhase::Available) {
+            _updateStatusBadge->setText(
+                QString("⬆ Update Available (v%1)")
+                    .arg(QString::fromStdString(state.manifest.versionName)));
+            _updateStatusBadge->setVisible(true);
+        } else if (state.phase == selfupdate::UpdatePhase::ReadyToInstall) {
+            _updateStatusBadge->setText(
+                QString("⬆ Ready to Install (v%1)")
+                    .arg(QString::fromStdString(state.manifest.versionName)));
+            _updateStatusBadge->setVisible(true);
+        } else {
+            _updateStatusBadge->setVisible(false);
+        }
+    }
+    robohero::SelfUpdateDialog::broadcastState(_updateController.get(), state);
 }
 
 /*

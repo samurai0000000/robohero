@@ -18,6 +18,7 @@
 #include "MotionLibrary.hxx"
 #include "ParametricGait.hxx"
 #include "MotionSequence.hxx"
+#include "Version.hxx"
 
 static QString s_lastQpaWarning;
 
@@ -122,6 +123,7 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
+    Q_INIT_RESOURCE(motion_resources);
 
     qRegisterMetaType<std::array<int, 17>>("std::array<int, 17>");
     qRegisterMetaType<std::array<bool, 17>>("std::array<bool, 17>");
@@ -129,7 +131,8 @@ int main(int argc, char *argv[])
 
     QCoreApplication::setOrganizationName("RoboHero");
     QCoreApplication::setApplicationName("RoboHeroMotion");
-    QCoreApplication::setApplicationVersion("1.0.0");
+    QCoreApplication::setApplicationVersion(
+        QString::fromUtf8(robohero::ROBOHERO_VERSION_STRING));
 
     app.setWindowIcon(QIcon(":/icons/robohero_icon.png"));
 

@@ -35,6 +35,9 @@ import com.selfso.robohero.ui.screens.CalibrationScreen
 import com.selfso.robohero.ui.screens.ControllerScreen
 import com.selfso.robohero.ui.screens.SettingsScreen
 import com.selfso.robohero.ui.theme.*
+import com.selfso.selfupdate.ui.SelfUpdateBanner
+import com.selfso.selfupdate.ui.SelfUpdateDialog
+import com.selfso.selfupdate.ui.rememberSelfUpdateController
 import kotlinx.coroutines.delay
 
 enum class Screen {
@@ -66,6 +69,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun MainAppScreen() {
+        val updateController = rememberSelfUpdateController(checkOnLaunch = true)
         var currentScreen by remember { mutableStateOf(Screen.CONTROLLER) }
         var menuExpanded by remember { mutableStateOf(false) }
         var showConnectionDialog by remember { mutableStateOf(false) }
@@ -319,6 +323,14 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = Screen.CALIBRATION
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Check for updates", color = TextMain, fontWeight = FontWeight.SemiBold) },
+                                onClick = {
+                                    menuExpanded = false
+                                    updateController.checkForUpdates()
+                                    showToast("Checking for updates...")
+                                }
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -333,60 +345,74 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                when (currentScreen) {
-                    Screen.CONTROLLER -> {
-                        ControllerScreen(
-                            isConnected = isConnected,
-                            onSendCmd = { key, value ->
-                                httpClient.sendMotion(key, value) { success, msg ->
-                                    if (success) {
-                                        registerSuccess()
-                                    } else {
-                                        registerFailure()
+                Column(modifier = Modifier.fillMaxSize()) {
+                    SelfUpdateBanner(
+                        controller = updateController,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        when (currentScreen) {
+                            Screen.CONTROLLER -> {
+                                ControllerScreen(
+                                    isConnected = isConnected,
+                                    onSendCmd = { key, value ->
+                                        httpClient.sendMotion(key, value) { success, msg ->
+                                            if (success) {
+                                                registerSuccess()
+                                            } else {
+                                                registerFailure()
+                                            }
+                                            showToast(msg)
+                                        }
                                     }
-                                    showToast(msg)
-                                }
+                                )
                             }
-                        )
-                    }
-                    Screen.CALIBRATION -> {
-                        CalibrationScreen(
-                            trims = trimsState,
-                            isConnected = isConnected,
-                            onTrimChanged = { key, value ->
-                                val idx = trimsState.indexOfFirst { it.id == key }
-                                if (idx != -1) {
-                                    trimsState[idx] = trimsState[idx].copy(value = value)
-                                }
-                                httpClient.applyTrim(key, value) {}
-                            },
-                            onSaveTrims = {
-                                val list = trimsState.map { it.value }
-                                httpClient.saveTrims(list) { success, msg ->
-                                    if (success) {
-                                        registerSuccess()
-                                    } else {
-                                        registerFailure()
+                            Screen.CALIBRATION -> {
+                                CalibrationScreen(
+                                    trims = trimsState,
+                                    isConnected = isConnected,
+                                    onTrimChanged = { key, value ->
+                                        val idx = trimsState.indexOfFirst { it.id == key }
+                                        if (idx != -1) {
+                                            trimsState[idx] = trimsState[idx].copy(value = value)
+                                        }
+                                        httpClient.applyTrim(key, value) {}
+                                    },
+                                    onSaveTrims = {
+                                        val list = trimsState.map { it.value }
+                                        httpClient.saveTrims(list) { success, msg ->
+                                            if (success) {
+                                                registerSuccess()
+                                            } else {
+                                                registerFailure()
+                                            }
+                                            showToast(msg)
+                                        }
+                                    },
+                                    onSetPose = { pose ->
+                                        httpClient.sendPose(pose) { success ->
+                                            if (success) {
+                                                registerSuccess()
+                                            } else {
+                                                registerFailure()
+                                            }
+                                            showToast(if (success) "Pose applied" else "Pose failed")
+                                        }
                                     }
-                                    showToast(msg)
-                                }
-                            },
-                            onSetPose = { pose ->
-                                httpClient.sendPose(pose) { success ->
-                                    if (success) {
-                                        registerSuccess()
-                                    } else {
-                                        registerFailure()
-                                    }
-                                    showToast(if (success) "Pose applied" else "Pose failed")
-                                }
+                                )
                             }
-                        )
-                    }
-                    Screen.SETTINGS -> {
-                        SettingsScreen()
+                            Screen.SETTINGS -> {
+                                SettingsScreen(updateController = updateController)
+                            }
+                        }
                     }
                 }
+
+                SelfUpdateDialog(controller = updateController)
 
                 // Toast Notification Overlay
                 AnimatedVisibility(
