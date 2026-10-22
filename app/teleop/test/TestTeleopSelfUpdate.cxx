@@ -22,8 +22,12 @@
 #include "UrdfLimits.hxx"
 #include "Version.hxx"
 
+#include <QBuffer>
+#include <QImage>
 #define ROBOHERO_LIBCONFIG_NAMESPACE mingw_libconfig
 #include "../src/mingw_compat/MinGwLibconfigCompat.cxx"
+#define ROBOHERO_OPENCV_DECODE_ONLY
+#include "../src/mingw_compat/MinGwOpenCvCompat.cxx"
 
 #include <rapidcheck.h>
 
@@ -209,10 +213,10 @@ TEST(TeleopSelfUpdateTestGroup, DefaultConfigMatchesCanonicalMetadata)
     STRCMP_EQUAL("robohero-teleop", cfg.appSlug.c_str());
     STRCMP_EQUAL("robohero-teleop", cfg.slug.c_str());
     STRCMP_EQUAL("RoboHero Teleop", cfg.displayName.c_str());
-    STRCMP_EQUAL("2.2.0", cfg.currentVersion.c_str());
-    STRCMP_EQUAL("2.2.0", cfg.installedVersionName.c_str());
-    LONGS_EQUAL(20200, cfg.currentVersionCode);
-    LONGS_EQUAL(20200, cfg.installedVersionCode);
+    STRCMP_EQUAL(robohero::ROBOHERO_VERSION_STRING, cfg.currentVersion.c_str());
+    STRCMP_EQUAL(robohero::ROBOHERO_VERSION_STRING, cfg.installedVersionName.c_str());
+    LONGS_EQUAL(robohero::ROBOHERO_VERSION_CODE, cfg.currentVersionCode);
+    LONGS_EQUAL(robohero::ROBOHERO_VERSION_CODE, cfg.installedVersionCode);
     STRCMP_EQUAL("https://www.selfso.com/software/windows/version.json",
                  cfg.manifestUrl.c_str());
     CHECK_TRUE(cfg.checkOnStartup);
@@ -233,21 +237,24 @@ TEST(TeleopSelfUpdateTestGroup, NominalAndBoundaryVersionChecks)
         tempDir->path().toStdString(),
         transport);
 
-    // 1. Newer version (2.2.1 / 20201) -> Available
+    // 1. Newer version (2.2.2 / 20202) -> Available
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, sha, static_cast<int64_t>(dummyPayload.size())));
+        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(dummyPayload.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
                 static_cast<int>(controller->state().phase));
-    STRCMP_EQUAL("2.2.1", controller->state().manifest.versionName.c_str());
-    LONGS_EQUAL(20201, controller->state().manifest.versionCode);
+    STRCMP_EQUAL("2.2.2", controller->state().manifest.versionName.c_str());
+    LONGS_EQUAL(20202, controller->state().manifest.versionCode);
 
-    // 2. Equal version (2.2.0 / 20200) -> UpToDate
+    // 2. Equal version -> UpToDate
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.0", 20200, sha, static_cast<int64_t>(dummyPayload.size())));
+        buildCatalogJson(robohero::ROBOHERO_VERSION_STRING,
+                         robohero::ROBOHERO_VERSION_CODE,
+                         sha,
+                         static_cast<int64_t>(dummyPayload.size())));
     controller->checkForUpdates(false);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::UpToDate),
@@ -265,13 +272,13 @@ TEST(TeleopSelfUpdateTestGroup, NominalAndBoundaryVersionChecks)
 
 TEST(TeleopSelfUpdateTestGroup, DownloadVerifyAndDryRunInstallSucceeds)
 {
-    const std::string installerBytes = "MZ-verified-robohero-teleop-setup-2.2.1";
+    const std::string installerBytes = "MZ-verified-robohero-teleop-setup-2.2.2";
     const std::string sha = selfupdate::Sha256::hashBytes(
         installerBytes.data(), installerBytes.size());
 
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, sha, static_cast<int64_t>(installerBytes.size()),
+        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(installerBytes.size()),
                          "Improved upper-body elbow flexion retargeting."));
     transport->setDownloadPayload(true, installerBytes);
 
@@ -336,7 +343,7 @@ TEST(TeleopSelfUpdateTestGroup, FaultInjectionHttpErrorMalformedJsonAndShaMismat
     // 3. Corrupted download payload (SHA-256 mismatch) cleans up .part file
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, validSha, static_cast<int64_t>(validBytes.size())));
+        buildCatalogJson("2.2.2", 20202, validSha, static_cast<int64_t>(validBytes.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
@@ -563,6 +570,118 @@ TEST(TeleopSelfUpdateTestGroup, MainWindowAndDialogIntegrationOffscreen)
     STRCMP_EQUAL("ReadyToInstall", dialog.phaseLabelText().toUtf8().constData());
     LONGS_EQUAL(100, dialog.progressValue());
     CHECK_TRUE(mainWindow.updateStatusBadgeText().contains("Ready to Install"));
+}
+
+TEST(TeleopSelfUpdateTestGroup, MinGwOpenCvVideoFrameDecodeAndFaultInjection)
+{
+    cv::Mat out;
+
+    // 1. Fault injection: null pointer, zero length, non-positive dimensions, unknown FourCC
+    const uint8_t dummy[64] = {0};
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(nullptr, 64, 4, 4, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 0, 4, 4, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 64, 0, 4, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 64, 4, -2, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 64, 4, 4, 0x12345678u, 16, 0, false, out));
+
+    // 2. Truncated buffer fault injection for YUY2, NV12, RGB24, RGB32
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 31, 4, 4, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 23, 4, 4, cv::VIDEO_FMT_NV12, 12, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 47, 4, 4, cv::VIDEO_FMT_D3D_RGB24, 24, 0, false, out));
+    CHECK_FALSE(cv::decodeRawVideoFrameToBgr(dummy, 63, 4, 4, cv::VIDEO_FMT_D3D_RGB32, 32, 0, false, out));
+
+    // 3. YUY2 (0x32595559) neutral white (Y=235, U=128, V=128 -> B=255, G=255, R=255)
+    std::vector<uint8_t> yuy2Buf(4 * 2 * 2, 0);
+    for (size_t i = 0; i < yuy2Buf.size(); i += 4) {
+        yuy2Buf[i + 0] = 235;
+        yuy2Buf[i + 1] = 128;
+        yuy2Buf[i + 2] = 235;
+        yuy2Buf[i + 3] = 128;
+    }
+    CHECK_TRUE(cv::decodeRawVideoFrameToBgr(
+        yuy2Buf.data(), yuy2Buf.size(), 4, 2, cv::VIDEO_FMT_YUY2, 16, 0, false, out));
+    LONGS_EQUAL(4, out.cols);
+    LONGS_EQUAL(2, out.rows);
+    LONGS_EQUAL(255, out.ptr<uint8_t>(0)[0]);
+    LONGS_EQUAL(255, out.ptr<uint8_t>(0)[1]);
+    LONGS_EQUAL(255, out.ptr<uint8_t>(0)[2]);
+
+    // 4. NV12 (0x3231564E) neutral black (Y=16, U=128, V=128 -> B=0, G=0, R=0)
+    std::vector<uint8_t> nv12Buf(4 * 4 + 4 * 2, 128);
+    std::fill(nv12Buf.begin(), nv12Buf.begin() + 16, 16);
+    CHECK_TRUE(cv::decodeRawVideoFrameToBgr(
+        nv12Buf.data(), nv12Buf.size(), 4, 4, cv::VIDEO_FMT_NV12, 12, 0, false, out));
+    LONGS_EQUAL(4, out.cols);
+    LONGS_EQUAL(4, out.rows);
+    LONGS_EQUAL(0, out.ptr<uint8_t>(3)[0]);
+    LONGS_EQUAL(0, out.ptr<uint8_t>(3)[1]);
+    LONGS_EQUAL(0, out.ptr<uint8_t>(3)[2]);
+
+    // 5. Bottom-up BI_RGB 24-bit and D3DFMT_RGB32
+    std::vector<uint8_t> rgb24BottomUp(2 * 2 * 3, 0);
+    // Row 0 in memory (bottom row in image): blue (255, 0, 0)
+    rgb24BottomUp[0] = 255;
+    // Row 1 in memory (top row in image): red (0, 0, 200)
+    rgb24BottomUp[6 + 2] = 200;
+    CHECK_TRUE(cv::decodeRawVideoFrameToBgr(
+        rgb24BottomUp.data(), rgb24BottomUp.size(), 2, 2, cv::VIDEO_FMT_BI_RGB, 24, 6, true, out));
+    LONGS_EQUAL(200, out.ptr<uint8_t>(0)[2]);
+    LONGS_EQUAL(255, out.ptr<uint8_t>(1)[0]);
+
+    // 6. MJPG decode via QImage
+    QImage srcImg(8, 8, QImage::Format_RGB888);
+    srcImg.fill(QColor(20, 180, 40));
+    QByteArray jpegBytes;
+    QBuffer qbuf(&jpegBytes);
+    qbuf.open(QIODevice::WriteOnly);
+    CHECK_TRUE(srcImg.save(&qbuf, "JPG", 100));
+    CHECK_TRUE(cv::decodeRawVideoFrameToBgr(
+        reinterpret_cast<const uint8_t *>(jpegBytes.constData()),
+        static_cast<size_t>(jpegBytes.size()),
+        8, 8, cv::VIDEO_FMT_MJPG, 24, 0, false, out));
+    LONGS_EQUAL(8, out.cols);
+    LONGS_EQUAL(8, out.rows);
+}
+
+TEST(TeleopSelfUpdateTestGroup, RapidCheckVideoFrameDecoder)
+{
+    bool ok = rc::check(
+        "decodeRawVideoFrameToBgr decodes arbitrary YUY2, UYVY, NV12, RGB24, and RGB32 frames safely",
+        []() {
+            const int w = *rc::gen::inRange(1, 33) * 2;
+            const int h = *rc::gen::inRange(1, 33) * 2;
+            const uint8_t yVal = static_cast<uint8_t>(*rc::gen::inRange(16, 236));
+            const uint8_t uVal = static_cast<uint8_t>(*rc::gen::inRange(16, 241));
+            const uint8_t vVal = static_cast<uint8_t>(*rc::gen::inRange(16, 241));
+
+            // YUY2 and UYVY must produce identical BGR output for identical YUV values
+            std::vector<uint8_t> yuy2(static_cast<size_t>(w) * static_cast<size_t>(h) * 2);
+            std::vector<uint8_t> uyvy(static_cast<size_t>(w) * static_cast<size_t>(h) * 2);
+            for (size_t i = 0; i < yuy2.size(); i += 4) {
+                yuy2[i + 0] = yVal;
+                yuy2[i + 1] = uVal;
+                yuy2[i + 2] = yVal;
+                yuy2[i + 3] = vVal;
+
+                uyvy[i + 0] = uVal;
+                uyvy[i + 1] = yVal;
+                uyvy[i + 2] = vVal;
+                uyvy[i + 3] = yVal;
+            }
+
+            cv::Mat matYuy2;
+            cv::Mat matUyvy;
+            RC_ASSERT(cv::decodeRawVideoFrameToBgr(
+                yuy2.data(), yuy2.size(), w, h, cv::VIDEO_FMT_YUY2, 16, 0, false, matYuy2));
+            RC_ASSERT(cv::decodeRawVideoFrameToBgr(
+                uyvy.data(), uyvy.size(), w, h, cv::VIDEO_FMT_UYVY, 16, 0, false, matUyvy));
+            RC_ASSERT(matYuy2.cols == w && matYuy2.rows == h);
+            RC_ASSERT(matUyvy.cols == w && matUyvy.rows == h);
+            RC_ASSERT(matYuy2.ptr<uint8_t>(0)[0] == matUyvy.ptr<uint8_t>(0)[0]);
+            RC_ASSERT(matYuy2.ptr<uint8_t>(0)[1] == matUyvy.ptr<uint8_t>(0)[1]);
+            RC_ASSERT(matYuy2.ptr<uint8_t>(0)[2] == matUyvy.ptr<uint8_t>(0)[2]);
+        });
+    CHECK_TRUE(ok);
 }
 
 int main(int argc, char **argv)

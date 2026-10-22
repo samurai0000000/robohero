@@ -199,10 +199,10 @@ TEST(MotionSelfUpdateTestGroup, DefaultConfigMatchesCanonicalMetadata)
     STRCMP_EQUAL("robohero-motion", cfg.appSlug.c_str());
     STRCMP_EQUAL("robohero-motion", cfg.slug.c_str());
     STRCMP_EQUAL("RoboHero Motion", cfg.displayName.c_str());
-    STRCMP_EQUAL("2.2.0", cfg.currentVersion.c_str());
-    STRCMP_EQUAL("2.2.0", cfg.installedVersionName.c_str());
-    LONGS_EQUAL(20200, cfg.currentVersionCode);
-    LONGS_EQUAL(20200, cfg.installedVersionCode);
+    STRCMP_EQUAL(robohero::ROBOHERO_VERSION_STRING, cfg.currentVersion.c_str());
+    STRCMP_EQUAL(robohero::ROBOHERO_VERSION_STRING, cfg.installedVersionName.c_str());
+    LONGS_EQUAL(robohero::ROBOHERO_VERSION_CODE, cfg.currentVersionCode);
+    LONGS_EQUAL(robohero::ROBOHERO_VERSION_CODE, cfg.installedVersionCode);
     STRCMP_EQUAL("https://www.selfso.com/software/windows/version.json",
                  cfg.manifestUrl.c_str());
     CHECK_TRUE(cfg.checkOnStartup);
@@ -223,21 +223,24 @@ TEST(MotionSelfUpdateTestGroup, NominalAndBoundaryVersionChecks)
         tempDir->path().toStdString(),
         transport);
 
-    // 1. Newer version (2.2.1 / 20201) -> Available
+    // 1. Newer version (2.2.2 / 20202) -> Available
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, sha, static_cast<int64_t>(dummyPayload.size())));
+        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(dummyPayload.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
                 static_cast<int>(controller->state().phase));
-    STRCMP_EQUAL("2.2.1", controller->state().manifest.versionName.c_str());
-    LONGS_EQUAL(20201, controller->state().manifest.versionCode);
+    STRCMP_EQUAL("2.2.2", controller->state().manifest.versionName.c_str());
+    LONGS_EQUAL(20202, controller->state().manifest.versionCode);
 
-    // 2. Equal version (2.2.0 / 20200) -> UpToDate
+    // 2. Equal version -> UpToDate
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.0", 20200, sha, static_cast<int64_t>(dummyPayload.size())));
+        buildCatalogJson(robohero::ROBOHERO_VERSION_STRING,
+                         robohero::ROBOHERO_VERSION_CODE,
+                         sha,
+                         static_cast<int64_t>(dummyPayload.size())));
     controller->checkForUpdates(false);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::UpToDate),
@@ -255,13 +258,13 @@ TEST(MotionSelfUpdateTestGroup, NominalAndBoundaryVersionChecks)
 
 TEST(MotionSelfUpdateTestGroup, DownloadVerifyAndDryRunInstallSucceeds)
 {
-    const std::string installerBytes = "MZ-verified-robohero-motion-setup-2.2.1";
+    const std::string installerBytes = "MZ-verified-robohero-motion-setup-2.2.2";
     const std::string sha = selfupdate::Sha256::hashBytes(
         installerBytes.data(), installerBytes.size());
 
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, sha, static_cast<int64_t>(installerBytes.size()),
+        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(installerBytes.size()),
                          "Added parametric sidestep gait."));
     transport->setDownloadPayload(true, installerBytes);
 
@@ -326,7 +329,7 @@ TEST(MotionSelfUpdateTestGroup, FaultInjectionHttpErrorMalformedJsonAndShaMismat
     // 3. Corrupted download payload (SHA-256 mismatch) cleans up .part file
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.1", 20201, validSha, static_cast<int64_t>(validBytes.size())));
+        buildCatalogJson("2.2.2", 20202, validSha, static_cast<int64_t>(validBytes.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),

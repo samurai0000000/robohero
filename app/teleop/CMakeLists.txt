@@ -318,6 +318,10 @@ elseif(MINGW)
         "${ORT_DML_LIB}"
         opengl32
         glu32
+        mf
+        mfplat
+        mfreadwrite
+        mfuuid
         vfw32
         avicap32
         ws2_32
