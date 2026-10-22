@@ -150,6 +150,18 @@ private:
     std::string _downloadError;
 };
 
+std::string newerVersionName()
+{
+    return std::to_string(robohero::ROBOHERO_VERSION_MAJOR) + "." +
+           std::to_string(robohero::ROBOHERO_VERSION_MINOR) + "." +
+           std::to_string(robohero::ROBOHERO_VERSION_PATCH + 1);
+}
+
+constexpr int newerVersionCode()
+{
+    return robohero::ROBOHERO_VERSION_CODE + 1;
+}
+
 std::string buildCatalogJson(const std::string &versionName,
                              int versionCode,
                              const std::string &sha256,
@@ -237,16 +249,18 @@ TEST(TeleopSelfUpdateTestGroup, NominalAndBoundaryVersionChecks)
         tempDir->path().toStdString(),
         transport);
 
-    // 1. Newer version (2.2.2 / 20202) -> Available
+    // 1. Newer version -> Available
+    const std::string newerVer = newerVersionName();
+    const int newerCode = newerVersionCode();
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(dummyPayload.size())));
+        buildCatalogJson(newerVer, newerCode, sha, static_cast<int64_t>(dummyPayload.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
                 static_cast<int>(controller->state().phase));
-    STRCMP_EQUAL("2.2.2", controller->state().manifest.versionName.c_str());
-    LONGS_EQUAL(20202, controller->state().manifest.versionCode);
+    STRCMP_EQUAL(newerVer.c_str(), controller->state().manifest.versionName.c_str());
+    LONGS_EQUAL(newerCode, controller->state().manifest.versionCode);
 
     // 2. Equal version -> UpToDate
     transport->setManifestResponse(
@@ -278,7 +292,8 @@ TEST(TeleopSelfUpdateTestGroup, DownloadVerifyAndDryRunInstallSucceeds)
 
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(installerBytes.size()),
+        buildCatalogJson(newerVersionName(), newerVersionCode(), sha,
+                         static_cast<int64_t>(installerBytes.size()),
                          "Improved upper-body elbow flexion retargeting."));
     transport->setDownloadPayload(true, installerBytes);
 
@@ -343,7 +358,8 @@ TEST(TeleopSelfUpdateTestGroup, FaultInjectionHttpErrorMalformedJsonAndShaMismat
     // 3. Corrupted download payload (SHA-256 mismatch) cleans up .part file
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.2", 20202, validSha, static_cast<int64_t>(validBytes.size())));
+        buildCatalogJson(newerVersionName(), newerVersionCode(), validSha,
+                         static_cast<int64_t>(validBytes.size())));
     controller->checkForUpdates(true);
     controller->waitForIdle();
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
@@ -527,9 +543,11 @@ TEST(TeleopSelfUpdateTestGroup, MainWindowAndDialogIntegrationOffscreen)
     const std::string payload = "MZ-robohero-teleop-setup-2.2.2";
     const std::string sha = selfupdate::Sha256::hashBytes(payload.data(), payload.size());
 
+    const std::string newerVer = newerVersionName();
     transport->setManifestResponse(
         200,
-        buildCatalogJson("2.2.2", 20202, sha, static_cast<int64_t>(payload.size()),
+        buildCatalogJson(newerVer, newerVersionCode(), sha,
+                         static_cast<int64_t>(payload.size()),
                          "Added DirectML FP16 acceleration."));
     transport->setDownloadPayload(true, payload);
 
@@ -556,10 +574,10 @@ TEST(TeleopSelfUpdateTestGroup, MainWindowAndDialogIntegrationOffscreen)
     CHECK_EQUAL(static_cast<int>(selfupdate::UpdatePhase::Available),
                 static_cast<int>(mainWindow.currentSelfUpdateState().phase));
     CHECK_TRUE(mainWindow.isUpdateStatusBadgeVisible());
-    CHECK_TRUE(mainWindow.updateStatusBadgeText().contains("2.2.2"));
+    CHECK_TRUE(mainWindow.updateStatusBadgeText().contains(QString::fromStdString(newerVer)));
 
     STRCMP_EQUAL("Available", dialog.phaseLabelText().toUtf8().constData());
-    CHECK_TRUE(dialog.versionLabelText().contains("2.2.2"));
+    CHECK_TRUE(dialog.versionLabelText().contains(QString::fromStdString(newerVer)));
     CHECK_TRUE(dialog.releaseNotesText().contains("DirectML"));
 
     // Trigger primary action in Available state -> downloads package
